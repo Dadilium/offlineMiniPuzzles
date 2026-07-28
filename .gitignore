@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# expo / build output
+.expo/
+dist/
+web-build/
+
+# logs / os cruft
+*.log
+.DS_Store
+
+# internal authoring tools, not part of the shipped app
+tools/
+scripts/
+
+# generated/draft level content
+output/
+
+# local, machine-specific claude settings
+.claude/settings.local.json
