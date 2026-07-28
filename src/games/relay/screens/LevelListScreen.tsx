@@ -1,0 +1,41 @@
+import React from 'react';
+import { SafeAreaView, ScrollView, StyleSheet } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import LevelList, { type LevelStatus } from '../../../components/LevelList';
+import TopBar from '../../../components/TopBar';
+import { colors } from '../../../theme/colors';
+import { levels } from '../levels';
+import { enterLevel as enterLevelNav, type RelayStackParamList } from '../navigation';
+import { useRelayProgress } from '../state/useRelayProgress';
+
+type Props = NativeStackScreenProps<RelayStackParamList, 'RelayLevels'>;
+
+export default function LevelListScreen({ navigation }: Props) {
+  const { levelsCompleted, levelsSkipped, tutorialsSeen } = useRelayProgress();
+
+  const items = levels.map((lv, idx) => {
+    const locked = idx > 0 && !levelsCompleted.has(idx - 1) && !levelsSkipped.has(idx - 1);
+    const complete = levelsCompleted.has(idx);
+    const skipped = levelsSkipped.has(idx);
+    const status: LevelStatus = locked ? 'locked' : complete ? 'complete' : skipped ? 'skipped' : 'available';
+    return { title: lv.title, status };
+  });
+
+  function enterLevel(idx: number) {
+    enterLevelNav(navigation, idx, tutorialsSeen);
+  }
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <TopBar onBack={() => navigation.goBack()} backAccessibilityLabel="Back to hub" title="Levels" />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <LevelList items={items} onPress={enterLevel} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.bgDeep },
+  scrollContent: { padding: 20 },
+});

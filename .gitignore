@@ -17,5 +17,7 @@ scripts/
 # generated/draft level content
 output/
 
-# local, machine-specific claude settings
-.claude/settings.local.json
+# claude code / agent tooling, not part of the app
+.claude/
+CLAUDE.md
+workflows/
