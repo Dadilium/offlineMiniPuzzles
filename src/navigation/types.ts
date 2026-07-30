@@ -5,6 +5,7 @@ import type { BlockFillStackParamList } from '../games/block-fill/navigation';
 import type { CrossSumsStackParamList } from '../games/cross-sums/navigation';
 import type { ColorSortStackParamList } from '../games/color-sort/navigation';
 import type { TentsAndTreesStackParamList } from '../games/tents-and-trees/navigation';
+import type { ShikakuStackParamList } from '../games/shikaku/navigation';
 
 // Root stack = Library + every game's screens merged in. Each game module
 // declares its own param list (see games/relay/navigation.ts) which gets
@@ -17,4 +18,5 @@ export type RootStackParamList = {
   BlockFillStackParamList &
   CrossSumsStackParamList &
   ColorSortStackParamList &
-  TentsAndTreesStackParamList;
+  TentsAndTreesStackParamList &
+  ShikakuStackParamList;
