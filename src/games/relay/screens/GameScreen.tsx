@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import IconButton from '../../../components/IconButton';
 import TopBar from '../../../components/TopBar';
 import { useToast } from '../../../components/Toast';
@@ -27,6 +28,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const { relaysByLevel, toggleRelay, giveHint, resetLevel, markLevelComplete, markLevelSkipped, levelsCompleted, tutorialsSeen } =
     useRelayProgress();
   const { showToast } = useToast();
+  const { t } = useTranslation('relay');
+  const { t: tc } = useTranslation('common');
   const relays = relaysByLevel[levelIndex] ?? [];
 
   const colorList = Object.keys(level.budgets) as SignalColor[];
@@ -87,15 +90,15 @@ export default function GameScreen({ route, navigation }: Props) {
     const kind = hasMirrors ? selectedKind : 'circle';
     const budget = level.budgets[color] ?? 0;
     const outcome = toggleRelay(levelIndex, x, y, color, budget, kind);
-    if (outcome === 'budget-full') showToast(`No ${color} relays left`);
-    if (outcome === 'locked') showToast('That relay was revealed by a hint — remove another one instead.');
+    if (outcome === 'budget-full') showToast(t('game.budgetFullToast', { color: t(`game.colorNamesLower.${color}`) }));
+    if (outcome === 'locked') showToast(t('game.hintLockedToast'));
   }
 
   function onHintPress() {
     const result = giveHint(levelIndex);
-    if (result.outcome === 'solved') showToast('Every signal is already connected.');
-    if (result.outcome === 'budget-full') {
-      showToast(`No ${result.color} relays left — remove one to make room for a hint.`);
+    if (result.outcome === 'solved') showToast(t('game.hintSolvedToast'));
+    if (result.outcome === 'budget-full' && result.color) {
+      showToast(t('game.hintBudgetFullToast', { color: t(`game.colorNamesLower.${result.color}`) }));
     }
   }
 
@@ -121,13 +124,13 @@ export default function GameScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.screen}>
       <TopBar
         onBack={() => navigation.navigate('RelayHub')}
-        backAccessibilityLabel="Back to hub"
-        eyebrow={`LEVEL ${levelIndex + 1} / ${levels.length}`}
+        backAccessibilityLabel={tc('actions.backToHub')}
+        eyebrow={t('game.levelEyebrow', { current: levelIndex + 1, total: levels.length })}
         title={level.title}
         right={
           <>
-            <IconButton glyph="↺" onPress={replayTutorial} accessibilityLabel="Replay the tutorial" />
-            <IconButton glyph="⟲" onPress={() => resetLevel(levelIndex)} accessibilityLabel="Reset level" />
+            <IconButton glyph="↺" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
+            <IconButton glyph="⟲" onPress={() => resetLevel(levelIndex)} accessibilityLabel={tc('actions.resetLevel')} />
           </>
         }
       />
@@ -159,7 +162,7 @@ export default function GameScreen({ route, navigation }: Props) {
       <View style={styles.statusRow}>
         {level.sources.map((s) => (
           <Text key={s.color} style={[styles.statusPill, { color: SIGNAL_COLORS[s.color] }]}>
-            {s.color.charAt(0).toUpperCase() + s.color.slice(1)}: {results[s.color]?.receiverReached ? '✅' : '❌'}
+            {t(`game.colorNames.${s.color}`)}: {results[s.color]?.receiverReached ? '✅' : '❌'}
           </Text>
         ))}
       </View>
@@ -168,11 +171,11 @@ export default function GameScreen({ route, navigation }: Props) {
         <RelayGrid level={level} relays={relays} jammed={jammed} results={results} onCellPress={onCellPress} />
       </View>
 
-      <Text style={styles.legend}>S = source · ◎ = receiver · ● = relay · tap a cell to place / remove</Text>
+      <Text style={styles.legend}>{t('game.legend')}</Text>
 
       <View style={styles.controls}>
         <TouchableOpacity style={styles.hintBtn} activeOpacity={0.75} onPress={onHintPress}>
-          <Text style={styles.hintBtnText}>Hint</Text>
+          <Text style={styles.hintBtnText}>{tc('actions.hint')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.skipBtn, allReached && styles.skipBtnHidden]}
@@ -180,14 +183,15 @@ export default function GameScreen({ route, navigation }: Props) {
           onPress={onSkipPress}
           disabled={allReached}
         >
-          <Text style={styles.skipBtnText}>Skip level (watch an ad)</Text>
+          <Text style={styles.skipBtnText}>{tc('actions.skipLevelAd')}</Text>
         </TouchableOpacity>
       </View>
 
       <WinOverlay
         visible={showWinOverlay}
-        subtitle={levelIndex < levels.length - 1 ? 'Signal locked in — next level unlocked.' : 'All levels cleared for now.'}
-        nextLabel={levelIndex < levels.length - 1 ? 'Next level' : 'Back to hub'}
+        title={t('game.winTitle')}
+        subtitle={levelIndex < levels.length - 1 ? t('game.winSubtitleNext') : t('game.winSubtitleLast')}
+        nextLabel={levelIndex < levels.length - 1 ? tc('actions.nextLevel') : tc('actions.backToHub')}
         onNext={nextLevel}
       />
     </SafeAreaView>

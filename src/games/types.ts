@@ -8,8 +8,6 @@ import type { ComponentType } from 'react';
 // binary" requirement).
 export interface GameModule {
   id: string;
-  name: string;
-  tag: string;
   status: 'ready' | 'locked';
   /** Tint for this game's Library/hub pulse icon. Defaults to signal blue. */
   accentColor?: string;

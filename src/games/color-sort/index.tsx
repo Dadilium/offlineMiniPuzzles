@@ -10,8 +10,6 @@ import { ColorSortProgressProvider } from './state/useColorSortProgress';
 // Registered in src/games/registry.ts.
 export const colorSortGame: GameModule = {
   id: 'color-sort',
-  name: 'Color Sort',
-  tag: 'Pour & sort puzzle',
   status: 'ready',
   accentColor: colors.cyan,
   Provider: ColorSortProgressProvider,

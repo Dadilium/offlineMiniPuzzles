@@ -6,6 +6,7 @@ import Confetti from './Confetti';
 interface Props {
   visible: boolean;
   showConfetti: boolean;
+  title: string;
   subtitle: string;
   nextLabel: string;
   onNext: () => void;
@@ -14,14 +15,14 @@ interface Props {
 // Deliberately NOT React Native's <Modal> -- see Relay's WinOverlay.tsx for
 // why (navigation.replace while a native Modal is presented is a known
 // iOS crash). Same absolutely-positioned-overlay approach here.
-export default function WinOverlay({ visible, showConfetti, subtitle, nextLabel, onNext }: Props) {
+export default function WinOverlay({ visible, showConfetti, title, subtitle, nextLabel, onNext }: Props) {
   if (!visible) return null;
   return (
     <View style={styles.backdrop} pointerEvents="box-none">
       {showConfetti && <Confetti />}
       <View style={styles.card}>
         <Text style={styles.badge}>✅</Text>
-        <Text style={styles.title}>All tubes sorted</Text>
+        <Text style={styles.title}>{title}</Text>
         <Text style={styles.sub}>{subtitle}</Text>
         <TouchableOpacity style={styles.button} onPress={onNext} activeOpacity={0.85}>
           <Text style={styles.buttonText}>{nextLabel}</Text>

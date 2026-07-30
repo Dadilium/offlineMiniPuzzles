@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "name": "Color Sort",
+    "tag": "Pour & sort puzzle"
+  },
+  "hub": {
+    "tagline": "Pour colors between tubes until every color lands in one tube of its own."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Pour onto a matching color, or an empty tube",
+        "desc": "Tap a tube to pick it up, then tap another to pour. A pour only works if the other tube is empty or its top color matches yours."
+      },
+      {
+        "title": "The whole top group moves together",
+        "desc": "You don't choose how much pours -- every consecutive unit of that color on top moves at once, as much as fits."
+      },
+      {
+        "title": "Get every color into one tube each to win",
+        "desc": "A tube counts once it is completely empty or completely full of a single color. Sort every color that way and the board is solved. Stuck? Hint highlights the next move."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Level {{number}}",
+    "levelEyebrow": "LEVEL {{number}}",
+    "statusMoves": "Moves {{count}}",
+    "statusPar": "· par {{count}}",
+    "stuckMessage": "No route from here -- reset and try again",
+    "legend": "tap a tube to pick it up · tap another to pour",
+    "hintFailToast": "No move from here reaches a win -- try resetting.",
+    "winTitle": "All tubes sorted",
+    "winSubtitle_one": "Solved in {{count}} move -- par is {{par}}.",
+    "winSubtitle_other": "Solved in {{count}} moves -- par is {{par}}."
+  }
+}

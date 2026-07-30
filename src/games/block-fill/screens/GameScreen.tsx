@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import IconButton from '../../../components/IconButton';
 import TopBar from '../../../components/TopBar';
 import { useToast } from '../../../components/Toast';
@@ -21,6 +22,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const { levelFor, ensureLevel, pathsByLevel, extend, rewind, giveHint, resetLevel, markLevelComplete, markLevelSkipped, levelsCompleted } =
     useBlockFillProgress();
   const { showToast } = useToast();
+  const { t } = useTranslation('block-fill');
+  const { t: tc } = useTranslation('common');
 
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect. Prefetch the next
@@ -87,7 +90,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function onHintPress() {
     const cell = giveHint(levelIndex);
     if (!cell) {
-      showToast('No path from here reaches every cell -- try rewinding.');
+      showToast(t('game.hintFailToast'));
       return;
     }
     if (hintTimer.current) clearTimeout(hintTimer.current);
@@ -125,44 +128,51 @@ export default function GameScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.screen}>
       <TopBar
         onBack={() => navigation.navigate('BlockFillHub')}
-        backAccessibilityLabel="Back to hub"
-        eyebrow={`LEVEL ${levelIndex + 1}`}
-        title={level.title ?? `Level ${levelIndex + 1}`}
+        backAccessibilityLabel={tc('actions.backToHub')}
+        eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
+        title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
         right={
           <>
-            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel="Replay the tutorial" />
-            <IconButton glyph="⟲" onPress={onRetryPress} accessibilityLabel="Reset level" size={40} glyphSize={19} />
+            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
+            <IconButton glyph="⟲" onPress={onRetryPress} accessibilityLabel={tc('actions.resetLevel')} size={40} glyphSize={19} />
           </>
         }
       />
 
       <View style={styles.statusRow}>
         <Text style={[styles.statusPill, { color: palette.stroke }]}>
-          {filledCount} / {totalFillable} filled
+          {t('game.statusFilled', { count: filledCount, total: totalFillable })}
         </Text>
-        {stuck && <Text style={[styles.statusPill, { color: colors.signalRed }]}>No route from here -- rewind and try again</Text>}
+        {stuck && <Text style={[styles.statusPill, { color: colors.signalRed }]}>{t('game.stuckMessage')}</Text>}
       </View>
 
       <ScrollView style={styles.boardArea} contentContainerStyle={styles.boardAreaContent}>
         <BlockFillGrid level={level} path={path} palette={palette} onDragToCell={onDragToCell} hintCell={hintCell} />
       </ScrollView>
 
-      <Text style={styles.legend}>drag through open cells to fill them -- touch back along your trail to rewind</Text>
+      <Text style={styles.legend}>{t('game.legend')}</Text>
 
       <View style={styles.controls}>
         <View style={styles.controlsRow}>
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.75} onPress={onHintPress}>
-            <Text style={styles.actionBtnText}>Hint</Text>
+            <Text style={styles.actionBtnText}>{tc('actions.hint')}</Text>
           </TouchableOpacity>
         </View>
         {!win && (
           <TouchableOpacity style={styles.skipBtn} activeOpacity={0.75} onPress={onSkipPress}>
-            <Text style={styles.skipBtnText}>Skip level (watch an ad)</Text>
+            <Text style={styles.skipBtnText}>{tc('actions.skipLevelAd')}</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <WinOverlay visible={win} showConfetti={showConfetti} subtitle="Every cell filled -- next board unlocked." nextLabel="Next level" onNext={nextLevel} />
+      <WinOverlay
+        visible={win}
+        showConfetti={showConfetti}
+        title={t('game.winTitle')}
+        subtitle={t('game.winSubtitle')}
+        nextLabel={tc('actions.nextLevel')}
+        onNext={nextLevel}
+      />
     </SafeAreaView>
   );
 }

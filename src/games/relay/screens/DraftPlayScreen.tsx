@@ -159,6 +159,7 @@ export default function DraftPlayScreen({ route, navigation }: Props) {
 
       <WinOverlay
         visible={showWinOverlay}
+        title="Draft solved"
         subtitle="Draft solved — every signal connected within budget."
         nextLabel="Back to drafts"
         onNext={() => navigation.goBack()}

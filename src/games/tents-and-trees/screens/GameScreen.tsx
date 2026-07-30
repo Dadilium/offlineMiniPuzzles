@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import IconButton from '../../../components/IconButton';
 import TopBar from '../../../components/TopBar';
 import { useToast } from '../../../components/Toast';
@@ -31,6 +32,8 @@ export default function GameScreen({ route, navigation }: Props) {
     levelsCompleted,
   } = useTentsAndTreesProgress();
   const { showToast } = useToast();
+  const { t } = useTranslation('tents-and-trees');
+  const { t: tc } = useTranslation('common');
 
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect, never during
@@ -118,7 +121,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   function onHintPress() {
     const gaveHint = giveHint(levelIndex);
-    if (!gaveHint) showToast('Every tent is already right where it should be.');
+    if (!gaveHint) showToast(t('game.hintFailToast'));
   }
 
   function replayTutorial() {
@@ -144,23 +147,23 @@ export default function GameScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.screen}>
       <TopBar
         onBack={() => navigation.navigate('TentsAndTreesHub')}
-        backAccessibilityLabel="Back to hub"
-        eyebrow={`LEVEL ${levelIndex + 1}`}
-        title={level.title ?? `Level ${levelIndex + 1}`}
+        backAccessibilityLabel={tc('actions.backToHub')}
+        eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
+        title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
         right={
           <>
-            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel="Replay the tutorial" />
-            <IconButton glyph="⟲" onPress={onResetPress} accessibilityLabel="Reset level" size={40} glyphSize={19} />
+            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
+            <IconButton glyph="⟲" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} size={40} glyphSize={19} />
           </>
         }
       />
 
       <View style={styles.statusRow}>
         <Text style={[styles.statusPill, { color: rowsMatched === level.rows ? colors.success : colors.textDim }]}>
-          Rows {rowsMatched}/{level.rows}
+          {t('game.statusRows', { count: rowsMatched, total: level.rows })}
         </Text>
         <Text style={[styles.statusPill, { color: colsMatched === level.cols ? colors.success : colors.textDim }]}>
-          Cols {colsMatched}/{level.cols}
+          {t('game.statusCols', { count: colsMatched, total: level.cols })}
         </Text>
       </View>
 
@@ -176,15 +179,15 @@ export default function GameScreen({ route, navigation }: Props) {
         />
       </View>
 
-      <Text style={styles.legend}>tap a cell to pitch a tent · tap again to remove it · edges show each target</Text>
+      <Text style={styles.legend}>{t('game.legend')}</Text>
 
       <View style={styles.controls}>
         <TouchableOpacity style={styles.hintBtn} activeOpacity={0.75} onPress={onHintPress}>
-          <Text style={styles.hintBtnText}>Hint</Text>
+          <Text style={styles.hintBtnText}>{tc('actions.hint')}</Text>
         </TouchableOpacity>
         {!revealWin && (
           <TouchableOpacity style={styles.skipBtn} activeOpacity={0.75} onPress={onSkipPress}>
-            <Text style={styles.skipBtnText}>Skip level (watch an ad)</Text>
+            <Text style={styles.skipBtnText}>{tc('actions.skipLevelAd')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -192,8 +195,9 @@ export default function GameScreen({ route, navigation }: Props) {
       <WinOverlay
         visible={revealWin}
         showConfetti={showConfetti}
-        subtitle="Every tree found its tent — next board unlocked."
-        nextLabel="Next level"
+        title={t('game.winTitle')}
+        subtitle={t('game.winSubtitle')}
+        nextLabel={tc('actions.nextLevel')}
         onNext={nextLevel}
       />
     </SafeAreaView>

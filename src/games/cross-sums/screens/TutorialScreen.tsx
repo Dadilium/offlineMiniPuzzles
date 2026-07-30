@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { colors, fonts, radii } from '../../../theme/colors';
-import { tutorialGroups } from '../tutorialContent';
+import { translateDynamic } from '../../../i18n/dynamicKey';
+import { tutorialDiagrams } from '../tutorialContent';
 import type { CrossSumsStackParamList } from '../navigation';
 import { useCrossSumsProgress } from '../state/useCrossSumsProgress';
 
@@ -11,9 +13,14 @@ type Props = NativeStackScreenProps<CrossSumsStackParamList, 'CrossSumsTutorial'
 export default function TutorialScreen({ route, navigation }: Props) {
   const { tutorialKey, pendingLevelIndex } = route.params;
   const { markTutorialSeen } = useCrossSumsProgress();
-  const steps = tutorialGroups[tutorialKey] ?? tutorialGroups.all;
+  const { t } = useTranslation('cross-sums');
+  const { t: tc } = useTranslation('common');
+  const groupKey = tutorialDiagrams[tutorialKey] ? tutorialKey : 'all';
+  const steps = tutorialDiagrams[groupKey];
   const [stepIndex, setStepIndex] = useState(0);
-  const step = steps[stepIndex];
+  const diagram = steps[stepIndex];
+  const title = translateDynamic(t, `tutorial.${groupKey}.${stepIndex}.title`);
+  const desc = translateDynamic(t, `tutorial.${groupKey}.${stepIndex}.desc`);
 
   function finish() {
     markTutorialSeen(tutorialKey);
@@ -28,15 +35,17 @@ export default function TutorialScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.screen}>
       <View style={styles.topbar}>
         <TouchableOpacity onPress={finish}>
-          <Text style={styles.skip}>SKIP</Text>
+          <Text style={styles.skip}>{tc('tutorial.skip')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.body}>
-        <View style={styles.diagram}>{step.diagram()}</View>
-        <Text style={styles.stepLabel}>{steps.length > 1 ? `Step ${stepIndex + 1} of ${steps.length}` : 'New rule'}</Text>
-        <Text style={styles.title}>{step.title}</Text>
-        <Text style={styles.desc}>{step.desc}</Text>
+        <View style={styles.diagram}>{diagram()}</View>
+        <Text style={styles.stepLabel}>
+          {steps.length > 1 ? tc('tutorial.stepOf', { current: stepIndex + 1, total: steps.length }) : tc('tutorial.newRule')}
+        </Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.desc}>{desc}</Text>
       </View>
 
       <View style={styles.footer}>
@@ -51,7 +60,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
             disabled={stepIndex === 0}
             onPress={() => setStepIndex((i) => Math.max(0, i - 1))}
           >
-            <Text style={styles.btnGhostText}>Back</Text>
+            <Text style={styles.btnGhostText}>{tc('tutorial.back')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.btn, styles.btnPrimary]}
@@ -60,7 +69,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
               else finish();
             }}
           >
-            <Text style={styles.btnPrimaryText}>{stepIndex === steps.length - 1 ? 'Start playing' : 'Next'}</Text>
+            <Text style={styles.btnPrimaryText}>{stepIndex === steps.length - 1 ? tc('tutorial.startPlaying') : tc('tutorial.next')}</Text>
           </TouchableOpacity>
         </View>
       </View>

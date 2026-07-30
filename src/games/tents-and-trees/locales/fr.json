@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "name": "Tentes et Arbres",
+    "tag": "Associez une tente à chaque arbre"
+  },
+  "hub": {
+    "tagline": "Plantez une tente à côté de chaque arbre — sans qu'elles se touchent, en respectant exactement les totaux de chaque ligne et colonne."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Chaque arbre a besoin d'une tente associée",
+        "desc": "Chaque arbre doit être associé à exactement une tente juste au-dessus, en dessous ou à côté de lui — jamais en diagonale, et jamais partagée avec un autre arbre."
+      },
+      {
+        "title": "Touchez une case pour planter une tente — elles ne se touchent pas",
+        "desc": "Touchez une case vide à côté d'un arbre pour y planter une tente, touchez à nouveau pour la retirer. Les tentes ne peuvent jamais se toucher entre elles, même en diagonale."
+      },
+      {
+        "title": "Respectez le total de chaque ligne et colonne pour gagner",
+        "desc": "Les chiffres en bordure indiquent combien de tentes doivent se trouver dans cette ligne ou cette colonne. Une fois chaque arbre associé et tous les totaux respectés, la grille est résolue — bloqué ? L'indice révèle une case pour vous."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Niveau {{number}}",
+    "levelEyebrow": "NIVEAU {{number}}",
+    "statusRows": "Lignes {{count}}/{{total}}",
+    "statusCols": "Colonnes {{count}}/{{total}}",
+    "legend": "touchez une case pour planter une tente · touchez à nouveau pour la retirer · les bords indiquent chaque objectif",
+    "hintFailToast": "Chaque tente est déjà exactement là où elle doit être.",
+    "winTitle": "Tous les arbres sont associés",
+    "winSubtitle": "Chaque arbre a trouvé sa tente — prochaine grille débloquée."
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "name": "Matching Numbers",
+    "tag": "Sum-to-10 line match"
+  },
+  "hub": {
+    "tagline": "Clear the board by matching tiles that are equal or sum to 10, connected by a straight or single-bend path."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Equal numbers match",
+        "desc": "Tap any two tiles. They match if they show the same number -- clear them and keep going."
+      },
+      {
+        "title": "Numbers summing to 10 also match",
+        "desc": "3 + 7 = 10 -- that pairing counts as a match too, just like two equal numbers."
+      },
+      {
+        "title": "A path can bend once",
+        "desc": "Tiles don't need to share a row or column -- a connecting path with a single 90-degree turn through an empty cell still counts. Diagonal jumps and more than one bend don't."
+      },
+      {
+        "title": "Blocked paths don't count",
+        "desc": "If the straight line -- or the single bend -- passes through a tile that still has a number on it, the path is blocked. Clear it first, or pick a different pair."
+      },
+      {
+        "title": "Stuck? Use Add Numbers. Clear everything to win.",
+        "desc": "No path? Tap Add Numbers to bring every remaining tile down as a new row -- it's a limited resource (5 per level), so use it when you need it. Clear every tile on the board, including anything you've added, to win the level."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Level {{number}}",
+    "levelEyebrow": "LEVEL {{number}}",
+    "statusTilesLeft_one": "{{count}} tile left",
+    "statusTilesLeft_other": "{{count}} tiles left",
+    "statusAddNumbers": "Add Numbers {{count}}/{{total}}",
+    "legend": "tap two tiles that are equal or sum to 10 -- connect with a straight or single-bend path",
+    "hintFailToast": "No matches available right now -- try Add Numbers.",
+    "addNumbersAction": "Add Numbers",
+    "addNumbersFailToast": "No Add Numbers left for this level.",
+    "winTitle": "Board cleared",
+    "winSubtitle": "Every tile cleared -- next board unlocked.",
+    "failTitle": "No matches left",
+    "failSubtitle": "You're out of Add Numbers and there's no legal move on the board.",
+    "retryLevel": "Retry level"
+  }
+}

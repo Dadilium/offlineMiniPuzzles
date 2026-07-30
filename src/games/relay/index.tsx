@@ -12,8 +12,6 @@ import { RelayProgressProvider } from './state/useRelayProgress';
 // exporting the same shape, then register it in src/games/registry.ts.
 export const relayGame: GameModule = {
   id: 'relay',
-  name: 'Relay',
-  tag: 'Signal-routing puzzle',
   status: 'ready',
   Provider: RelayProgressProvider,
   screens: [

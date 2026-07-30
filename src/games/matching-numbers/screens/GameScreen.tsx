@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import IconButton from '../../../components/IconButton';
 import TopBar from '../../../components/TopBar';
 import { useToast } from '../../../components/Toast';
@@ -35,6 +36,8 @@ export default function GameScreen({ route, navigation }: Props) {
     levelsCompleted,
   } = useMatchingNumbersProgress();
   const { showToast } = useToast();
+  const { t } = useTranslation('matching-numbers');
+  const { t: tc } = useTranslation('common');
 
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect. Prefetch the next
@@ -128,7 +131,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function onHintPress() {
     const pair = giveHint(levelIndex);
     if (!pair) {
-      showToast('No matches available right now -- try Add Numbers.');
+      showToast(t('game.hintFailToast'));
       return;
     }
     if (hintTimer.current) clearTimeout(hintTimer.current);
@@ -138,7 +141,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   function onAddNumbersPress() {
     const ok = addNumbers(levelIndex);
-    if (!ok) showToast('No Add Numbers left for this level.');
+    if (!ok) showToast(t('game.addNumbersFailToast'));
   }
 
   function replayTutorial() {
@@ -179,16 +182,16 @@ export default function GameScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.screen}>
       <TopBar
         onBack={() => navigation.navigate('MatchingNumbersHub')}
-        backAccessibilityLabel="Back to hub"
-        eyebrow={`LEVEL ${levelIndex + 1}`}
-        title={level.title ?? `Level ${levelIndex + 1}`}
+        backAccessibilityLabel={tc('actions.backToHub')}
+        eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
+        title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
         right={
           <>
-            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel="Replay the tutorial" />
+            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
             <IconButton
               glyph="⟲"
               onPress={onRetryPress}
-              accessibilityLabel="Reset level"
+              accessibilityLabel={tc('actions.resetLevel')}
               size={40}
               glyphSize={19}
             />
@@ -197,9 +200,11 @@ export default function GameScreen({ route, navigation }: Props) {
       />
 
       <View style={styles.statusRow}>
-        <Text style={[styles.statusPill, { color: colors.purple }]}>{remainingTiles} tiles left</Text>
+        <Text style={[styles.statusPill, { color: colors.purple }]}>
+          {t('game.statusTilesLeft', { count: remainingTiles })}
+        </Text>
         <Text style={[styles.statusPill, { color: addNumbersRemaining > 0 ? colors.success : colors.signalRed }]}>
-          Add Numbers {addNumbersRemaining}/{MAX_ADD_NUMBERS}
+          {t('game.statusAddNumbers', { count: addNumbersRemaining, total: MAX_ADD_NUMBERS })}
         </Text>
       </View>
 
@@ -215,20 +220,20 @@ export default function GameScreen({ route, navigation }: Props) {
         />
       </ScrollView>
 
-      <Text style={styles.legend}>tap two tiles that are equal or sum to 10 -- connect with a straight or single-bend path</Text>
+      <Text style={styles.legend}>{t('game.legend')}</Text>
 
       <View style={styles.controls}>
         <View style={styles.controlsRow}>
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.75} onPress={onHintPress}>
-            <Text style={styles.actionBtnText}>Hint</Text>
+            <Text style={styles.actionBtnText}>{tc('actions.hint')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.75} onPress={onAddNumbersPress}>
-            <Text style={styles.actionBtnText}>Add Numbers</Text>
+            <Text style={styles.actionBtnText}>{t('game.addNumbersAction')}</Text>
           </TouchableOpacity>
         </View>
         {!win && (
           <TouchableOpacity style={styles.skipBtn} activeOpacity={0.75} onPress={onSkipPress}>
-            <Text style={styles.skipBtnText}>Skip level (watch an ad)</Text>
+            <Text style={styles.skipBtnText}>{tc('actions.skipLevelAd')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -236,11 +241,20 @@ export default function GameScreen({ route, navigation }: Props) {
       <WinOverlay
         visible={win}
         showConfetti={showConfetti}
-        subtitle="Every tile cleared -- next board unlocked."
-        nextLabel="Next level"
+        title={t('game.winTitle')}
+        subtitle={t('game.winSubtitle')}
+        nextLabel={tc('actions.nextLevel')}
         onNext={nextLevel}
       />
-      <FailOverlay visible={showFail} onRetry={onRetryPress} onSkip={onSkipPress} />
+      <FailOverlay
+        visible={showFail}
+        title={t('game.failTitle')}
+        subtitle={t('game.failSubtitle')}
+        retryLabel={t('game.retryLevel')}
+        skipLabel={tc('actions.skipLevelAd')}
+        onRetry={onRetryPress}
+        onSkip={onSkipPress}
+      />
     </SafeAreaView>
   );
 }

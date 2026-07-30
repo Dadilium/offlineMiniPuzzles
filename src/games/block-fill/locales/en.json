@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "name": "Block Fill",
+    "tag": "Drag-a-path fill puzzle"
+  },
+  "hub": {
+    "tagline": "Drag through every open cell to fill the board. Stuck? Rewind along your own trail and try another route."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Drag to fill every open cell",
+        "desc": "Press and drag through the open cells, one step at a time, to color them in. The board is won as soon as every open cell is colored."
+      },
+      {
+        "title": "Obstacles block the way",
+        "desc": "Dark cells are obstacles -- you can't step on them. Your path has to weave around them to reach every open cell."
+      },
+      {
+        "title": "Stuck? Touch back along your own trail",
+        "desc": "Touching an earlier point on the trail you've already drawn rewinds the path back to there, uncoloring everything after it. No move is ever permanent -- there's no way to lose, just rewind and try a different route."
+      },
+      {
+        "title": "Can't cross your own trail",
+        "desc": "The path can never revisit a cell it has already colored -- plan your route so it does not trap itself before every open cell is filled."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Level {{number}}",
+    "levelEyebrow": "LEVEL {{number}}",
+    "statusFilled": "{{count}} / {{total}} filled",
+    "stuckMessage": "No route from here -- rewind and try again",
+    "legend": "drag through open cells to fill them -- touch back along your trail to rewind",
+    "hintFailToast": "No path from here reaches every cell -- try rewinding.",
+    "winTitle": "Board filled",
+    "winSubtitle": "Every cell filled -- next board unlocked."
+  }
+}

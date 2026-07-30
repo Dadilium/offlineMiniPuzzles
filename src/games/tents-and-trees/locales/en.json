@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "name": "Tents & Trees",
+    "tag": "Match a tent to every tree"
+  },
+  "hub": {
+    "tagline": "Pitch one tent next to every tree — none touching, row and column counts must match exactly."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Every tree needs a matching tent",
+        "desc": "Each tree must pair with exactly one tent directly above, below, or beside it — never diagonal, and never sharing a tent with another tree."
+      },
+      {
+        "title": "Tap a cell to place a tent — none can touch",
+        "desc": "Tap any empty cell next to a tree to pitch a tent there, tap again to remove it. Tents can never touch another tent, not even diagonally."
+      },
+      {
+        "title": "Match every row and column count to win",
+        "desc": "The numbers along the edges show how many tents belong in that row or column. Once every tree is matched and every count lines up, the board is solved — stuck? Hint reveals one cell for you."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Level {{number}}",
+    "levelEyebrow": "LEVEL {{number}}",
+    "statusRows": "Rows {{count}}/{{total}}",
+    "statusCols": "Cols {{count}}/{{total}}",
+    "legend": "tap a cell to pitch a tent · tap again to remove it · edges show each target",
+    "hintFailToast": "Every tent is already right where it should be.",
+    "winTitle": "Every tree matched",
+    "winSubtitle": "Every tree found its tent — next board unlocked."
+  }
+}

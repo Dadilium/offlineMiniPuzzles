@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "name": "Relais",
+    "tag": "Casse-tête de routage de signal"
+  },
+  "hub": {
+    "tagline": "Acheminez un signal de la source jusqu'au récepteur en plaçant un nombre limité de relais. La portée diminue avec la distance, les murs bloquent la ligne de vue, et des signaux qui se croisent peuvent se brouiller."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Source et récepteur",
+        "desc": "Chaque niveau a une SOURCE de signal et un ou plusieurs RÉCEPTEURS. Si un récepteur se trouve dans l'anneau de portée, le signal se connecte directement — aucun relais nécessaire."
+      },
+      {
+        "title": "Les relais prolongent votre portée",
+        "desc": "Quand le récepteur est hors de portée, placez des relais entre les deux. Chaque relais rediffuse dans son propre rayon — enchaînez-les pour franchir de longues distances."
+      },
+      {
+        "title": "Les murs bloquent la ligne de vue",
+        "desc": "Les murs pleins arrêtent complètement un saut, même si le nœud suivant est techniquement à portée. Contournez un mur avec vos relais plutôt que d'essayer de le traverser."
+      },
+      {
+        "title": "Gardez les couleurs séparées",
+        "desc": "Dans les niveaux multi-signaux, des relais de couleurs DIFFÉRENTES trop proches se BROUILLENT mutuellement — les deux signaux échouent. La proximité de l'autre couleur est le vrai danger, pas la distance à votre récepteur."
+      }
+    ],
+    "mirrors": [
+      {
+        "title": "Les miroirs dévient le faisceau",
+        "desc": "Une tuile miroir bloque une ligne de vue normale, comme le ferait un mur -- mais un faisceau droit qui l'atteint rebondit de 90° gratuitement et continue son chemin. Cela permet de contourner un coin pour moins de portée que ce que coûterait un relais entier pour le virage."
+      },
+      {
+        "title": "Cercle ou faisceau ?",
+        "desc": "Sur les niveaux à miroirs, chaque relais que vous placez est soit un CERCLE (atteint n'importe quelle direction, comme une source), soit un FAISCEAU (n'atteint qu'en ligne droite le long d'une rangée ou d'une colonne, mais dévie gratuitement sur un miroir). Choisissez avec la puce au-dessus du plateau avant de toucher une case."
+      }
+    ]
+  },
+  "game": {
+    "levelEyebrow": "NIVEAU {{current}} / {{total}}",
+    "allLevelsDoneToast": "De nouveaux puzzles sont en préparation — revenez bientôt",
+    "moreLevelsSoon": "Plus de niveaux bientôt",
+    "colorNames": { "blue": "Bleu", "red": "Rouge" },
+    "colorNamesLower": { "blue": "bleu", "red": "rouge" },
+    "budgetFullToast": "Plus aucun relais {{color}} disponible",
+    "hintLockedToast": "Ce relais a été révélé par un indice — retirez-en un autre à la place.",
+    "hintSolvedToast": "Chaque signal est déjà connecté.",
+    "hintBudgetFullToast": "Plus aucun relais {{color}} disponible — retirez-en un pour faire de la place à un indice.",
+    "legend": "S = source · ◎ = récepteur · ● = relais · touchez une case pour placer / retirer",
+    "kindCircle": "Cercle",
+    "kindBeam": "Faisceau",
+    "winTitle": "Niveau terminé",
+    "winSubtitleNext": "Signal verrouillé — niveau suivant débloqué.",
+    "winSubtitleLast": "Tous les niveaux sont terminés pour le moment.",
+    "newMechanicLabel": "Nouveau mécanisme"
+  }
+}

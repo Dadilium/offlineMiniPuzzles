@@ -10,8 +10,6 @@ import { KingsProgressProvider } from './state/useKingsProgress';
 // Registered in src/games/registry.ts.
 export const kingsGame: GameModule = {
   id: 'kings',
-  name: 'Kings',
-  tag: 'Region logic puzzle',
   status: 'ready',
   accentColor: colors.warn,
   Provider: KingsProgressProvider,

@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "name": "Chiffres Jumeaux",
+    "tag": "Casse-tête d'association à 10"
+  },
+  "hub": {
+    "tagline": "Videz le plateau en associant des tuiles égales ou dont la somme fait 10, reliées par un chemin droit ou à un seul coude."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Les nombres égaux se correspondent",
+        "desc": "Touchez deux tuiles. Elles correspondent si elles affichent le même nombre -- effacez-les et continuez."
+      },
+      {
+        "title": "Les nombres dont la somme fait 10 aussi",
+        "desc": "3 + 7 = 10 -- cet appariement compte comme une correspondance, tout comme deux nombres égaux."
+      },
+      {
+        "title": "Un chemin peut faire un seul coude",
+        "desc": "Les tuiles n'ont pas besoin de partager une ligne ou une colonne -- un chemin les reliant avec un seul virage à 90 degrés à travers une case vide compte aussi. Les sauts en diagonale et plus d'un coude ne comptent pas."
+      },
+      {
+        "title": "Les chemins bloqués ne comptent pas",
+        "desc": "Si la ligne droite -- ou le coude -- passe par une tuile qui porte encore un nombre, le chemin est bloqué. Effacez-la d'abord, ou choisissez une autre paire."
+      },
+      {
+        "title": "Bloqué ? Utilisez Ajouter des nombres. Videz tout pour gagner.",
+        "desc": "Pas de chemin possible ? Touchez Ajouter des nombres pour faire descendre toutes les tuiles restantes sous forme de nouvelle ligne -- c'est une ressource limitée (5 par niveau), alors utilisez-la au bon moment. Effacez toutes les tuiles du plateau, y compris celles que vous avez ajoutées, pour gagner le niveau."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Niveau {{number}}",
+    "levelEyebrow": "NIVEAU {{number}}",
+    "statusTilesLeft_one": "{{count}} tuile restante",
+    "statusTilesLeft_other": "{{count}} tuiles restantes",
+    "statusAddNumbers": "Ajouter des nombres {{count}}/{{total}}",
+    "legend": "touchez deux tuiles égales ou dont la somme fait 10 -- reliez-les par un chemin droit ou à un seul coude",
+    "hintFailToast": "Aucune correspondance disponible pour l'instant -- essayez Ajouter des nombres.",
+    "addNumbersAction": "Ajouter des nombres",
+    "addNumbersFailToast": "Plus d'Ajouter des nombres disponible pour ce niveau.",
+    "winTitle": "Plateau vidé",
+    "winSubtitle": "Chaque tuile est effacée -- prochain plateau débloqué.",
+    "failTitle": "Plus aucune correspondance",
+    "failSubtitle": "Vous n'avez plus d'Ajouter des nombres et aucun coup légal n'est possible sur le plateau.",
+    "retryLevel": "Réessayer le niveau"
+  }
+}

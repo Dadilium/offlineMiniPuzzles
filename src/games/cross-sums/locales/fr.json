@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "name": "Sommes croisées",
+    "tag": "Puzzle de sommes à garder ou exclure"
+  },
+  "hub": {
+    "tagline": "Chaque ligne et chaque colonne a une somme cible. Barrez des nombres jusqu'à ce que chaque ligne et chaque colonne corresponde — seules les cases gardées comptent."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Chaque ligne et chaque colonne a une cible",
+        "desc": "Les nombres sur le bord droit et en bas sont les sommes que chaque ligne et chaque colonne doivent atteindre — mais en ne comptant que les cases que vous gardez."
+      },
+      {
+        "title": "Touchez un nombre pour le garder ou le barrer",
+        "desc": "Chaque case commence gardée. Touchez-en une pour la barrer de la somme, touchez à nouveau pour la reprendre — la valeur de la case ne change jamais, seul son décompte change."
+      },
+      {
+        "title": "Atteignez chaque cible pour gagner",
+        "desc": "Dès que la somme des cases gardées de chaque ligne et de chaque colonne correspond à sa cible, la grille est résolue. Bloqué ? L'indice révèle une case pour vous."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Niveau {{number}}",
+    "levelEyebrow": "NIVEAU {{number}}",
+    "statusRows": "Lignes {{count}}/{{total}}",
+    "statusCols": "Colonnes {{count}}/{{total}}",
+    "legend": "touchez un nombre pour le barrer · touchez à nouveau pour le garder · les bords indiquent chaque cible",
+    "hintFailToast": "Chaque case est déjà à sa place.",
+    "winTitle": "Toutes les sommes s'équilibrent",
+    "winSubtitle": "Chaque ligne et chaque colonne a atteint sa cible — grille suivante débloquée."
+  }
+}

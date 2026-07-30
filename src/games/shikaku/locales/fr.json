@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "name": "Shikaku",
+    "tag": "Découpez la grille en rectangles"
+  },
+  "hub": {
+    "tagline": "Partitionnez la grille en rectangles — chacun doit couvrir une aire égale à l'indice qu'il contient."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Tracez un rectangle autour de chaque indice",
+        "desc": "Faites glisser d'une case à une autre pour tracer un rectangle. Chaque rectangle doit couvrir exactement un indice numéroté."
+      },
+      {
+        "title": "L'aire du rectangle doit correspondre au nombre",
+        "desc": "Le nombre de cases du rectangle (lignes x colonnes) doit être égal à l'indice qu'il couvre -- une erreur est signalée en rouge jusqu'à ce que vous le redimensionniez."
+      },
+      {
+        "title": "Touchez un rectangle pour le supprimer — couvrez toutes les cases pour gagner",
+        "desc": "Touchez l'intérieur d'un rectangle placé pour le supprimer et réessayer. Le plateau est résolu une fois que chaque case appartient à exactement un rectangle de la bonne taille."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Niveau {{number}}",
+    "levelEyebrow": "NIVEAU {{number}}",
+    "statusSolved": "Résolus {{count}}/{{total}}",
+    "statusConflicts": "Conflits {{count}}",
+    "legend": "glissez pour tracer un rectangle sur un indice · touchez un rectangle pour le supprimer",
+    "hintFailToast": "Chaque indice est déjà correctement rempli.",
+    "winTitle": "Toutes les cases sont partitionnées",
+    "winSubtitle": "Le rectangle de chaque indice est correct — prochain plateau débloqué."
+  }
+}

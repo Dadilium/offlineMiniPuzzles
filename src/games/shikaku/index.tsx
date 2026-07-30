@@ -10,8 +10,6 @@ import { ShikakuProgressProvider } from './state/useShikakuProgress';
 // Registered in src/games/registry.ts.
 export const shikakuGame: GameModule = {
   id: 'shikaku',
-  name: 'Shikaku',
-  tag: 'Carve the grid into rectangles',
   status: 'ready',
   accentColor: colors.signalRed,
   Provider: ShikakuProgressProvider,

@@ -4,6 +4,10 @@ import { colors, fonts, radii } from '../../../theme/colors';
 
 interface Props {
   visible: boolean;
+  title: string;
+  subtitle: string;
+  retryLabel: string;
+  skipLabel: string;
   onRetry: () => void;
   onSkip: () => void;
 }
@@ -11,19 +15,19 @@ interface Props {
 // Same non-Modal overlay pattern as WinOverlay (see its comment) -- a
 // red/warn-tinted variant with no confetti, shown when the board has no
 // legal move left and Add Numbers is exhausted.
-export default function FailOverlay({ visible, onRetry, onSkip }: Props) {
+export default function FailOverlay({ visible, title, subtitle, retryLabel, skipLabel, onRetry, onSkip }: Props) {
   if (!visible) return null;
   return (
     <View style={styles.backdrop} pointerEvents="box-none">
       <View style={styles.card}>
         <Text style={styles.badge}>🧮</Text>
-        <Text style={styles.title}>No matches left</Text>
-        <Text style={styles.sub}>You're out of Add Numbers and there's no legal move on the board.</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.sub}>{subtitle}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={onRetry} activeOpacity={0.85}>
-          <Text style={styles.retryButtonText}>Retry level</Text>
+          <Text style={styles.retryButtonText}>{retryLabel}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.skipButton} onPress={onSkip} activeOpacity={0.75}>
-          <Text style={styles.skipButtonText}>Skip level (watch an ad)</Text>
+          <Text style={styles.skipButtonText}>{skipLabel}</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -10,8 +10,6 @@ import { BlockFillProgressProvider } from './state/useBlockFillProgress';
 // Registered in src/games/registry.ts.
 export const blockFillGame: GameModule = {
   id: 'block-fill',
-  name: 'Block Fill',
-  tag: 'Drag-a-path fill puzzle',
   status: 'ready',
   accentColor: colors.signalBlue,
   Provider: BlockFillProgressProvider,

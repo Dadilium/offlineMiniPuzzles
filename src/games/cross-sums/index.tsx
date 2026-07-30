@@ -10,8 +10,6 @@ import { CrossSumsProgressProvider } from './state/useCrossSumsProgress';
 // Registered in src/games/registry.ts.
 export const crossSumsGame: GameModule = {
   id: 'cross-sums',
-  name: 'Cross Sums',
-  tag: 'Keep/exclude sum puzzle',
   status: 'ready',
   accentColor: colors.success,
   Provider: CrossSumsProgressProvider,

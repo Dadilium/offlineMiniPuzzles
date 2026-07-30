@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "name": "Rois",
+    "tag": "Casse-tête de logique par région"
+  },
+  "hub": {
+    "tagline": "Placez exactement un roi dans chaque ligne, chaque colonne et chaque région colorée. Les rois ne peuvent pas se toucher — même en diagonale."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Un seul roi par région",
+        "desc": "La grille est divisée en RÉGIONS colorées. Chaque ligne, chaque colonne et chaque région doit se retrouver avec exactement un roi."
+      },
+      {
+        "title": "Les rois ne peuvent pas se toucher",
+        "desc": "Deux rois ne peuvent pas être dans des cases adjacentes — ni côte à côte, ni même en diagonale. Laissez à chaque roi un peu d'espace."
+      },
+      {
+        "title": "Marquez les cases exclues",
+        "desc": "Touchez une fois pour laisser une petite MARQUE sur une case qui ne peut pas accueillir de roi. Touchez à nouveau pour placer la couronne. Une troisième fois pour l'effacer."
+      },
+      {
+        "title": "Placer un roi marque le reste",
+        "desc": "Dès que vous couronnez une case, toutes les cases désormais impossibles — même ligne, colonne, région et cases adjacentes — sont automatiquement marquées d'un point. Retirez le roi et ces points disparaissent aussitôt."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Niveau {{number}}",
+    "levelEyebrow": "NIVEAU {{number}}",
+    "statusKings": "Rois {{count}}/{{total}}",
+    "statusConflict": "{{count}} en conflit",
+    "statusAllClear": "Tout est en ordre",
+    "legend": "touchez une fois = marque · touchez à nouveau = couronne ♚ · encore une fois = effacer · les cases indisponibles se marquent seules",
+    "hintFailToast": "Chaque région a déjà son roi.",
+    "winTitle": "Royaume sécurisé",
+    "winSubtitle": "Chaque région est équilibrée — prochaine cour débloquée."
+  }
+}

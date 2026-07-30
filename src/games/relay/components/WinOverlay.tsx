@@ -4,6 +4,7 @@ import { colors, fonts, radii } from '../../../theme/colors';
 
 interface Props {
   visible: boolean;
+  title: string;
   subtitle: string;
   nextLabel: string;
   onNext: () => void;
@@ -14,13 +15,13 @@ interface Props {
 // known crash on iOS — UIKit still has the modal on top when react-navigation
 // swaps the screen underneath it. The web prototype's win screen was just an
 // absolutely-positioned overlay div, not a real modal, so this matches that.
-export default function WinOverlay({ visible, subtitle, nextLabel, onNext }: Props) {
+export default function WinOverlay({ visible, title, subtitle, nextLabel, onNext }: Props) {
   if (!visible) return null;
   return (
     <View style={styles.backdrop} pointerEvents="box-none">
       <View style={styles.card}>
         <Text style={styles.badge}>🎉</Text>
-        <Text style={styles.title}>Level complete</Text>
+        <Text style={styles.title}>{title}</Text>
         <Text style={styles.sub}>{subtitle}</Text>
         <TouchableOpacity style={styles.button} onPress={onNext} activeOpacity={0.85}>
           <Text style={styles.buttonText}>{nextLabel}</Text>

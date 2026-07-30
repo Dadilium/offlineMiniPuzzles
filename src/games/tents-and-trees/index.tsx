@@ -10,8 +10,6 @@ import { TentsAndTreesProgressProvider } from './state/useTentsAndTreesProgress'
 // Trees. Registered in src/games/registry.ts.
 export const tentsAndTreesGame: GameModule = {
   id: 'tents-and-trees',
-  name: 'Tents & Trees',
-  tag: 'Match a tent to every tree',
   status: 'ready',
   accentColor: colors.pink,
   Provider: TentsAndTreesProgressProvider,

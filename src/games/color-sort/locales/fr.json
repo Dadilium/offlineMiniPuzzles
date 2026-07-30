@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "name": "Tri des couleurs",
+    "tag": "Puzzle à verser et trier"
+  },
+  "hub": {
+    "tagline": "Versez les couleurs entre les tubes jusqu'à ce que chaque couleur ait son propre tube."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Versez sur une couleur identique, ou un tube vide",
+        "desc": "Touchez un tube pour le prendre, puis un autre pour verser. Un versement ne fonctionne que si l'autre tube est vide ou si sa couleur du dessus correspond à la vôtre."
+      },
+      {
+        "title": "Tout le groupe du dessus se déplace ensemble",
+        "desc": "Vous ne choisissez pas la quantité versée -- chaque unité consécutive de cette couleur en haut se déplace d'un coup, autant que possible."
+      },
+      {
+        "title": "Regroupez chaque couleur dans un seul tube pour gagner",
+        "desc": "Un tube compte une fois qu'il est complètement vide ou complètement rempli d'une seule couleur. Triez ainsi toutes les couleurs pour résoudre le plateau. Bloqué ? L'indice met en évidence le prochain coup."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Niveau {{number}}",
+    "levelEyebrow": "NIVEAU {{number}}",
+    "statusMoves": "Coups {{count}}",
+    "statusPar": "· par {{count}}",
+    "stuckMessage": "Aucune solution depuis ici -- réinitialisez et réessayez",
+    "legend": "touchez un tube pour le prendre · touchez un autre pour verser",
+    "hintFailToast": "Aucun coup d'ici ne mène à la victoire -- essayez de réinitialiser.",
+    "winTitle": "Tous les tubes sont triés",
+    "winSubtitle_one": "Résolu en {{count}} coup -- le par est {{par}}.",
+    "winSubtitle_other": "Résolu en {{count}} coups -- le par est {{par}}."
+  }
+}

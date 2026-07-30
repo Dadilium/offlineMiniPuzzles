@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "name": "Kings",
+    "tag": "Region logic puzzle"
+  },
+  "hub": {
+    "tagline": "Place exactly one king in every row, column, and colored realm. Kings can't touch — not even diagonally."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "One king per realm",
+        "desc": "The grid is divided into colored REALMS. Every row, every column, and every realm must end up with exactly one king."
+      },
+      {
+        "title": "Kings can't touch",
+        "desc": "No two kings may sit in adjacent cells — not sharing an edge, and not even diagonally. Give every king a little breathing room."
+      },
+      {
+        "title": "Mark cells you've ruled out",
+        "desc": "Tap once to leave a small MARK on a cell you know can't hold a king. Tap again to place the crown. Tap a third time to clear it."
+      },
+      {
+        "title": "Placing a king marks the rest",
+        "desc": "The instant you crown a cell, every cell that's now impossible — same row, column, realm, and anything touching — gets dotted for you automatically. Remove the king and those dots clear right back up."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Level {{number}}",
+    "levelEyebrow": "LEVEL {{number}}",
+    "statusKings": "Kings {{count}}/{{total}}",
+    "statusConflict": "{{count}} in conflict",
+    "statusAllClear": "All clear",
+    "legend": "tap once = mark · tap again = crown ♚ · tap again = clear · unavailable cells mark themselves",
+    "hintFailToast": "Every realm already has its king.",
+    "winTitle": "Kingdom secured",
+    "winSubtitle": "Every realm is balanced — next court unlocked."
+  }
+}

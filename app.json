@@ -9,16 +9,24 @@
     "splash": {
       "backgroundColor": "#05060a"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "io.converge.signalarcade"
+      "bundleIdentifier": "io.converge.signalarcade",
+      "infoPlist": {
+        "CFBundleLocalizations": ["en", "fr"]
+      }
     },
     "android": {
       "package": "io.converge.signalarcade"
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      "expo-localization"
+    ]
   }
 }

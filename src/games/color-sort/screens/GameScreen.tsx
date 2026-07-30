@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import IconButton from '../../../components/IconButton';
 import TopBar from '../../../components/TopBar';
 import { useToast } from '../../../components/Toast';
@@ -33,6 +34,8 @@ export default function GameScreen({ route, navigation }: Props) {
     levelsCompleted,
   } = useColorSortProgress();
   const { showToast } = useToast();
+  const { t } = useTranslation('color-sort');
+  const { t: tc } = useTranslation('common');
 
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect. Prefetch the
@@ -148,7 +151,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function onHintPress() {
     const move = giveHint(levelIndex);
     if (!move) {
-      showToast('No move from here reaches a win -- try resetting.');
+      showToast(t('game.hintFailToast'));
       return;
     }
     setSelected(null);
@@ -180,22 +183,22 @@ export default function GameScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.screen}>
       <TopBar
         onBack={() => navigation.navigate('ColorSortHub')}
-        backAccessibilityLabel="Back to hub"
-        eyebrow={`LEVEL ${levelIndex + 1}`}
-        title={level.title ?? `Level ${levelIndex + 1}`}
+        backAccessibilityLabel={tc('actions.backToHub')}
+        eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
+        title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
         right={
           <>
-            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel="Replay the tutorial" />
-            <IconButton glyph="⟲" onPress={onResetPress} accessibilityLabel="Reset level" size={40} glyphSize={19} />
+            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
+            <IconButton glyph="⟲" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} size={40} glyphSize={19} />
           </>
         }
       />
 
       <View style={styles.statusRow}>
         <Text style={styles.statusPill}>
-          Moves {moveCount} <Text style={styles.statusPillDim}>· par {level.parMoves}</Text>
+          {t('game.statusMoves', { count: moveCount })} <Text style={styles.statusPillDim}>{t('game.statusPar', { count: level.parMoves })}</Text>
         </Text>
-        {stuck && <Text style={[styles.statusPill, { color: colors.signalRed }]}>No route from here -- reset and try again</Text>}
+        {stuck && <Text style={[styles.statusPill, { color: colors.signalRed }]}>{t('game.stuckMessage')}</Text>}
       </View>
 
       <View style={styles.boardArea}>
@@ -210,15 +213,15 @@ export default function GameScreen({ route, navigation }: Props) {
         />
       </View>
 
-      <Text style={styles.legend}>tap a tube to pick it up · tap another to pour</Text>
+      <Text style={styles.legend}>{t('game.legend')}</Text>
 
       <View style={styles.controls}>
         <TouchableOpacity style={styles.hintBtn} activeOpacity={0.75} onPress={onHintPress}>
-          <Text style={styles.hintBtnText}>Hint</Text>
+          <Text style={styles.hintBtnText}>{tc('actions.hint')}</Text>
         </TouchableOpacity>
         {!celebrate && (
           <TouchableOpacity style={styles.skipBtn} activeOpacity={0.75} onPress={onSkipPress}>
-            <Text style={styles.skipBtnText}>Skip level (watch an ad)</Text>
+            <Text style={styles.skipBtnText}>{tc('actions.skipLevelAd')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -226,8 +229,9 @@ export default function GameScreen({ route, navigation }: Props) {
       <WinOverlay
         visible={celebrate}
         showConfetti={showConfetti}
-        subtitle={`Solved in ${moveCount} moves -- par is ${level.parMoves}.`}
-        nextLabel="Next level"
+        title={t('game.winTitle')}
+        subtitle={t('game.winSubtitle', { count: moveCount, par: level.parMoves })}
+        nextLabel={tc('actions.nextLevel')}
         onNext={nextLevel}
       />
     </SafeAreaView>

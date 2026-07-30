@@ -1,8 +1,10 @@
 import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import PulseIcon from '../components/PulseIcon';
 import { useToast } from '../components/Toast';
+import { translateDynamic } from '../i18n/dynamicKey';
 import { games, comingSoon } from '../games/registry';
 import { colors, fonts, radii, spacing } from '../theme/colors';
 import type { RootStackParamList } from '../navigation/types';
@@ -11,17 +13,18 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 
 export default function LibraryScreen({ navigation }: Props) {
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Offline Game Library</Text>
-          <Text style={styles.title}>Signal Arcade</Text>
-          <Text style={styles.sub}>Pick up, play, no wifi required.</Text>
+          <Text style={styles.eyebrow}>{t('library.eyebrow')}</Text>
+          <Text style={styles.title}>{t('library.title')}</Text>
+          <Text style={styles.sub}>{t('library.subtitle')}</Text>
         </View>
 
-        <Text style={styles.sectionLabel}>Ready to play</Text>
+        <Text style={styles.sectionLabel}>{t('library.readySection')}</Text>
         {games.map((game) => (
           <TouchableOpacity
             key={game.id}
@@ -33,8 +36,8 @@ export default function LibraryScreen({ navigation }: Props) {
               <PulseIcon size={58} dotColor={game.accentColor} />
             </View>
             <View style={styles.cardBody}>
-              <Text style={styles.cardName}>{game.name}</Text>
-              <Text style={styles.cardTag}>{game.tag}</Text>
+              <Text style={styles.cardName}>{translateDynamic(t, `${game.id}:meta.name`)}</Text>
+              <Text style={styles.cardTag}>{translateDynamic(t, `${game.id}:meta.tag`)}</Text>
             </View>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
@@ -42,7 +45,7 @@ export default function LibraryScreen({ navigation }: Props) {
 
         {comingSoon.length > 0 && (
           <>
-            <Text style={styles.sectionLabel}>More frequencies incoming</Text>
+            <Text style={styles.sectionLabel}>{t('library.comingSoonSection')}</Text>
             {comingSoon.map((entry, i) => (
               <View key={i} style={styles.cardSoon}>
                 <View style={styles.cardSoonIcon} />
@@ -58,10 +61,10 @@ export default function LibraryScreen({ navigation }: Props) {
 
       <View style={styles.bottomNav}>
         <View style={styles.navItem}>
-          <Text style={[styles.navLabel, styles.navLabelActive]}>LIBRARY</Text>
+          <Text style={[styles.navLabel, styles.navLabelActive]}>{t('library.navLibrary')}</Text>
         </View>
-        <TouchableOpacity style={styles.navItem} onPress={() => showToast('Settings — coming soon')}>
-          <Text style={styles.navLabel}>SETTINGS</Text>
+        <TouchableOpacity style={styles.navItem} onPress={() => showToast(t('library.settingsToast'))}>
+          <Text style={styles.navLabel}>{t('library.navSettings')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

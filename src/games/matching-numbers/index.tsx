@@ -10,8 +10,6 @@ import { MatchingNumbersProgressProvider } from './state/useMatchingNumbersProgr
 // Numbers. Registered in src/games/registry.ts.
 export const matchingNumbersGame: GameModule = {
   id: 'matching-numbers',
-  name: 'Matching Numbers',
-  tag: 'Sum-to-10 line match',
   status: 'ready',
   accentColor: colors.purple,
   Provider: MatchingNumbersProgressProvider,

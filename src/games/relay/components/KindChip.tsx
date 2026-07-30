@@ -1,9 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { colors, fonts } from '../../../theme/colors';
 import type { RelayKind } from '../types';
-
-const KIND_LABEL: Record<RelayKind, string> = { circle: 'Circle', beam: 'Beam' };
 
 interface Props {
   kind: RelayKind;
@@ -16,6 +15,8 @@ interface Props {
  * without one to bend off. Glyph matches how RelayGrid marks each kind on
  * the board itself (a plain dot for circle, a small cross for beam). */
 export default function KindChip({ kind, active, onPress }: Props) {
+  const { t } = useTranslation('relay');
+  const label = kind === 'circle' ? t('game.kindCircle') : t('game.kindBeam');
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={[styles.chip, active && styles.chipActive]}>
       <View style={styles.glyph}>
@@ -28,7 +29,7 @@ export default function KindChip({ kind, active, onPress }: Props) {
           </>
         )}
       </View>
-      <Text style={[styles.label, active && styles.labelActive]}>{KIND_LABEL[kind]}</Text>
+      <Text style={[styles.label, active && styles.labelActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }

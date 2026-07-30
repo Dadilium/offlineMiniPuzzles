@@ -1,0 +1,36 @@
+{
+  "library": {
+    "eyebrow": "Ludothèque hors ligne",
+    "title": "Signal Arcade",
+    "subtitle": "Prenez en main et jouez, sans wifi.",
+    "readySection": "Prêt à jouer",
+    "comingSoonSection": "D'autres fréquences arrivent",
+    "navLibrary": "LUDOTHÈQUE",
+    "navSettings": "RÉGLAGES",
+    "settingsToast": "Réglages — bientôt disponible"
+  },
+  "topBar": {
+    "back": "Retour"
+  },
+  "actions": {
+    "play": "Jouer",
+    "resume": "Reprendre",
+    "levels": "Niveaux",
+    "howToPlay": "Comment jouer",
+    "hint": "Indice",
+    "resetLevel": "Réinitialiser le niveau",
+    "replayTutorial": "Revoir le tutoriel",
+    "skipLevelAd": "Passer le niveau (voir une pub)",
+    "nextLevel": "Niveau suivant",
+    "backToHub": "Retour à l'accueil",
+    "backToLibrary": "Retour à la ludothèque"
+  },
+  "tutorial": {
+    "skip": "PASSER",
+    "back": "Retour",
+    "next": "Suivant",
+    "startPlaying": "Commencer à jouer",
+    "newRule": "Nouvelle règle",
+    "stepOf": "Étape {{current}} sur {{total}}"
+  }
+}

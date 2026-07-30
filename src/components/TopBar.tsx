@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { colors, fonts } from '../theme/colors';
 import IconButton from './IconButton';
 
@@ -14,10 +15,11 @@ interface Props {
 /** Shared topbar used by every game's hub and game screens: a back button
  * on the left, an optional title in the middle, and optional action buttons
  * (reset / replay-tutorial) on the right. */
-export default function TopBar({ onBack, backAccessibilityLabel = 'Back', eyebrow, title, right }: Props) {
+export default function TopBar({ onBack, backAccessibilityLabel, eyebrow, title, right }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={styles.topbar}>
-      <IconButton glyph="‹" onPress={onBack} accessibilityLabel={backAccessibilityLabel} size={44} glyphSize={22} />
+      <IconButton glyph="‹" onPress={onBack} accessibilityLabel={backAccessibilityLabel ?? t('topBar.back')} size={44} glyphSize={22} />
       {(eyebrow || title) && (
         <View style={styles.titleWrap}>
           {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}

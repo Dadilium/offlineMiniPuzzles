@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "name": "Shikaku",
+    "tag": "Carve the grid into rectangles"
+  },
+  "hub": {
+    "tagline": "Partition the grid into rectangles — each one's area must match the clue it covers."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Draw a rectangle around each clue",
+        "desc": "Drag from one cell to another to draw a rectangle. Every rectangle must cover exactly one numbered clue."
+      },
+      {
+        "title": "The rectangle's area must match the number",
+        "desc": "A rectangle's cell count (rows x cols) has to equal the clue it covers -- get it wrong and it's flagged in red until you resize it."
+      },
+      {
+        "title": "Tap a rectangle to remove it — cover every cell to win",
+        "desc": "Tap anywhere inside a placed rectangle to delete it and try again. The board is solved once every cell belongs to exactly one correctly-sized rectangle."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Level {{number}}",
+    "levelEyebrow": "LEVEL {{number}}",
+    "statusSolved": "Solved {{count}}/{{total}}",
+    "statusConflicts": "Conflicts {{count}}",
+    "legend": "drag to draw a rectangle over a clue · tap a rectangle to remove it",
+    "hintFailToast": "Every clue is already correctly filled in.",
+    "winTitle": "Every cell partitioned",
+    "winSubtitle": "Every clue's rectangle fits — next board unlocked."
+  }
+}

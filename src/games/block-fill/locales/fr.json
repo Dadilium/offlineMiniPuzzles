@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "name": "Remplissage de blocs",
+    "tag": "Puzzle de remplissage par tracé"
+  },
+  "hub": {
+    "tagline": "Glissez à travers chaque case libre pour remplir le plateau. Bloqué ? Revenez en arrière sur votre propre tracé et essayez un autre chemin."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Glissez pour remplir chaque case libre",
+        "desc": "Appuyez et glissez à travers les cases libres, une étape à la fois, pour les colorer. Le plateau est gagné dès que toutes les cases libres sont colorées."
+      },
+      {
+        "title": "Les obstacles bloquent le chemin",
+        "desc": "Les cases sombres sont des obstacles -- vous ne pouvez pas y passer. Votre tracé doit les contourner pour atteindre chaque case libre."
+      },
+      {
+        "title": "Bloqué ? Touchez votre propre tracé pour revenir en arrière",
+        "desc": "Toucher un point antérieur du tracé que vous avez déjà dessiné rembobine le chemin jusque-là, décolorant tout ce qui suit. Aucun coup n'est définitif -- il n'y a aucun moyen de perdre, juste de revenir en arrière et d'essayer un autre chemin."
+      },
+      {
+        "title": "Impossible de croiser votre propre tracé",
+        "desc": "Le tracé ne peut jamais repasser sur une case déjà colorée -- planifiez votre chemin pour qu'il ne s'emprisonne pas avant que toutes les cases libres ne soient remplies."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Niveau {{number}}",
+    "levelEyebrow": "NIVEAU {{number}}",
+    "statusFilled": "{{count}} / {{total}} remplies",
+    "stuckMessage": "Aucune solution depuis ici -- revenez en arrière et réessayez",
+    "legend": "glissez à travers les cases libres pour les remplir -- touchez votre tracé pour revenir en arrière",
+    "hintFailToast": "Aucun chemin d'ici ne mène à toutes les cases -- essayez de revenir en arrière.",
+    "winTitle": "Plateau rempli",
+    "winSubtitle": "Toutes les cases sont remplies -- prochain plateau débloqué."
+  }
+}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import PulseIcon from '../../../components/PulseIcon';
 import TopBar from '../../../components/TopBar';
 import { colors, fonts, radii } from '../../../theme/colors';
@@ -11,6 +12,8 @@ type Props = NativeStackScreenProps<CrossSumsStackParamList, 'CrossSumsHub'>;
 
 export default function HubScreen({ navigation }: Props) {
   const { levelsCompleted, levelsSkipped, tutorialsSeen } = useCrossSumsProgress();
+  const { t } = useTranslation('cross-sums');
+  const { t: tc } = useTranslation('common');
 
   function enterLevel(idx: number) {
     if (!tutorialsSeen.has('all')) {
@@ -26,31 +29,30 @@ export default function HubScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <TopBar onBack={() => navigation.goBack()} backAccessibilityLabel="Back to library" />
+      <TopBar onBack={() => navigation.goBack()} backAccessibilityLabel={tc('actions.backToLibrary')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.hero}>
           <PulseIcon size={84} dotColor={colors.success} />
-          <Text style={styles.title}>Cross Sums</Text>
-          <Text style={styles.tagline}>
-            Every row and column has a target sum. Cross out numbers until every row and column matches — kept
-            cells only.
-          </Text>
+          <Text style={styles.title}>{t('meta.name')}</Text>
+          <Text style={styles.tagline}>{t('hub.tagline')}</Text>
         </View>
 
         <TouchableOpacity style={styles.playBtn} activeOpacity={0.85} onPress={() => enterLevel(resumeIdx)}>
-          <Text style={styles.playBtnText}>{levelsCompleted.size === 0 && levelsSkipped.size === 0 ? 'Play' : 'Resume'}</Text>
+          <Text style={styles.playBtnText}>
+            {levelsCompleted.size === 0 && levelsSkipped.size === 0 ? tc('actions.play') : tc('actions.resume')}
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.secondaryRow}>
           <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.75} onPress={() => navigation.navigate('CrossSumsLevels')}>
-            <Text style={styles.secondaryBtnText}>Levels</Text>
+            <Text style={styles.secondaryBtnText}>{tc('actions.levels')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.75}
             onPress={() => navigation.navigate('CrossSumsTutorial', { tutorialKey: 'all', pendingLevelIndex: null })}
           >
-            <Text style={styles.secondaryBtnText}>How to play</Text>
+            <Text style={styles.secondaryBtnText}>{tc('actions.howToPlay')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

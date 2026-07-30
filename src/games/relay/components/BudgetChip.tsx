@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { colors, fonts } from '../../../theme/colors';
 import type { SignalColor } from '../types';
 
@@ -15,8 +16,9 @@ interface Props {
 }
 
 export default function BudgetChip({ color, used, budget, active, selectable, onPress }: Props) {
+  const { t } = useTranslation('relay');
   const tint = SIGNAL_COLORS[color];
-  const label = color.charAt(0).toUpperCase() + color.slice(1);
+  const label = t(`game.colorNames.${color}`);
   return (
     <TouchableOpacity
       disabled={!selectable}

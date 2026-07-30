@@ -1,6 +1,7 @@
 import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import LevelList, { type LevelStatus } from '../../../components/LevelList';
 import TopBar from '../../../components/TopBar';
 import { colors } from '../../../theme/colors';
@@ -12,6 +13,7 @@ type Props = NativeStackScreenProps<RelayStackParamList, 'RelayLevels'>;
 
 export default function LevelListScreen({ navigation }: Props) {
   const { levelsCompleted, levelsSkipped, tutorialsSeen } = useRelayProgress();
+  const { t: tc } = useTranslation('common');
 
   const items = levels.map((lv, idx) => {
     const locked = idx > 0 && !levelsCompleted.has(idx - 1) && !levelsSkipped.has(idx - 1);
@@ -27,7 +29,7 @@ export default function LevelListScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <TopBar onBack={() => navigation.goBack()} backAccessibilityLabel="Back to hub" title="Levels" />
+      <TopBar onBack={() => navigation.goBack()} backAccessibilityLabel={tc('actions.backToHub')} title={tc('actions.levels')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <LevelList items={items} onPress={enterLevel} />
       </ScrollView>

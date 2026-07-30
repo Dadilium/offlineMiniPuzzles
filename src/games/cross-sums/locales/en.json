@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "name": "Cross Sums",
+    "tag": "Keep/exclude sum puzzle"
+  },
+  "hub": {
+    "tagline": "Every row and column has a target sum. Cross out numbers until every row and column matches — kept cells only."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Every row and column has a target",
+        "desc": "The numbers along the right edge and bottom edge are the sums each row and column must reach — but only counting the cells you keep."
+      },
+      {
+        "title": "Tap a number to keep or cross it out",
+        "desc": "Every cell starts kept. Tap one to cross it out of the sum, tap again to bring it back — the cell value never changes, only whether it counts."
+      },
+      {
+        "title": "Match every target to win",
+        "desc": "Once every row's and every column's kept-cell sum matches its target, the board is solved. Stuck? Hint reveals one cell for you."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Level {{number}}",
+    "levelEyebrow": "LEVEL {{number}}",
+    "statusRows": "Rows {{count}}/{{total}}",
+    "statusCols": "Cols {{count}}/{{total}}",
+    "legend": "tap a number to cross it out · tap again to keep it · edges show each target",
+    "hintFailToast": "Every cell is already right where it should be.",
+    "winTitle": "Every sum balances",
+    "winSubtitle": "Every row and column landed on target — next board unlocked."
+  }
+}
