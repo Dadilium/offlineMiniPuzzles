@@ -32,7 +32,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "levelEyebrow": "LEVEL {{number}}",
     "statusTilesLeft_one": "{{count}} tile left",
     "statusTilesLeft_other": "{{count}} tiles left",
     "statusAddNumbers": "Add Numbers {{count}}/{{total}}",

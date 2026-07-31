@@ -1,6 +1,8 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LibraryScreen from '../screens/LibraryScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import GameProgressScreen from '../screens/GameProgressScreen';
 import { games } from '../games/registry';
 import type { RootStackParamList } from './types';
 
@@ -23,6 +25,8 @@ export default function RootNavigator() {
     <GameProviders>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Library" component={LibraryScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="GameProgress" component={GameProgressScreen} />
         {games.flatMap((game) =>
           game.screens.map((screen) => (
             <Stack.Screen key={screen.name} name={screen.name as any} component={screen.component} />

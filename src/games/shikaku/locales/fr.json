@@ -24,7 +24,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "levelEyebrow": "NIVEAU {{number}}",
     "statusSolved": "Résolus {{count}}/{{total}}",
     "statusConflicts": "Conflits {{count}}",
     "legend": "glissez pour tracer un rectangle sur un indice · touchez un rectangle pour le supprimer",

@@ -24,7 +24,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "levelEyebrow": "LEVEL {{number}}",
     "statusRows": "Rows {{count}}/{{total}}",
     "statusCols": "Cols {{count}}/{{total}}",
     "legend": "tap a cell to pitch a tent · tap again to remove it · edges show each target",

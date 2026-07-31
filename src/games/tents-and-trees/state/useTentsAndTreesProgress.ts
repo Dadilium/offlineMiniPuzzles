@@ -115,6 +115,8 @@ interface TentsAndTreesProgressContextValue {
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
   markTutorialSeen: (key: string) => void;
+  /** Wipes all generated levels, tents, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
+  resetAllProgress: () => void;
 }
 
 const TentsAndTreesProgressContext = createContext<TentsAndTreesProgressContextValue | null>(null);
@@ -265,6 +267,13 @@ export function TentsAndTreesProgressProvider({ children }: { children: React.Re
     return out;
   }, [state.hintedCellsByLevel]);
 
+  const resetAllProgress = useCallback(() => {
+    const next = defaultState();
+    stateRef.current = next;
+    setState(next);
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
   const value = useMemo<TentsAndTreesProgressContextValue>(
     () => ({
       ready,
@@ -282,6 +291,7 @@ export function TentsAndTreesProgressProvider({ children }: { children: React.Re
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
+      resetAllProgress,
     }),
     [
       ready,
@@ -295,6 +305,7 @@ export function TentsAndTreesProgressProvider({ children }: { children: React.Re
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
+      resetAllProgress,
     ]
   );
 

@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text } from 'react-native';
 import { colors, fonts } from '../theme/colors';
 
 interface Props {
@@ -9,14 +9,21 @@ interface Props {
 }
 
 /** Small mono status readout used in every GameScreen's status row (move
- * count, solved count, conflicts, etc). `dim` renders a trailing de-emphasized
- * segment inline, e.g. "12 moves · par 8". */
+ * count, solved count, conflicts, etc). Fades in on mount, so pills that
+ * appear conditionally (e.g. a conflict warning) don't just pop in.
+ * `dim` renders a trailing de-emphasized segment inline, e.g. "12 moves · par 8". */
 export default function StatusPill({ color, dim, children }: Props) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+  }, [opacity]);
+
   return (
-    <Text style={[styles.pill, { color }]}>
+    <Animated.Text style={[styles.pill, { color, opacity }]}>
       {children}
       {dim ? <Text style={styles.dim}> {dim}</Text> : null}
-    </Text>
+    </Animated.Text>
   );
 }
 

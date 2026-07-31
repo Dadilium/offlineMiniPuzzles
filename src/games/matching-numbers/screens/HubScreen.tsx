@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import GameHubScreen from '../../../components/GameHubScreen';
 import { colors } from '../../../theme/colors';
 import { getResumeIndex } from '../../../utils/levelProgress';
+import MatchingNumbersCardArt from '../CardArt';
 import type { MatchingNumbersStackParamList } from '../navigation';
 import { useMatchingNumbersProgress } from '../state/useMatchingNumbersProgress';
 
@@ -28,7 +29,8 @@ export default function HubScreen({ navigation }: Props) {
     <GameHubScreen
       onBack={() => navigation.goBack()}
       backAccessibilityLabel={tc('actions.backToLibrary')}
-      pulseColor={colors.purple}
+      accentColor={colors.purple}
+      CardArt={MatchingNumbersCardArt}
       name={t('meta.name')}
       tagline={t('hub.tagline')}
       playLabel={levelsCompleted.size === 0 && levelsSkipped.size === 0 ? tc('actions.play') : tc('actions.resume')}

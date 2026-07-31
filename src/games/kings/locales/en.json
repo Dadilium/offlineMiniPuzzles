@@ -28,10 +28,8 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "levelEyebrow": "LEVEL {{number}}",
     "statusKings": "Kings {{count}}/{{total}}",
     "statusConflict": "{{count}} in conflict",
-    "statusAllClear": "All clear",
     "legend": "tap once = mark · tap again = crown ♚ · tap again = clear · unavailable cells mark themselves",
     "hintFailToast": "Every realm already has its king.",
     "winTitle": "Kingdom secured",

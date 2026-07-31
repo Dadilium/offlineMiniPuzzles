@@ -6,11 +6,29 @@
     "readySection": "Ready to play",
     "comingSoonSection": "More frequencies incoming",
     "navLibrary": "LIBRARY",
-    "navSettings": "SETTINGS",
-    "settingsToast": "Settings — coming soon"
+    "navSettings": "SETTINGS"
   },
   "topBar": {
     "back": "Back"
+  },
+  "settings": {
+    "eyebrow": "App",
+    "title": "Settings",
+    "languageLabel": "Language",
+    "versionLabel": "Version",
+    "gameProgressLabel": "Game Progress",
+    "gameProgressSub": "Reset progress for a specific game"
+  },
+  "gameProgress": {
+    "eyebrow": "Settings",
+    "title": "Game Progress",
+    "levelsCompleted_one": "{{count}} level completed",
+    "levelsCompleted_other": "{{count}} levels completed",
+    "noProgress": "No progress yet",
+    "resetConfirmTitle": "Delete {{game}} progress?",
+    "resetConfirmMessage": "This erases every completed level for {{game}}. This can't be undone.",
+    "cancel": "Cancel",
+    "delete": "Delete"
   },
   "actions": {
     "play": "Play",

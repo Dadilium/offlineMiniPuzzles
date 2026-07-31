@@ -2,6 +2,7 @@ import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
 import { detectSupportedLanguage } from './detectLanguage';
+import { getStoredLanguage } from './languagePreference';
 
 import commonEn from './locales/common/en.json';
 import commonFr from './locales/common/fr.json';
@@ -65,6 +66,14 @@ i18next.use(initReactI18next).init({
   defaultNS: 'common',
   interpolation: { escapeValue: false },
   returnNull: false,
+});
+
+// A player-chosen language (set via Settings) overrides device-locale
+// detection on every subsequent boot. AsyncStorage is async, so the app
+// briefly renders in the detected language first -- acceptable since this
+// only affects players who've deliberately overridden their device locale.
+getStoredLanguage(SUPPORTED_LANGUAGES).then((stored) => {
+  if (stored && stored !== language) i18next.changeLanguage(stored);
 });
 
 export default i18next;

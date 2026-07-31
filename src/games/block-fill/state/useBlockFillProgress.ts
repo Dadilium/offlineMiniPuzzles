@@ -98,6 +98,8 @@ interface BlockFillProgressContextValue {
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
   markTutorialSeen: (key: string) => void;
+  /** Wipes all generated levels, paths, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
+  resetAllProgress: () => void;
 }
 
 const BlockFillProgressContext = createContext<BlockFillProgressContextValue | null>(null);
@@ -245,6 +247,13 @@ export function BlockFillProgressProvider({ children }: { children: React.ReactN
     setState(next);
   }, []);
 
+  const resetAllProgress = useCallback(() => {
+    const next = defaultState();
+    stateRef.current = next;
+    setState(next);
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
   const value = useMemo<BlockFillProgressContextValue>(
     () => ({
       ready,
@@ -262,8 +271,22 @@ export function BlockFillProgressProvider({ children }: { children: React.ReactN
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
+      resetAllProgress,
     }),
-    [ready, state, levelFor, ensureLevel, extend, rewind, giveHint, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen]
+    [
+      ready,
+      state,
+      levelFor,
+      ensureLevel,
+      extend,
+      rewind,
+      giveHint,
+      resetLevel,
+      markLevelComplete,
+      markLevelSkipped,
+      markTutorialSeen,
+      resetAllProgress,
+    ]
   );
 
   return React.createElement(BlockFillProgressContext.Provider, { value }, children);

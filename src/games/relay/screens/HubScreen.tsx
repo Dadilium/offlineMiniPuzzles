@@ -6,6 +6,7 @@ import GameHubScreen from '../../../components/GameHubScreen';
 import { useToast } from '../../../components/Toast';
 import { colors } from '../../../theme/colors';
 import { getResumeIndex } from '../../../utils/levelProgress';
+import RelayCardArt from '../CardArt';
 import { levels } from '../levels';
 import { enterLevel as enterLevelNav, type RelayStackParamList } from '../navigation';
 import { useRelayProgress } from '../state/useRelayProgress';
@@ -42,49 +43,49 @@ export default function HubScreen({ navigation }: Props) {
   const resumeIdx = getResumeIndex(levelsCompleted, levelsSkipped);
 
   return (
-    <>
-      <GameHubScreen
-        onBack={() => navigation.goBack()}
-        backAccessibilityLabel={tc('actions.backToLibrary')}
-        pulseColor={colors.signalBlue}
-        name={t('meta.name')}
-        tagline={t('hub.tagline')}
-        playLabel={
-          allLevelsDone
-            ? t('game.moreLevelsSoon')
-            : levelsCompleted.size === 0 && levelsSkipped.size === 0
-              ? tc('actions.play')
-              : tc('actions.resume')
+    <GameHubScreen
+      onBack={() => navigation.goBack()}
+      backAccessibilityLabel={tc('actions.backToLibrary')}
+      accentColor={colors.signalBlue}
+      CardArt={RelayCardArt}
+      name={t('meta.name')}
+      tagline={t('hub.tagline')}
+      playLabel={
+        allLevelsDone
+          ? t('game.moreLevelsSoon')
+          : levelsCompleted.size === 0 && levelsSkipped.size === 0
+            ? tc('actions.play')
+            : tc('actions.resume')
+      }
+      onPlay={() => {
+        if (allLevelsDone) {
+          showToast(t('game.allLevelsDoneToast'));
+        } else {
+          enterLevel(resumeIdx);
         }
-        onPlay={() => {
-          if (allLevelsDone) {
-            showToast(t('game.allLevelsDoneToast'));
-          } else {
-            enterLevel(resumeIdx);
-          }
-        }}
-        levelsLabel={tc('actions.levels')}
-        onLevels={() => navigation.navigate('RelayLevels')}
-        howToPlayLabel={tc('actions.howToPlay')}
-        onHowToPlay={() => navigation.navigate('RelayTutorial', { tutorialKey: 'all', pendingLevelIndex: null })}
-      />
-
-      {__DEV__ && (
-        <View style={styles.devRow}>
-          <TouchableOpacity style={styles.devResetBtn} activeOpacity={0.75} onPress={() => navigation.navigate('RelayDraftList')}>
-            <Text style={styles.devResetBtnText}>Test drafts (dev)</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.devResetBtn} activeOpacity={0.75} onPress={confirmResetProgress}>
-            <Text style={styles.devResetBtnText}>Reset all progress (dev)</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </>
+      }}
+      levelsLabel={tc('actions.levels')}
+      onLevels={() => navigation.navigate('RelayLevels')}
+      howToPlayLabel={tc('actions.howToPlay')}
+      onHowToPlay={() => navigation.navigate('RelayTutorial', { tutorialKey: 'all', pendingLevelIndex: null })}
+      aboveActions={
+        __DEV__ ? (
+          <View style={styles.devRow}>
+            <TouchableOpacity style={styles.devResetBtn} activeOpacity={0.75} onPress={() => navigation.navigate('RelayDraftList')}>
+              <Text style={styles.devResetBtnText}>Test drafts (dev)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.devResetBtn} activeOpacity={0.75} onPress={confirmResetProgress}>
+              <Text style={styles.devResetBtnText}>Reset all progress (dev)</Text>
+            </TouchableOpacity>
+          </View>
+        ) : undefined
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  devRow: { flexDirection: 'row', justifyContent: 'center', gap: 18, paddingBottom: 8, backgroundColor: colors.bgDeep },
-  devResetBtn: { marginHorizontal: 4, marginTop: 8, paddingVertical: 8, alignItems: 'center' },
+  devRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 4 },
+  devResetBtn: { marginHorizontal: 4, paddingVertical: 4, alignItems: 'center' },
   devResetBtnText: { color: colors.textFaint, fontWeight: '600', fontSize: 11.5 },
 });

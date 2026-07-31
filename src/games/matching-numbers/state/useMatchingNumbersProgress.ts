@@ -115,6 +115,8 @@ interface MatchingNumbersProgressContextValue {
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
   markTutorialSeen: (key: string) => void;
+  /** Wipes all generated levels, boards, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
+  resetAllProgress: () => void;
 }
 
 const MatchingNumbersProgressContext = createContext<MatchingNumbersProgressContextValue | null>(null);
@@ -272,6 +274,13 @@ export function MatchingNumbersProgressProvider({ children }: { children: React.
     setState(next);
   }, []);
 
+  const resetAllProgress = useCallback(() => {
+    const next = defaultState();
+    stateRef.current = next;
+    setState(next);
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
   const value = useMemo<MatchingNumbersProgressContextValue>(
     () => ({
       ready,
@@ -290,8 +299,22 @@ export function MatchingNumbersProgressProvider({ children }: { children: React.
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
+      resetAllProgress,
     }),
-    [ready, state, levelFor, ensureLevel, commitMatch, addNumbers, giveHint, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen]
+    [
+      ready,
+      state,
+      levelFor,
+      ensureLevel,
+      commitMatch,
+      addNumbers,
+      giveHint,
+      resetLevel,
+      markLevelComplete,
+      markLevelSkipped,
+      markTutorialSeen,
+      resetAllProgress,
+    ]
   );
 
   return React.createElement(MatchingNumbersProgressContext.Provider, { value }, children);

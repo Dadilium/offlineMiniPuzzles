@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import GameHubScreen from '../../../components/GameHubScreen';
 import { colors } from '../../../theme/colors';
 import { getResumeIndex } from '../../../utils/levelProgress';
+import TentsAndTreesCardArt from '../CardArt';
 import type { TentsAndTreesStackParamList } from '../navigation';
 import { useTentsAndTreesProgress } from '../state/useTentsAndTreesProgress';
 
@@ -28,7 +29,8 @@ export default function HubScreen({ navigation }: Props) {
     <GameHubScreen
       onBack={() => navigation.goBack()}
       backAccessibilityLabel={tc('actions.backToLibrary')}
-      pulseColor={colors.success}
+      accentColor={colors.pink}
+      CardArt={TentsAndTreesCardArt}
       name={t('meta.name')}
       tagline={t('hub.tagline')}
       playLabel={levelsCompleted.size === 0 && levelsSkipped.size === 0 ? tc('actions.play') : tc('actions.resume')}

@@ -24,7 +24,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "levelEyebrow": "LEVEL {{number}}",
     "statusSolved": "Solved {{count}}/{{total}}",
     "statusConflicts": "Conflicts {{count}}",
     "legend": "drag to draw a rectangle over a clue · tap a rectangle to remove it",

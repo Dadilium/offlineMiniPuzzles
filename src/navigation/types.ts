@@ -12,6 +12,8 @@ import type { ShikakuStackParamList } from '../games/shikaku/navigation';
 // unioned in here so navigation stays type-safe app-wide.
 export type RootStackParamList = {
   Library: undefined;
+  Settings: undefined;
+  GameProgress: undefined;
 } & RelayStackParamList &
   KingsStackParamList &
   MatchingNumbersStackParamList &

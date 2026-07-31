@@ -28,7 +28,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "levelEyebrow": "NIVEAU {{number}}",
     "statusFilled": "{{count}} / {{total}} remplies",
     "stuckMessage": "Aucune solution depuis ici -- revenez en arrière et réessayez",
     "legend": "glissez à travers les cases libres pour les remplir -- touchez votre tracé pour revenir en arrière",

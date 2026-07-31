@@ -107,6 +107,8 @@ interface ColorSortProgressContextValue {
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
   markTutorialSeen: (key: string) => void;
+  /** Wipes all generated levels, tubes, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
+  resetAllProgress: () => void;
 }
 
 const ColorSortProgressContext = createContext<ColorSortProgressContextValue | null>(null);
@@ -251,6 +253,13 @@ export function ColorSortProgressProvider({ children }: { children: React.ReactN
     setState(next);
   }, []);
 
+  const resetAllProgress = useCallback(() => {
+    const next = defaultState();
+    stateRef.current = next;
+    setState(next);
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
   const value = useMemo<ColorSortProgressContextValue>(
     () => ({
       ready,
@@ -268,8 +277,9 @@ export function ColorSortProgressProvider({ children }: { children: React.ReactN
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
+      resetAllProgress,
     }),
-    [ready, state, levelFor, ensureLevel, pourAt, giveHint, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen]
+    [ready, state, levelFor, ensureLevel, pourAt, giveHint, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen, resetAllProgress]
   );
 
   return React.createElement(ColorSortProgressContext.Provider, { value }, children);

@@ -1,10 +1,11 @@
 import { colors } from '../../theme/colors';
 import type { GameModule } from '../types';
+import KingsCardArt from './CardArt';
 import HubScreen from './screens/HubScreen';
 import LevelListScreen from './screens/LevelListScreen';
 import TutorialScreen from './screens/TutorialScreen';
 import GameScreen from './screens/GameScreen';
-import { KingsProgressProvider } from './state/useKingsProgress';
+import { KingsProgressProvider, useKingsProgress } from './state/useKingsProgress';
 
 // Single entry point the rest of the app needs to know about for Kings.
 // Registered in src/games/registry.ts.
@@ -12,6 +13,7 @@ export const kingsGame: GameModule = {
   id: 'kings',
   status: 'ready',
   accentColor: colors.warn,
+  CardArt: KingsCardArt,
   Provider: KingsProgressProvider,
   screens: [
     { name: 'KingsHub', component: HubScreen },
@@ -20,4 +22,8 @@ export const kingsGame: GameModule = {
     { name: 'KingsGame', component: GameScreen },
   ],
   entryScreen: 'KingsHub',
+  useProgress: () => {
+    const { levelsCompleted, resetAllProgress } = useKingsProgress();
+    return { completed: levelsCompleted.size, reset: resetAllProgress };
+  },
 };

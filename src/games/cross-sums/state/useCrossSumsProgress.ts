@@ -105,6 +105,8 @@ interface CrossSumsProgressContextValue {
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
   markTutorialSeen: (key: string) => void;
+  /** Wipes all generated levels, masks, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
+  resetAllProgress: () => void;
 }
 
 const CrossSumsProgressContext = createContext<CrossSumsProgressContextValue | null>(null);
@@ -255,6 +257,13 @@ export function CrossSumsProgressProvider({ children }: { children: React.ReactN
     return out;
   }, [state.hintedCellsByLevel]);
 
+  const resetAllProgress = useCallback(() => {
+    const next = defaultState();
+    stateRef.current = next;
+    setState(next);
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
   const value = useMemo<CrossSumsProgressContextValue>(
     () => ({
       ready,
@@ -272,8 +281,22 @@ export function CrossSumsProgressProvider({ children }: { children: React.ReactN
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
+      resetAllProgress,
     }),
-    [ready, state, hintedCellsByLevel, levelFor, ensureLevel, toggleCellAt, giveHint, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen]
+    [
+      ready,
+      state,
+      hintedCellsByLevel,
+      levelFor,
+      ensureLevel,
+      toggleCellAt,
+      giveHint,
+      resetLevel,
+      markLevelComplete,
+      markLevelSkipped,
+      markTutorialSeen,
+      resetAllProgress,
+    ]
   );
 
   return React.createElement(CrossSumsProgressContext.Provider, { value }, children);

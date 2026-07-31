@@ -186,7 +186,6 @@ export default function GameScreen({ route, navigation }: Props) {
     <GameScreenLayout
       onBack={() => navigation.navigate('ColorSortHub')}
       backAccessibilityLabel={tc('actions.backToHub')}
-      eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
       title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
         <>

@@ -108,7 +108,6 @@ export default function GameScreen({ route, navigation }: Props) {
     <GameScreenLayout
       onBack={() => navigation.navigate('KingsHub')}
       backAccessibilityLabel={tc('actions.backToHub')}
-      eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
       title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
         <>
@@ -125,9 +124,9 @@ export default function GameScreen({ route, navigation }: Props) {
       statusRow={
         <>
           <StatusPill color={colors.warn}>{t('game.statusKings', { count: state.kings.length, total: level.n })}</StatusPill>
-          <StatusPill color={state.conflictSet.size > 0 ? colors.signalRed : colors.success}>
-            {state.conflictSet.size > 0 ? t('game.statusConflict', { count: state.conflictSet.size }) : t('game.statusAllClear')}
-          </StatusPill>
+          {state.conflictSet.size > 0 && (
+            <StatusPill color={colors.signalRed}>{t('game.statusConflict', { count: state.conflictSet.size })}</StatusPill>
+          )}
         </>
       }
       legend={t('game.legend')}

@@ -98,6 +98,8 @@ interface KingsProgressContextValue {
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
   markTutorialSeen: (key: string) => void;
+  /** Wipes all generated levels, boards, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
+  resetAllProgress: () => void;
 }
 
 const KingsProgressContext = createContext<KingsProgressContextValue | null>(null);
@@ -241,6 +243,13 @@ export function KingsProgressProvider({ children }: { children: React.ReactNode 
     setState(next);
   }, []);
 
+  const resetAllProgress = useCallback(() => {
+    const next = defaultState();
+    stateRef.current = next;
+    setState(next);
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
   const value = useMemo<KingsProgressContextValue>(
     () => ({
       ready,
@@ -257,8 +266,9 @@ export function KingsProgressProvider({ children }: { children: React.ReactNode 
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
+      resetAllProgress,
     }),
-    [ready, state, levelFor, ensureLevel, cycleCell, giveHint, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen]
+    [ready, state, levelFor, ensureLevel, cycleCell, giveHint, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen, resetAllProgress]
   );
 
   return React.createElement(KingsProgressContext.Provider, { value }, children);

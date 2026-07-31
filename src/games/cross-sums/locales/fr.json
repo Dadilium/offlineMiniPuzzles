@@ -24,7 +24,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "levelEyebrow": "NIVEAU {{number}}",
     "statusRows": "Lignes {{count}}/{{total}}",
     "statusCols": "Colonnes {{count}}/{{total}}",
     "legend": "touchez un nombre pour le barrer · touchez à nouveau pour le garder · les bords indiquent chaque cible",

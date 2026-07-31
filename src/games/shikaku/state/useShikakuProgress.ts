@@ -142,6 +142,8 @@ interface ShikakuProgressContextValue {
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
   markTutorialSeen: (key: string) => void;
+  /** Wipes all generated levels, placed rects, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
+  resetAllProgress: () => void;
 }
 
 const ShikakuProgressContext = createContext<ShikakuProgressContextValue | null>(null);
@@ -326,6 +328,13 @@ export function ShikakuProgressProvider({ children }: { children: React.ReactNod
     return out;
   }, [state.hintedClueIndicesByLevel]);
 
+  const resetAllProgress = useCallback(() => {
+    const next = defaultState();
+    stateRef.current = next;
+    setState(next);
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
   const value = useMemo<ShikakuProgressContextValue>(
     () => ({
       ready,
@@ -344,6 +353,7 @@ export function ShikakuProgressProvider({ children }: { children: React.ReactNod
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
+      resetAllProgress,
     }),
     [
       ready,
@@ -358,6 +368,7 @@ export function ShikakuProgressProvider({ children }: { children: React.ReactNod
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
+      resetAllProgress,
     ]
   );
 

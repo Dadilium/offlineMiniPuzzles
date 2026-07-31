@@ -24,7 +24,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "levelEyebrow": "LEVEL {{number}}",
     "statusMoves": "Moves {{count}}",
     "statusPar": "· par {{count}}",
     "stuckMessage": "No route from here -- reset and try again",

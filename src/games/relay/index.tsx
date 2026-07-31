@@ -1,11 +1,12 @@
 import type { GameModule } from '../types';
+import RelayCardArt from './CardArt';
 import DraftListScreen from './screens/DraftListScreen';
 import DraftPlayScreen from './screens/DraftPlayScreen';
 import HubScreen from './screens/HubScreen';
 import LevelListScreen from './screens/LevelListScreen';
 import TutorialScreen from './screens/TutorialScreen';
 import GameScreen from './screens/GameScreen';
-import { RelayProgressProvider } from './state/useRelayProgress';
+import { RelayProgressProvider, useRelayProgress } from './state/useRelayProgress';
 
 // This is the single entry point the rest of the app needs to know about
 // for the Relay game. Adding a new game later = create src/games/<id>/index.tsx
@@ -13,6 +14,7 @@ import { RelayProgressProvider } from './state/useRelayProgress';
 export const relayGame: GameModule = {
   id: 'relay',
   status: 'ready',
+  CardArt: RelayCardArt,
   Provider: RelayProgressProvider,
   screens: [
     { name: 'RelayHub', component: HubScreen },
@@ -25,4 +27,8 @@ export const relayGame: GameModule = {
     { name: 'RelayDraftPlay', component: DraftPlayScreen },
   ],
   entryScreen: 'RelayHub',
+  useProgress: () => {
+    const { levelsCompleted, resetAllProgress } = useRelayProgress();
+    return { completed: levelsCompleted.size, reset: resetAllProgress };
+  },
 };

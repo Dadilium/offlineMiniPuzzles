@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import GameHubScreen from '../../../components/GameHubScreen';
 import { colors } from '../../../theme/colors';
 import { getResumeIndex } from '../../../utils/levelProgress';
+import KingsCardArt from '../CardArt';
 import type { KingsStackParamList } from '../navigation';
 import { useKingsProgress } from '../state/useKingsProgress';
 
@@ -28,7 +29,8 @@ export default function HubScreen({ navigation }: Props) {
     <GameHubScreen
       onBack={() => navigation.goBack()}
       backAccessibilityLabel={tc('actions.backToLibrary')}
-      pulseColor={colors.warn}
+      accentColor={colors.warn}
+      CardArt={KingsCardArt}
       name={t('meta.name')}
       tagline={t('hub.tagline')}
       playLabel={levelsCompleted.size === 0 && levelsSkipped.size === 0 ? tc('actions.play') : tc('actions.resume')}

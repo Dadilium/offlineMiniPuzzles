@@ -28,10 +28,8 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "levelEyebrow": "NIVEAU {{number}}",
     "statusKings": "Rois {{count}}/{{total}}",
     "statusConflict": "{{count}} en conflit",
-    "statusAllClear": "Tout est en ordre",
     "legend": "touchez une fois = marque · touchez à nouveau = couronne ♚ · encore une fois = effacer · les cases indisponibles se marquent seules",
     "hintFailToast": "Chaque région a déjà son roi.",
     "winTitle": "Royaume sécurisé",

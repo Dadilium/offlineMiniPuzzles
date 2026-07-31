@@ -28,7 +28,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "levelEyebrow": "LEVEL {{number}}",
     "statusFilled": "{{count}} / {{total}} filled",
     "stuckMessage": "No route from here -- rewind and try again",
     "legend": "drag through open cells to fill them -- touch back along your trail to rewind",

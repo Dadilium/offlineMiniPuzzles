@@ -6,11 +6,29 @@
     "readySection": "Prêt à jouer",
     "comingSoonSection": "D'autres fréquences arrivent",
     "navLibrary": "LUDOTHÈQUE",
-    "navSettings": "RÉGLAGES",
-    "settingsToast": "Réglages — bientôt disponible"
+    "navSettings": "RÉGLAGES"
   },
   "topBar": {
     "back": "Retour"
+  },
+  "settings": {
+    "eyebrow": "Application",
+    "title": "Réglages",
+    "languageLabel": "Langue",
+    "versionLabel": "Version",
+    "gameProgressLabel": "Progression des jeux",
+    "gameProgressSub": "Réinitialiser la progression d'un jeu"
+  },
+  "gameProgress": {
+    "eyebrow": "Réglages",
+    "title": "Progression des jeux",
+    "levelsCompleted_one": "{{count}} niveau terminé",
+    "levelsCompleted_other": "{{count}} niveaux terminés",
+    "noProgress": "Aucune progression",
+    "resetConfirmTitle": "Supprimer la progression de {{game}} ?",
+    "resetConfirmMessage": "Cela efface tous les niveaux terminés pour {{game}}. Cette action est irréversible.",
+    "cancel": "Annuler",
+    "delete": "Supprimer"
   },
   "actions": {
     "play": "Jouer",
