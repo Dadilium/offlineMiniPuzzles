@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { InteractionManager, SafeAreaView } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import GameActionButton from '../../../components/GameActionButton';
+import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import TopBar from '../../../components/TopBar';
+import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
-import { colors, fonts, radii } from '../../../theme/colors';
+import WinOverlay from '../../../components/WinOverlay';
+import { colors } from '../../../theme/colors';
 import CrossSumsGrid, { waveDurationMs } from '../components/CrossSumsGrid';
-import WinOverlay from '../components/WinOverlay';
+import { ACCENT_PALETTE } from '../components/TutorialDiagram';
 import { computeSums, computeWin } from '../engine';
 import type { CrossSumsStackParamList } from '../navigation';
 import { useCrossSumsProgress } from '../state/useCrossSumsProgress';
@@ -140,89 +143,60 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   if (!level || !mask) {
-    return <SafeAreaView style={styles.screen} />;
+    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <TopBar
-        onBack={() => navigation.navigate('CrossSumsHub')}
-        backAccessibilityLabel={tc('actions.backToHub')}
-        eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
-        title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
-        right={
-          <>
-            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
-            <IconButton glyph="⟲" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} size={40} glyphSize={19} />
-          </>
-        }
-      />
-
-      <View style={styles.statusRow}>
-        <Text style={[styles.statusPill, { color: rowsMatched === level.rows ? colors.success : colors.textDim }]}>
-          {t('game.statusRows', { count: rowsMatched, total: level.rows })}
-        </Text>
-        <Text style={[styles.statusPill, { color: colsMatched === level.cols ? colors.success : colors.textDim }]}>
-          {t('game.statusCols', { count: colsMatched, total: level.cols })}
-        </Text>
-      </View>
-
-      <View style={styles.boardArea}>
-        <CrossSumsGrid
-          level={level}
-          mask={mask}
-          hintedCells={hintedCells}
-          rowSums={sums.rowSums}
-          colSums={sums.colSums}
-          celebrate={celebrate}
-          onCellPress={onCellPress}
+    <GameScreenLayout
+      onBack={() => navigation.navigate('CrossSumsHub')}
+      backAccessibilityLabel={tc('actions.backToHub')}
+      eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
+      title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
+      headerRight={
+        <>
+          <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
+          <IconButton glyph="⟲" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} size={40} glyphSize={19} />
+        </>
+      }
+      statusRow={
+        <>
+          <StatusPill color={rowsMatched === level.rows ? colors.success : colors.textDim}>
+            {t('game.statusRows', { count: rowsMatched, total: level.rows })}
+          </StatusPill>
+          <StatusPill color={colsMatched === level.cols ? colors.success : colors.textDim}>
+            {t('game.statusCols', { count: colsMatched, total: level.cols })}
+          </StatusPill>
+        </>
+      }
+      legend={t('game.legend')}
+      controls={
+        <>
+          <GameActionButton label={tc('actions.hint')} onPress={onHintPress} />
+          {!revealWin && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
+        </>
+      }
+      winOverlay={
+        <WinOverlay
+          visible={revealWin}
+          badge="✅"
+          showConfetti={showConfetti}
+          confettiPalette={ACCENT_PALETTE}
+          title={t('game.winTitle')}
+          subtitle={t('game.winSubtitle')}
+          nextLabel={tc('actions.nextLevel')}
+          onNext={nextLevel}
         />
-      </View>
-
-      <Text style={styles.legend}>{t('game.legend')}</Text>
-
-      <View style={styles.controls}>
-        <TouchableOpacity style={styles.hintBtn} activeOpacity={0.75} onPress={onHintPress}>
-          <Text style={styles.hintBtnText}>{tc('actions.hint')}</Text>
-        </TouchableOpacity>
-        {!revealWin && (
-          <TouchableOpacity style={styles.skipBtn} activeOpacity={0.75} onPress={onSkipPress}>
-            <Text style={styles.skipBtnText}>{tc('actions.skipLevelAd')}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <WinOverlay
-        visible={revealWin}
-        showConfetti={showConfetti}
-        title={t('game.winTitle')}
-        subtitle={t('game.winSubtitle')}
-        nextLabel={tc('actions.nextLevel')}
-        onNext={nextLevel}
+      }
+    >
+      <CrossSumsGrid
+        level={level}
+        mask={mask}
+        hintedCells={hintedCells}
+        rowSums={sums.rowSums}
+        colSums={sums.colSums}
+        celebrate={celebrate}
+        onCellPress={onCellPress}
       />
-    </SafeAreaView>
+    </GameScreenLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bgDeep },
-  statusRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap', paddingHorizontal: 18, paddingTop: 8, justifyContent: 'center' },
-  statusPill: { fontSize: 11.5, fontWeight: '600', fontFamily: fonts.mono },
-  // Takes up all remaining vertical space between the status row and the
-  // bottom controls, so the board is always centered and Hint always sits
-  // at the very bottom of the screen -- regardless of board size (4x4 to 8x8).
-  boardArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  legend: {
-    fontSize: 10.5,
-    color: colors.textFaint,
-    paddingHorizontal: 18,
-    textAlign: 'center',
-    fontFamily: fonts.mono,
-    lineHeight: 16,
-  },
-  controls: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 6, gap: 8 },
-  hintBtn: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingVertical: 13, alignItems: 'center' },
-  hintBtnText: { color: colors.text, fontWeight: '600', fontSize: 14 },
-  skipBtn: { paddingVertical: 8, alignItems: 'center' },
-  skipBtnText: { color: colors.textFaint, fontWeight: '600', fontSize: 12 },
-});

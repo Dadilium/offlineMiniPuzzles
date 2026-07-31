@@ -7,8 +7,10 @@ export const INITIAL_SKILL_RATING: SkillRating = 20;
 
 const MIN_RATING = 0;
 const MAX_RATING = 100;
-/** Small per-level step so the curve moves gradually, never spikes. */
-const STEP = 3;
+/** Per-level step. Bumped from 3 -> 5 (2026-07-31) so skill rating -- and
+ * therefore grid size / reasoning tier -- climbs noticeably faster while
+ * still moving in gradual nudges rather than spikes. */
+const STEP = 5;
 
 export interface LevelResult {
   hintsUsed: number;
@@ -47,9 +49,13 @@ const N_FLOOR = 5;
 const N_CEILING = 9;
 
 /**
- * Pure mapping from a skill rating to generation parameters. First-cut curve,
- * meant to be tuned by feel once it's playable: grid size ramps gently from
- * 5 up to 8 across the rating range, with 9 reserved for the very top decile.
+ * Pure mapping from a skill rating to generation parameters. Grid size ramps
+ * from 5 up to 8 across the rating range, with 9 reserved for the very top
+ * decile. The ramp uses sqrt(t) rather than a linear t (tuned 2026-07-31,
+ * alongside the STEP bump above): a concave curve front-loads the climb so
+ * medium-tier 7x7 boards show up within the first handful of no-hint clears
+ * instead of requiring a long grind through the middle of the rating range,
+ * while still tapering off gradually near the top instead of spiking.
  *
  * The required reasoning tier is tied to grid size, not rating directly:
  * empirically, "easy" (hidden-singles-only) layouts get combinatorially rare
@@ -61,8 +67,9 @@ const N_CEILING = 9;
  */
 export function difficultyParams(rating: SkillRating): GenerationParams {
   const t = Math.max(0, Math.min(1, rating / MAX_RATING));
+  const curved = Math.sqrt(t);
 
-  const nMax = t >= 0.9 ? N_CEILING : Math.min(N_CEILING - 1, N_FLOOR + Math.round(t * 3));
+  const nMax = t >= 0.85 ? N_CEILING : Math.min(N_CEILING - 1, N_FLOOR + Math.round(curved * 3));
   const nMin = Math.max(N_FLOOR, nMax - 1);
 
   const requiredTier: 'easy' | 'medium' = nMax <= 6 ? 'easy' : 'medium';

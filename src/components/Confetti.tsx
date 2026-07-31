@@ -1,13 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { colors } from '../../../theme/colors';
 
 const COUNT = 16;
-const ACCENT_PALETTE = [colors.success, colors.signalBlue, colors.warn, colors.purple, colors.cyan, colors.gold];
+
+interface Props {
+  palette: string[];
+}
 
 /** One-shot confetti burst -- animates on mount, meant to be conditionally
- * rendered only at the moment a level is first solved (see GameScreen). */
-export default function Confetti() {
+ * rendered only at the moment a level is first solved (see WinOverlay). */
+export default function Confetti({ palette }: Props) {
   const dots = useRef(
     Array.from({ length: COUNT }, (_, i) => {
       const angle = (i / COUNT) * Math.PI * 2 + Math.random() * 0.5;
@@ -16,7 +18,7 @@ export default function Confetti() {
         angle,
         dist: 60 + Math.random() * 90,
         rotateTo: Math.random() * 360,
-        color: ACCENT_PALETTE[i % ACCENT_PALETTE.length],
+        color: palette[i % palette.length],
         left: 42 + Math.random() * 16,
         top: 32 + Math.random() * 16,
         duration: 900 + Math.random() * 300,

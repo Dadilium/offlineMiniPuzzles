@@ -1,15 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import GameActionButton from '../../../components/GameActionButton';
+import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import TopBar from '../../../components/TopBar';
+import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
-import { colors, fonts, radii } from '../../../theme/colors';
+import WinOverlay from '../../../components/WinOverlay';
+import { colors } from '../../../theme/colors';
 import BudgetChip from '../components/BudgetChip';
 import KindChip from '../components/KindChip';
 import RelayGrid, { RECEIVER_SETTLE_MS } from '../components/RelayGrid';
-import WinOverlay from '../components/WinOverlay';
 import { computeColorConnectivity, computeJammed, isFixed, isTerrain } from '../engine';
 import { levels } from '../levels';
 import { enterLevel, type RelayStackParamList } from '../navigation';
@@ -121,101 +123,78 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <TopBar
-        onBack={() => navigation.navigate('RelayHub')}
-        backAccessibilityLabel={tc('actions.backToHub')}
-        eyebrow={t('game.levelEyebrow', { current: levelIndex + 1, total: levels.length })}
-        title={level.title}
-        right={
-          <>
-            <IconButton glyph="↺" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
-            <IconButton glyph="⟲" onPress={() => resetLevel(levelIndex)} accessibilityLabel={tc('actions.resetLevel')} />
-          </>
-        }
-      />
+    <GameScreenLayout
+      onBack={() => navigation.navigate('RelayHub')}
+      backAccessibilityLabel={tc('actions.backToHub')}
+      eyebrow={t('game.levelEyebrow', { current: levelIndex + 1, total: levels.length })}
+      title={level.title}
+      headerRight={
+        <>
+          <IconButton glyph="↺" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
+          <IconButton glyph="⟲" onPress={() => resetLevel(levelIndex)} accessibilityLabel={tc('actions.resetLevel')} />
+        </>
+      }
+      statusRow={
+        <View style={styles.statusRowInner}>
+          {level.instructions ? <Text style={styles.instructions}>{level.instructions}</Text> : null}
 
-      {level.instructions ? <Text style={styles.instructions}>{level.instructions}</Text> : null}
+          <View style={styles.chipsRow}>
+            {colorList.map((color) => (
+              <BudgetChip
+                key={color}
+                color={color}
+                used={relays.filter((r) => r.color === color).length}
+                budget={level.budgets[color] ?? 0}
+                active={isMulti && activeColor === color}
+                selectable={isMulti}
+                onPress={() => setSelectedColor(color)}
+              />
+            ))}
+          </View>
 
-      <View style={styles.budgetsRow}>
-        {colorList.map((color) => (
-          <BudgetChip
-            key={color}
-            color={color}
-            used={relays.filter((r) => r.color === color).length}
-            budget={level.budgets[color] ?? 0}
-            active={isMulti && activeColor === color}
-            selectable={isMulti}
-            onPress={() => setSelectedColor(color)}
-          />
-        ))}
-      </View>
+          {hasMirrors ? (
+            <View style={styles.chipsRow}>
+              {RELAY_KINDS.map((kind) => (
+                <KindChip key={kind} kind={kind} active={selectedKind === kind} onPress={() => setSelectedKind(kind)} />
+              ))}
+            </View>
+          ) : null}
 
-      {hasMirrors ? (
-        <View style={styles.budgetsRow}>
-          {RELAY_KINDS.map((kind) => (
-            <KindChip key={kind} kind={kind} active={selectedKind === kind} onPress={() => setSelectedKind(kind)} />
-          ))}
+          <View style={styles.pillsRow}>
+            {level.sources.map((s) => (
+              <StatusPill key={s.color} color={SIGNAL_COLORS[s.color]}>
+                {t(`game.colorNames.${s.color}`)}: {results[s.color]?.receiverReached ? '✅' : '❌'}
+              </StatusPill>
+            ))}
+          </View>
         </View>
-      ) : null}
-
-      <View style={styles.statusRow}>
-        {level.sources.map((s) => (
-          <Text key={s.color} style={[styles.statusPill, { color: SIGNAL_COLORS[s.color] }]}>
-            {t(`game.colorNames.${s.color}`)}: {results[s.color]?.receiverReached ? '✅' : '❌'}
-          </Text>
-        ))}
-      </View>
-
-      <View style={styles.boardArea}>
-        <RelayGrid level={level} relays={relays} jammed={jammed} results={results} onCellPress={onCellPress} />
-      </View>
-
-      <Text style={styles.legend}>{t('game.legend')}</Text>
-
-      <View style={styles.controls}>
-        <TouchableOpacity style={styles.hintBtn} activeOpacity={0.75} onPress={onHintPress}>
-          <Text style={styles.hintBtnText}>{tc('actions.hint')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.skipBtn, allReached && styles.skipBtnHidden]}
-          activeOpacity={0.75}
-          onPress={onSkipPress}
-          disabled={allReached}
-        >
-          <Text style={styles.skipBtnText}>{tc('actions.skipLevelAd')}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <WinOverlay
-        visible={showWinOverlay}
-        title={t('game.winTitle')}
-        subtitle={levelIndex < levels.length - 1 ? t('game.winSubtitleNext') : t('game.winSubtitleLast')}
-        nextLabel={levelIndex < levels.length - 1 ? tc('actions.nextLevel') : tc('actions.backToHub')}
-        onNext={nextLevel}
-      />
-    </SafeAreaView>
+      }
+      legend={t('game.legend')}
+      controls={
+        <>
+          <GameActionButton label={tc('actions.hint')} onPress={onHintPress} />
+          <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" hidden={allReached} />
+        </>
+      }
+      winOverlay={
+        <WinOverlay
+          visible={showWinOverlay}
+          badge="🎉"
+          title={t('game.winTitle')}
+          subtitle={levelIndex < levels.length - 1 ? t('game.winSubtitleNext') : t('game.winSubtitleLast')}
+          nextLabel={levelIndex < levels.length - 1 ? tc('actions.nextLevel') : tc('actions.backToHub')}
+          onNext={nextLevel}
+        />
+      }
+    >
+      <RelayGrid level={level} relays={relays} jammed={jammed} results={results} onCellPress={onCellPress} />
+    </GameScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bgDeep },
-  instructions: { fontSize: 12, color: colors.textDim, paddingHorizontal: 20, paddingTop: 8, textAlign: 'center' },
-  budgetsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', paddingHorizontal: 18, paddingTop: 10, justifyContent: 'center' },
-  statusRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap', paddingHorizontal: 18, paddingTop: 8, justifyContent: 'center', minHeight: 34 },
-  statusPill: { fontSize: 11.5, lineHeight: 18, fontWeight: '600', fontFamily: fonts.mono },
-  // Takes up all remaining vertical space between the status row and the
-  // bottom controls, so the board is always centered and Hint always sits
-  // at the very bottom of the screen.
-  boardArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  legend: { fontSize: 10.5, color: colors.textFaint, paddingHorizontal: 18, textAlign: 'center', fontFamily: fonts.mono, lineHeight: 16 },
-  controls: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 6, gap: 8 },
-  hintBtn: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingVertical: 13, alignItems: 'center' },
-  hintBtnText: { color: colors.text, fontWeight: '600', fontSize: 14 },
-  // Stays mounted (taking up its usual space) even once the level is
-  // solved -- only its visibility toggles -- so `controls`, and therefore
-  // `boardArea` above it (flex: 1), never resizes on completion.
-  skipBtn: { paddingVertical: 8, alignItems: 'center' },
-  skipBtnHidden: { opacity: 0 },
-  skipBtnText: { color: colors.textFaint, fontWeight: '600', fontSize: 12 },
+  statusRowInner: { width: '100%' },
+  instructions: { fontSize: 12, color: colors.textDim, textAlign: 'center', marginBottom: 8 },
+  chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 8 },
+  pillsRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap', justifyContent: 'center', minHeight: 34 },
 });

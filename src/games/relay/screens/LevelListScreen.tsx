@@ -1,10 +1,8 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import LevelList, { type LevelStatus } from '../../../components/LevelList';
-import TopBar from '../../../components/TopBar';
-import { colors } from '../../../theme/colors';
+import GameLevelListScreen from '../../../components/GameLevelListScreen';
+import type { LevelStatus } from '../../../components/LevelList';
 import { levels } from '../levels';
 import { enterLevel as enterLevelNav, type RelayStackParamList } from '../navigation';
 import { useRelayProgress } from '../state/useRelayProgress';
@@ -15,6 +13,9 @@ export default function LevelListScreen({ navigation }: Props) {
   const { levelsCompleted, levelsSkipped, tutorialsSeen } = useRelayProgress();
   const { t: tc } = useTranslation('common');
 
+  // relay ships a fixed level list (not generated on demand), so -- unlike
+  // the other games -- every level gets a row here, with future ones shown
+  // locked rather than just stopping at the frontier.
   const items = levels.map((lv, idx) => {
     const locked = idx > 0 && !levelsCompleted.has(idx - 1) && !levelsSkipped.has(idx - 1);
     const complete = levelsCompleted.has(idx);
@@ -28,16 +29,12 @@ export default function LevelListScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <TopBar onBack={() => navigation.goBack()} backAccessibilityLabel={tc('actions.backToHub')} title={tc('actions.levels')} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <LevelList items={items} onPress={enterLevel} />
-      </ScrollView>
-    </SafeAreaView>
+    <GameLevelListScreen
+      onBack={() => navigation.goBack()}
+      backAccessibilityLabel={tc('actions.backToHub')}
+      title={tc('actions.levels')}
+      items={items}
+      onPress={enterLevel}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bgDeep },
-  scrollContent: { padding: 20 },
-});

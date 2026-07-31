@@ -144,7 +144,7 @@ function KingsCell({
           style={[
             styles.king,
             isHinted && styles.kingHinted,
-            { fontSize: size * 0.6, transform: [{ scale: kingScale }] },
+            { fontSize: size * 0.6, transform: [{ scale: kingScale }], pointerEvents: 'none' },
           ]}
         >
           ♚

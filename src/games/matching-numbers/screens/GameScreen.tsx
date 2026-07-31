@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { InteractionManager, SafeAreaView, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import GameActionButton from '../../../components/GameActionButton';
+import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import TopBar from '../../../components/TopBar';
+import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
-import { colors, fonts, radii } from '../../../theme/colors';
+import WinOverlay from '../../../components/WinOverlay';
+import { colors } from '../../../theme/colors';
 import MatchingNumbersGrid, { type PendingMatch } from '../components/MatchingNumbersGrid';
-import WinOverlay from '../components/WinOverlay';
 import FailOverlay from '../components/FailOverlay';
 import { attemptMatch, computeWin, hasLegalMove, MAX_ADD_NUMBERS } from '../engine';
 import type { MatchingNumbersStackParamList } from '../navigation';
@@ -15,6 +17,8 @@ import { useMatchingNumbersProgress } from '../state/useMatchingNumbersProgress'
 import type { Cell } from '../types';
 
 type Props = NativeStackScreenProps<MatchingNumbersStackParamList, 'MatchingNumbersGame'>;
+
+const CONFETTI_PALETTE = [colors.purple, colors.gold, colors.cyan, colors.pink, colors.success, colors.signalBlue];
 
 function cellKey(cell: Cell): string {
   return `${cell.r},${cell.c}`;
@@ -168,7 +172,7 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   if (!level || !board) {
-    return <SafeAreaView style={styles.screen} />;
+    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
   const highlightedCells = new Set<string>();
@@ -179,112 +183,75 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <TopBar
-        onBack={() => navigation.navigate('MatchingNumbersHub')}
-        backAccessibilityLabel={tc('actions.backToHub')}
-        eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
-        title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
-        right={
-          <>
-            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
-            <IconButton
-              glyph="⟲"
-              onPress={onRetryPress}
-              accessibilityLabel={tc('actions.resetLevel')}
-              size={40}
-              glyphSize={19}
-            />
-          </>
-        }
+    <GameScreenLayout
+      onBack={() => navigation.navigate('MatchingNumbersHub')}
+      backAccessibilityLabel={tc('actions.backToHub')}
+      eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
+      title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
+      headerRight={
+        <>
+          <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
+          <IconButton
+            glyph="⟲"
+            onPress={onRetryPress}
+            accessibilityLabel={tc('actions.resetLevel')}
+            size={40}
+            glyphSize={19}
+          />
+        </>
+      }
+      statusRow={
+        <>
+          <StatusPill color={colors.purple}>{t('game.statusTilesLeft', { count: remainingTiles })}</StatusPill>
+          <StatusPill color={addNumbersRemaining > 0 ? colors.success : colors.signalRed}>
+            {t('game.statusAddNumbers', { count: addNumbersRemaining, total: MAX_ADD_NUMBERS })}
+          </StatusPill>
+        </>
+      }
+      boardScrollable
+      legend={t('game.legend')}
+      controls={
+        <>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <GameActionButton label={tc('actions.hint')} onPress={onHintPress} style={{ flex: 1 }} />
+            <GameActionButton label={t('game.addNumbersAction')} onPress={onAddNumbersPress} style={{ flex: 1 }} />
+          </View>
+          {!win && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
+        </>
+      }
+      winOverlay={
+        <>
+          <WinOverlay
+            visible={win}
+            badge="🔢"
+            showConfetti={showConfetti}
+            confettiPalette={CONFETTI_PALETTE}
+            title={t('game.winTitle')}
+            subtitle={t('game.winSubtitle')}
+            nextLabel={tc('actions.nextLevel')}
+            onNext={nextLevel}
+          />
+          <FailOverlay
+            visible={showFail}
+            title={t('game.failTitle')}
+            subtitle={t('game.failSubtitle')}
+            retryLabel={t('game.retryLevel')}
+            skipLabel={tc('actions.skipLevelAd')}
+            onRetry={onRetryPress}
+            onSkip={onSkipPress}
+          />
+        </>
+      }
+    >
+      <MatchingNumbersGrid
+        board={board}
+        highlightedCells={highlightedCells}
+        pendingMatch={pendingMatch}
+        rejectedPair={rejectedPair}
+        onCellPress={onCellPress}
+        onMatchAnimationDone={onMatchAnimationDone}
+        onRejectAnimationDone={onRejectAnimationDone}
       />
-
-      <View style={styles.statusRow}>
-        <Text style={[styles.statusPill, { color: colors.purple }]}>
-          {t('game.statusTilesLeft', { count: remainingTiles })}
-        </Text>
-        <Text style={[styles.statusPill, { color: addNumbersRemaining > 0 ? colors.success : colors.signalRed }]}>
-          {t('game.statusAddNumbers', { count: addNumbersRemaining, total: MAX_ADD_NUMBERS })}
-        </Text>
-      </View>
-
-      <ScrollView style={styles.boardArea} contentContainerStyle={styles.boardAreaContent}>
-        <MatchingNumbersGrid
-          board={board}
-          highlightedCells={highlightedCells}
-          pendingMatch={pendingMatch}
-          rejectedPair={rejectedPair}
-          onCellPress={onCellPress}
-          onMatchAnimationDone={onMatchAnimationDone}
-          onRejectAnimationDone={onRejectAnimationDone}
-        />
-      </ScrollView>
-
-      <Text style={styles.legend}>{t('game.legend')}</Text>
-
-      <View style={styles.controls}>
-        <View style={styles.controlsRow}>
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.75} onPress={onHintPress}>
-            <Text style={styles.actionBtnText}>{tc('actions.hint')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.75} onPress={onAddNumbersPress}>
-            <Text style={styles.actionBtnText}>{t('game.addNumbersAction')}</Text>
-          </TouchableOpacity>
-        </View>
-        {!win && (
-          <TouchableOpacity style={styles.skipBtn} activeOpacity={0.75} onPress={onSkipPress}>
-            <Text style={styles.skipBtnText}>{tc('actions.skipLevelAd')}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <WinOverlay
-        visible={win}
-        showConfetti={showConfetti}
-        title={t('game.winTitle')}
-        subtitle={t('game.winSubtitle')}
-        nextLabel={tc('actions.nextLevel')}
-        onNext={nextLevel}
-      />
-      <FailOverlay
-        visible={showFail}
-        title={t('game.failTitle')}
-        subtitle={t('game.failSubtitle')}
-        retryLabel={t('game.retryLevel')}
-        skipLabel={tc('actions.skipLevelAd')}
-        onRetry={onRetryPress}
-        onSkip={onSkipPress}
-      />
-    </SafeAreaView>
+    </GameScreenLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bgDeep },
-  statusRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap', paddingHorizontal: 18, paddingTop: 8, justifyContent: 'center' },
-  statusPill: { fontSize: 11.5, fontWeight: '600', fontFamily: fonts.mono },
-  boardArea: { flex: 1 },
-  boardAreaContent: { alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12 },
-  legend: {
-    fontSize: 10.5,
-    color: colors.textFaint,
-    paddingHorizontal: 18,
-    textAlign: 'center',
-    fontFamily: fonts.mono,
-    lineHeight: 16,
-  },
-  controls: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 6, gap: 8 },
-  controlsRow: { flexDirection: 'row', gap: 8 },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: colors.surface2,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  actionBtnText: { color: colors.text, fontWeight: '600', fontSize: 14 },
-  skipBtn: { paddingVertical: 8, alignItems: 'center' },
-  skipBtnText: { color: colors.textFaint, fontWeight: '600', fontSize: 12 },
-});

@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { InteractionManager, SafeAreaView } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import GameActionButton from '../../../components/GameActionButton';
+import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import TopBar from '../../../components/TopBar';
+import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
-import { colors, fonts, radii } from '../../../theme/colors';
+import WinOverlay from '../../../components/WinOverlay';
+import { colors } from '../../../theme/colors';
 import ShikakuGrid from '../components/ShikakuGrid';
-import WinOverlay from '../components/WinOverlay';
 import { computeConflicts, computeWin } from '../engine';
 import type { ShikakuStackParamList } from '../navigation';
 import { useShikakuProgress } from '../state/useShikakuProgress';
@@ -18,6 +20,8 @@ type Props = NativeStackScreenProps<ShikakuStackParamList, 'ShikakuGame'>;
 const EMPTY_PLACED: ShikakuPlayerState = [];
 const EMPTY_HINTED = new Set<number>();
 const EMPTY_CONFLICTS = new Set<number>();
+
+const CONFETTI_PALETTE = [colors.success, colors.signalBlue, colors.warn, colors.purple, colors.cyan, colors.gold];
 
 export default function GameScreen({ route, navigation }: Props) {
   const { levelIndex } = route.params;
@@ -157,90 +161,59 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   if (!level) {
-    return <SafeAreaView style={styles.screen} />;
+    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <TopBar
-        onBack={() => navigation.navigate('ShikakuHub')}
-        backAccessibilityLabel={tc('actions.backToHub')}
-        eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
-        title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
-        right={
-          <>
-            <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
-            <IconButton glyph="⟲" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} size={40} glyphSize={19} />
-          </>
-        }
-      />
-
-      <View style={styles.statusRow}>
-        <Text style={[styles.statusPill, { color: cluesSolved === level.clues.length ? colors.success : colors.textDim }]}>
-          {t('game.statusSolved', { count: cluesSolved, total: level.clues.length })}
-        </Text>
-        {conflicts.size > 0 && (
-          <Text style={[styles.statusPill, { color: colors.signalRed }]}>{t('game.statusConflicts', { count: conflicts.size })}</Text>
-        )}
-      </View>
-
-      <View style={styles.boardArea}>
-        <ShikakuGrid
-          level={level}
-          placed={placed}
-          conflicts={conflicts}
-          hintedClueIndices={hintedClueIndices}
-          celebrate={celebrate}
-          onCelebrationDone={handleCelebrationDone}
-          onCommitRect={onCommitRect}
-          onTapCell={onTapCell}
+    <GameScreenLayout
+      onBack={() => navigation.navigate('ShikakuHub')}
+      backAccessibilityLabel={tc('actions.backToHub')}
+      eyebrow={t('game.levelEyebrow', { number: levelIndex + 1 })}
+      title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
+      headerRight={
+        <>
+          <IconButton glyph="?" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
+          <IconButton glyph="⟲" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} size={40} glyphSize={19} />
+        </>
+      }
+      statusRow={
+        <>
+          <StatusPill color={cluesSolved === level.clues.length ? colors.success : colors.textDim}>
+            {t('game.statusSolved', { count: cluesSolved, total: level.clues.length })}
+          </StatusPill>
+          {conflicts.size > 0 && <StatusPill color={colors.signalRed}>{t('game.statusConflicts', { count: conflicts.size })}</StatusPill>}
+        </>
+      }
+      legend={t('game.legend')}
+      controls={
+        <>
+          <GameActionButton label={tc('actions.hint')} onPress={onHintPress} />
+          {!revealWin && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
+        </>
+      }
+      winOverlay={
+        <WinOverlay
+          visible={revealWin}
+          badge="✅"
+          showConfetti={showConfetti}
+          confettiPalette={CONFETTI_PALETTE}
+          title={t('game.winTitle')}
+          subtitle={t('game.winSubtitle')}
+          nextLabel={tc('actions.nextLevel')}
+          onNext={nextLevel}
         />
-      </View>
-
-      <Text style={styles.legend}>{t('game.legend')}</Text>
-
-      <View style={styles.controls}>
-        <TouchableOpacity style={styles.hintBtn} activeOpacity={0.75} onPress={onHintPress}>
-          <Text style={styles.hintBtnText}>{tc('actions.hint')}</Text>
-        </TouchableOpacity>
-        {!revealWin && (
-          <TouchableOpacity style={styles.skipBtn} activeOpacity={0.75} onPress={onSkipPress}>
-            <Text style={styles.skipBtnText}>{tc('actions.skipLevelAd')}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <WinOverlay
-        visible={revealWin}
-        showConfetti={showConfetti}
-        title={t('game.winTitle')}
-        subtitle={t('game.winSubtitle')}
-        nextLabel={tc('actions.nextLevel')}
-        onNext={nextLevel}
+      }
+    >
+      <ShikakuGrid
+        level={level}
+        placed={placed}
+        conflicts={conflicts}
+        hintedClueIndices={hintedClueIndices}
+        celebrate={celebrate}
+        onCelebrationDone={handleCelebrationDone}
+        onCommitRect={onCommitRect}
+        onTapCell={onTapCell}
       />
-    </SafeAreaView>
+    </GameScreenLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bgDeep },
-  statusRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap', paddingHorizontal: 18, paddingTop: 8, justifyContent: 'center' },
-  statusPill: { fontSize: 11.5, fontWeight: '600', fontFamily: fonts.mono },
-  // Takes up all remaining vertical space between the status row and the
-  // bottom controls, so the board is always centered and Hint always sits
-  // at the very bottom of the screen -- regardless of board size (5x6 to 10x10).
-  boardArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  legend: {
-    fontSize: 10.5,
-    color: colors.textFaint,
-    paddingHorizontal: 18,
-    textAlign: 'center',
-    fontFamily: fonts.mono,
-    lineHeight: 16,
-  },
-  controls: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 6, gap: 8 },
-  hintBtn: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingVertical: 13, alignItems: 'center' },
-  hintBtnText: { color: colors.text, fontWeight: '600', fontSize: 14 },
-  skipBtn: { paddingVertical: 8, alignItems: 'center' },
-  skipBtnText: { color: colors.textFaint, fontWeight: '600', fontSize: 12 },
-});
