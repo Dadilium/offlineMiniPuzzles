@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Signal Arcade",
-    "slug": "signal-arcade",
+    "slug": "puzzlegame",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,13 @@
       "supportsTablet": false,
       "bundleIdentifier": "io.converge.signalarcade",
       "infoPlist": {
-        "CFBundleLocalizations": ["en", "fr"]
+        "CFBundleLocalizations": [
+          "en",
+          "fr",
+          "en",
+          "fr"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,7 +32,29 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-localization"
-    ]
+      "expo-localization",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "puzzlegame",
+          "organization": "antoine-roy"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.0"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0eb3a149-21b2-4db4-9d58-449760426e87"
+      }
+    },
+    "owner": "dadiliums-team"
   }
 }
