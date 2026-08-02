@@ -9,6 +9,7 @@ import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
+import { posthog } from '../../../config/posthog';
 import BudgetChip from '../components/BudgetChip';
 import KindChip from '../components/KindChip';
 import RelayGrid, { RECEIVER_SETTLE_MS } from '../components/RelayGrid';
@@ -59,6 +60,7 @@ export default function GameScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (allReached && !levelsCompleted.has(levelIndex)) {
       markLevelComplete(levelIndex);
+      posthog?.capture('puzzle_level_completed', { game_id: 'relay', level_index: levelIndex + 1 });
     }
   }, [allReached, levelIndex, levelsCompleted, markLevelComplete]);
 
@@ -98,6 +100,9 @@ export default function GameScreen({ route, navigation }: Props) {
 
   function onHintPress() {
     const result = giveHint(levelIndex);
+    if (result.outcome === 'placed') {
+      posthog?.capture('puzzle_hint_requested', { game_id: 'relay', level_index: levelIndex + 1 });
+    }
     if (result.outcome === 'solved') showToast(t('game.hintSolvedToast'));
     if (result.outcome === 'budget-full' && result.color) {
       showToast(t('game.hintBudgetFullToast', { color: t(`game.colorNamesLower.${result.color}`) }));
@@ -115,6 +120,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function onSkipPress() {
     if (allReached) return;
     markLevelSkipped(levelIndex);
+    posthog?.capture('puzzle_level_skipped', { game_id: 'relay', level_index: levelIndex + 1 });
     nextLevel();
   }
 

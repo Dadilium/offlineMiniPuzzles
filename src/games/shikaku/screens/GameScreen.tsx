@@ -9,6 +9,7 @@ import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
+import { posthog } from '../../../config/posthog';
 import ShikakuGrid from '../components/ShikakuGrid';
 import { computeConflicts, computeWin } from '../engine';
 import type { ShikakuStackParamList } from '../navigation';
@@ -117,6 +118,7 @@ export default function GameScreen({ route, navigation }: Props) {
     celebratedForLevel.current = levelIndex;
 
     markLevelComplete(levelIndex);
+    posthog?.capture('puzzle_level_completed', { game_id: 'shikaku', level_index: levelIndex + 1 });
     setCelebrate(true);
   }, [win, level, levelIndex, markLevelComplete]);
 
@@ -142,6 +144,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   function onHintPress() {
     const gaveHint = giveHint(levelIndex);
+    if (gaveHint) posthog?.capture('puzzle_hint_requested', { game_id: 'shikaku', level_index: levelIndex + 1 });
     if (!gaveHint) showToast(t('game.hintFailToast'));
   }
 
@@ -156,6 +159,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function onSkipPress() {
     if (win) return;
     markLevelSkipped(levelIndex);
+    posthog?.capture('puzzle_level_skipped', { game_id: 'shikaku', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
   }

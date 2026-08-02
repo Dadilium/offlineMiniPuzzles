@@ -9,6 +9,7 @@ import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
+import { posthog } from '../../../config/posthog';
 import KingsGrid from '../components/KingsGrid';
 import { REGION_PALETTE } from '../components/TutorialDiagram';
 import { computeAutoUnavailable, computeKingsState } from '../engine';
@@ -70,6 +71,7 @@ export default function GameScreen({ route, navigation }: Props) {
     if (!level || !board) return;
     if (state.win && !levelsCompleted.has(levelIndex)) {
       markLevelComplete(levelIndex);
+      posthog?.capture('puzzle_level_completed', { game_id: 'kings', level_index: levelIndex + 1 });
       setShowConfetti(true);
       const t = setTimeout(() => setShowConfetti(false), 1300);
       return () => clearTimeout(t);
@@ -82,6 +84,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   function onHintPress() {
     const gaveHint = giveHint(levelIndex);
+    if (gaveHint) posthog?.capture('puzzle_hint_requested', { game_id: 'kings', level_index: levelIndex + 1 });
     if (!gaveHint) showToast(t('game.hintFailToast'));
   }
 
@@ -96,6 +99,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function onSkipPress() {
     if (state.win) return;
     markLevelSkipped(levelIndex);
+    posthog?.capture('puzzle_level_skipped', { game_id: 'kings', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
   }

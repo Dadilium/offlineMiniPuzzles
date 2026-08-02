@@ -9,6 +9,7 @@ import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
+import { posthog } from '../../../config/posthog';
 import BlockFillGrid from '../components/BlockFillGrid';
 import { computeWin, isStuck } from '../engine';
 import { countFillable } from '../generation';
@@ -64,6 +65,7 @@ export default function GameScreen({ route, navigation }: Props) {
     if (!path) return;
     if (win && !levelsCompleted.has(levelIndex)) {
       markLevelComplete(levelIndex);
+      posthog?.capture('puzzle_level_completed', { game_id: 'block_fill', level_index: levelIndex + 1 });
       setShowConfetti(true);
       const t = setTimeout(() => setShowConfetti(false), 1300);
       return () => clearTimeout(t);
@@ -97,6 +99,7 @@ export default function GameScreen({ route, navigation }: Props) {
       showToast(t('game.hintFailToast'));
       return;
     }
+    posthog?.capture('puzzle_hint_requested', { game_id: 'block_fill', level_index: levelIndex + 1 });
     if (hintTimer.current) clearTimeout(hintTimer.current);
     setHintCell(cell);
     hintTimer.current = setTimeout(() => setHintCell(null), 1500);
@@ -113,6 +116,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function onSkipPress() {
     if (win) return;
     markLevelSkipped(levelIndex);
+    posthog?.capture('puzzle_level_skipped', { game_id: 'block_fill', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
   }

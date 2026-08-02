@@ -7,6 +7,11 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/Toast';
 import { colors } from './src/theme/colors';
 import * as Sentry from '@sentry/react-native';
+import {
+  PostHogErrorBoundary,
+  PostHogProvider,
+} from 'posthog-react-native';
+import { posthog } from './src/config/posthog';
 
 Sentry.init({
   dsn: 'https://7d85d1b384a74779b5a811e55a9e746e@o4511837045784576.ingest.de.sentry.io/4511837059809360',
@@ -52,7 +57,15 @@ export default Sentry.wrap(function App() {
       <ToastProvider>
         <NavigationContainer theme={navTheme}>
           <StatusBar style="light" />
-          <RootNavigator />
+          {posthog ? (
+            <PostHogProvider client={posthog}>
+              <PostHogErrorBoundary>
+                <RootNavigator />
+              </PostHogErrorBoundary>
+            </PostHogProvider>
+          ) : (
+            <RootNavigator />
+          )}
         </NavigationContainer>
       </ToastProvider>
     </SafeAreaProvider>
