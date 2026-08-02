@@ -9,6 +9,7 @@ import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
+import { posthog } from '../../../config/posthog';
 import ColorSortBoard from '../components/ColorSortBoard';
 import { ACCENT_PALETTE } from '../components/TutorialDiagram';
 import { computeWin, isStuck } from '../engine';
@@ -102,6 +103,7 @@ export default function GameScreen({ route, navigation }: Props) {
     celebratedForLevel.current = levelIndex;
 
     markLevelComplete(levelIndex);
+    posthog?.capture('puzzle_level_completed', { game_id: 'color_sort', level_index: levelIndex + 1, move_count: moveCount });
     setCelebrate(true);
     setShowConfetti(true);
     const confettiTimer = setTimeout(() => setShowConfetti(false), 1300);
@@ -158,6 +160,7 @@ export default function GameScreen({ route, navigation }: Props) {
       return;
     }
     setSelected(null);
+    posthog?.capture('puzzle_hint_requested', { game_id: 'color_sort', level_index: levelIndex + 1 });
     if (hintTimer.current) clearTimeout(hintTimer.current);
     setHint(move);
     hintTimer.current = setTimeout(() => setHint(null), HINT_DURATION_MS);
@@ -174,6 +177,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function onSkipPress() {
     if (win) return;
     markLevelSkipped(levelIndex);
+    posthog?.capture('puzzle_level_skipped', { game_id: 'color_sort', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
   }

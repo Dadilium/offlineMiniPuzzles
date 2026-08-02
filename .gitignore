@@ -22,4 +22,5 @@ output/
 CLAUDE.md
 workflows/
 
+.env
 .env.local

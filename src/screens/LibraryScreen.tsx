@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import GameCard from '../components/GameCard';
@@ -7,7 +7,6 @@ import { translateDynamic } from '../i18n/dynamicKey';
 import { games, comingSoon } from '../games/registry';
 import { colors, fonts } from '../theme/colors';
 import type { RootStackParamList } from '../navigation/types';
-import * as Sentry from '@sentry/react-native';
 type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 
 export default function LibraryScreen({ navigation }: Props) {
@@ -21,8 +20,6 @@ export default function LibraryScreen({ navigation }: Props) {
           <Text style={styles.title}>{t('library.title')}</Text>
           <Text style={styles.sub}>{t('library.subtitle')}</Text>
         </View>
-
-<Button title='Try!' onPress={ () => { Sentry.captureException(new Error('First error')) }}/>
 
         <Text style={styles.sectionLabel}>{t('library.readySection')}</Text>
         <View style={styles.grid}>

@@ -9,6 +9,7 @@ import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
+import { posthog } from '../../../config/posthog';
 import MatchingNumbersGrid, { type PendingMatch } from '../components/MatchingNumbersGrid';
 import FailOverlay from '../components/FailOverlay';
 import { attemptMatch, computeWin, hasLegalMove, MAX_ADD_NUMBERS } from '../engine';
@@ -83,6 +84,7 @@ export default function GameScreen({ route, navigation }: Props) {
     if (!board) return;
     if (win && !levelsCompleted.has(levelIndex)) {
       markLevelComplete(levelIndex);
+      posthog?.capture('puzzle_level_completed', { game_id: 'matching_numbers', level_index: levelIndex + 1 });
       setShowConfetti(true);
       const t = setTimeout(() => setShowConfetti(false), 1300);
       return () => clearTimeout(t);
@@ -138,6 +140,7 @@ export default function GameScreen({ route, navigation }: Props) {
       showToast(t('game.hintFailToast'));
       return;
     }
+    posthog?.capture('puzzle_hint_requested', { game_id: 'matching_numbers', level_index: levelIndex + 1 });
     if (hintTimer.current) clearTimeout(hintTimer.current);
     setHintPair(pair);
     hintTimer.current = setTimeout(() => setHintPair(null), 1500);
@@ -159,6 +162,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function onSkipPress() {
     if (win) return;
     markLevelSkipped(levelIndex);
+    posthog?.capture('puzzle_level_skipped', { game_id: 'matching_numbers', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
   }
