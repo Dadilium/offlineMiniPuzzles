@@ -4,11 +4,19 @@ import { colors } from '../../../theme/colors';
 import type { CellState, KingsLevel } from '../types';
 import { REGION_PALETTE } from './TutorialDiagram';
 
+const MIN_CELL = 24;
 const MAX_CELL = 54;
-const screenWidth = Dimensions.get('window').width;
+// Rough non-board chrome (top bar, status row, legend, controls, safe areas)
+// so a large board sizes itself to actually fit the screen instead of
+// overflowing it -- same estimate as ShikakuGrid, which has the same
+// statusRow/legend/controls shape.
+const CHROME_ESTIMATE = 330;
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 function cellSizeFor(n: number) {
-  return Math.min(MAX_CELL, Math.floor((screenWidth - 64) / n));
+  const widthBudget = Math.floor((screenWidth - 48) / n);
+  const heightBudget = Math.floor((screenHeight - CHROME_ESTIMATE) / n);
+  return Math.max(MIN_CELL, Math.min(MAX_CELL, widthBudget, heightBudget));
 }
 
 function hexToRgba(hex: string, alpha: number): string {

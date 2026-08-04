@@ -1,4 +1,7 @@
-import { relayGame } from './relay';
+// Relay is disabled for launch -- levels are too costly to author (see
+// workflows/relay-level-generator.js). Code and locale files are untouched;
+// re-add the import and the array entry below to bring it back.
+// import { relayGame } from './relay';
 import { kingsGame } from './kings';
 import { matchingNumbersGame } from './matching-numbers';
 import { blockFillGame } from './block-fill';
@@ -12,7 +15,6 @@ import type { ComingSoonEntry, GameModule } from './types';
 //   import { newGame } from './new-game';
 //   export const games: GameModule[] = [relayGame, kingsGame, newGame];
 export const games: GameModule[] = [
-  relayGame,
   kingsGame,
   matchingNumbersGame,
   blockFillGame,

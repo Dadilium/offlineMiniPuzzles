@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, SafeAreaView } from 'react-native';
+import { ActivityIndicator, InteractionManager, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import IconButton from '../../../components/IconButton';
@@ -8,7 +8,7 @@ import GameScreenLayout from '../../../components/GameScreenLayout';
 import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
-import { colors } from '../../../theme/colors';
+import { colors, fonts } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
 import KingsGrid from '../components/KingsGrid';
 import { REGION_PALETTE } from '../components/TutorialDiagram';
@@ -39,14 +39,21 @@ export default function GameScreen({ route, navigation }: Props) {
 
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect, never during
-  // render. Generation is usually near-instant, but n=8-9 boards can
-  // occasionally take several seconds (rare valid layouts at that size), so
-  // the next level is prefetched the moment this one opens -- the whole
-  // time the player spends solving this level is the background-generation
-  // window, not just the brief win/confetti pause.
+  // render. The search yields back to the JS thread in small chunks so it
+  // never freezes touches/animations. This level is marked `urgent` since
+  // the player is looking right at the loading state if it isn't ready
+  // (tight wall-clock cap, more likely to fall back a rung); the two
+  // prefetched-ahead levels are not urgent, since nothing is waiting on them
+  // yet -- they get a far more generous cap to find the true skill-matched
+  // board before settling for anything easier. In the common case this
+  // level was itself already satisfied by a prior screen's prefetch, so the
+  // urgent call below is just a no-op recheck.
   useEffect(() => {
-    ensureLevel(levelIndex);
-    InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
+    ensureLevel(levelIndex, { urgent: true });
+    InteractionManager.runAfterInteractions(() => {
+      ensureLevel(levelIndex + 1);
+      ensureLevel(levelIndex + 2);
+    });
   }, [levelIndex, ensureLevel]);
 
   const level = levelFor(levelIndex);
@@ -104,8 +111,23 @@ export default function GameScreen({ route, navigation }: Props) {
     nextLevel();
   }
 
+  // Normally invisible -- ensureLevel already generated (and prefetched) this
+  // level well before the player got here. Only shows up if generation is
+  // still running against its wall-clock deadline (see levelSource.ts), so
+  // it must never look frozen: a real spinner rather than a blank screen.
   if (!level || !board) {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
+    return (
+      <GameScreenLayout
+        onBack={() => navigation.navigate('KingsHub')}
+        backAccessibilityLabel={tc('actions.backToHub')}
+        title={t('game.levelTitle', { number: levelIndex + 1 })}
+      >
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={colors.accentBright} />
+          <Text style={styles.loadingText}>{t('game.generatingLabel')}</Text>
+        </View>
+      </GameScreenLayout>
+    );
   }
 
   return (
@@ -163,3 +185,8 @@ export default function GameScreen({ route, navigation }: Props) {
     </GameScreenLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: { alignItems: 'center', gap: 12 },
+  loadingText: { fontFamily: fonts.body, fontSize: 13, color: colors.textDim },
+});

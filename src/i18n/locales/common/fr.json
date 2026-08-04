@@ -17,7 +17,9 @@
     "languageLabel": "Langue",
     "versionLabel": "Version",
     "gameProgressLabel": "Progression des jeux",
-    "gameProgressSub": "Réinitialiser la progression d'un jeu"
+    "gameProgressSub": "Réinitialiser la progression d'un jeu",
+    "privacyPolicyLabel": "Politique de confidentialité",
+    "privacyPolicySub": "S'ouvre dans votre navigateur"
   },
   "gameProgress": {
     "eyebrow": "Réglages",

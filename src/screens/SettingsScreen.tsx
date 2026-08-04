@@ -1,11 +1,13 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import TopBar from '../components/TopBar';
 import { SUPPORTED_LANGUAGES } from '../i18n';
 import { setStoredLanguage } from '../i18n/languagePreference';
 import { colors, fonts, radii, spacing } from '../theme/colors';
+import { PRIVACY_POLICY_URL } from '../config/links';
 import appConfig from '../../app.json';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -60,6 +62,22 @@ export default function SettingsScreen({ navigation }: Props) {
             <Text style={styles.chevron}>›</Text>
           </View>
         </TouchableOpacity>
+
+        <View style={styles.spacer} />
+
+        <TouchableOpacity
+          style={styles.card}
+          activeOpacity={0.75}
+          onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+        >
+          <View style={styles.rowBetween}>
+            <View style={styles.flexShrink}>
+              <Text style={styles.label}>{t('settings.privacyPolicyLabel')}</Text>
+              <Text style={styles.sub}>{t('settings.privacyPolicySub')}</Text>
+            </View>
+            <Ionicons name="open-outline" size={18} color={colors.textFaint} />
+          </View>
+        </TouchableOpacity>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -74,7 +92,8 @@ export default function SettingsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
-  scrollContent: { padding: spacing.lg, gap: spacing.md },
+  scrollContent: { flexGrow: 1, padding: spacing.lg, gap: spacing.md },
+  spacer: { flex: 1 },
   footer: {
     borderTopWidth: 1,
     borderTopColor: colors.borderSoft,

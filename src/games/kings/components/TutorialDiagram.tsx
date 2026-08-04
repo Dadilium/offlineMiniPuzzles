@@ -4,15 +4,21 @@ import { colors } from '../../../theme/colors';
 
 const BOARD_RADIUS = 10;
 
-// The same 7-color region palette used in the real game grid (see
-// KingsGrid.tsx) -- kept here too so tutorial diagrams look identical.
+// The same region palette used in the real game grid (see KingsGrid.tsx) --
+// kept here too so tutorial diagrams look identical. Exactly 9 entries, one
+// per region up to the largest board (n=9), spaced around the hue wheel so
+// no two ever read as "the same color" once alpha-blended over the dark
+// board background -- `rid % REGION_PALETTE.length` then never wraps for a
+// real board, so no two regions can collide.
 export const REGION_PALETTE = [
-  colors.signalBlue,
   colors.signalRed,
-  colors.success,
   colors.warn,
+  colors.gold,
+  colors.success,
+  colors.teal,
+  colors.signalBlue,
+  colors.indigo,
   colors.purple,
-  colors.cyan,
   colors.pink,
 ];
 

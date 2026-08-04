@@ -1,7 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { applyHint, cycleCellState, makeEmptyBoard } from '../engine';
-import { createLevelForIndexRobust, fingerprintRegions, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
+import {
+  BACKGROUND_DEADLINES,
+  createLevelForIndexRobust,
+  fingerprintRegions,
+  INITIAL_SKILL_RATING,
+  nextSkillRating,
+  URGENT_DEADLINES,
+  type SkillRating,
+} from '../generation';
 import type { CellState, KingsLevel } from '../types';
 
 const STORAGE_KEY = '@signal-arcade/kings/progress/v2';
@@ -85,8 +93,11 @@ interface KingsProgressContextValue {
    * update provider state, so call it from an effect or event handler --
    * never from a render body. Safe to call speculatively ahead of need
    * (e.g. to prefetch the next level) since it's a no-op once a level has
-   * already been generated for that index. */
-  ensureLevel: (levelIndex: number) => void;
+   * already been generated for that index. Pass `urgent: true` only when a
+   * player is actively waiting on this specific level (the loading state is
+   * on screen) -- it trades a lower chance of the exact skill-matched board
+   * for a hard cap on wait time. Background prefetch calls should omit it. */
+  ensureLevel: (levelIndex: number, opts?: { urgent?: boolean }) => void;
   boardsByLevel: Record<number, CellState[][]>;
   levelsCompleted: Set<number>;
   levelsSkipped: Set<number>;
@@ -139,20 +150,37 @@ export function KingsProgressProvider({ children }: { children: React.ReactNode 
 
   const levelFor = useCallback((levelIndex: number): KingsLevel | undefined => state.generatedLevels[levelIndex], [state]);
 
-  const ensureLevel = useCallback((levelIndex: number): void => {
+  // Tracks levels currently being generated so a second call for the same
+  // index (e.g. the same prefetch firing twice) doesn't kick off a duplicate
+  // search -- generation is no longer instant, so overlapping calls are
+  // expected rather than a same-tick edge case.
+  const pendingGeneration = useRef<Set<number>>(new Set());
+
+  const ensureLevel = useCallback((levelIndex: number, opts?: { urgent?: boolean }): void => {
     const current = stateRef.current;
     if (current.generatedLevels[levelIndex]) return;
+    if (pendingGeneration.current.has(levelIndex)) return;
+    pendingGeneration.current.add(levelIndex);
 
-    const level = createLevelForIndexRobust(levelIndex, current.skillRating, current.recentFingerprints);
-    const fingerprint = fingerprintRegions(level.regions);
-    const next: PersistedShape = {
-      ...current,
-      generatedLevels: { ...current.generatedLevels, [levelIndex]: level },
-      boardsByLevel: { ...current.boardsByLevel, [levelIndex]: makeEmptyBoard(level.n) },
-      recentFingerprints: [...current.recentFingerprints, fingerprint].slice(-MAX_RECENT_FINGERPRINTS),
-    };
-    stateRef.current = next;
-    setState(next);
+    const deadlines = opts?.urgent ? URGENT_DEADLINES : BACKGROUND_DEADLINES;
+    createLevelForIndexRobust(levelIndex, current.skillRating, current.recentFingerprints, deadlines)
+      .then((level) => {
+        pendingGeneration.current.delete(levelIndex);
+        const latest = stateRef.current;
+        if (latest.generatedLevels[levelIndex]) return; // generated via another path while this was in flight
+        const fingerprint = fingerprintRegions(level.regions);
+        const next: PersistedShape = {
+          ...latest,
+          generatedLevels: { ...latest.generatedLevels, [levelIndex]: level },
+          boardsByLevel: { ...latest.boardsByLevel, [levelIndex]: makeEmptyBoard(level.n) },
+          recentFingerprints: [...latest.recentFingerprints, fingerprint].slice(-MAX_RECENT_FINGERPRINTS),
+        };
+        stateRef.current = next;
+        setState(next);
+      })
+      .catch(() => {
+        pendingGeneration.current.delete(levelIndex);
+      });
   }, []);
 
   // Always keep one level ready ahead of the player rather than only
@@ -163,7 +191,7 @@ export function KingsProgressProvider({ children }: { children: React.ReactNode 
   // background-generation window -- important for n=8-9 boards, which can
   // occasionally take several seconds to find.
   useEffect(() => {
-    if (ready) ensureLevel(0);
+    if (ready) ensureLevel(0, { urgent: true });
   }, [ready, ensureLevel]);
 
   const cycleCell = useCallback((levelIndex: number, r: number, c: number) => {

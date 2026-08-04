@@ -77,7 +77,7 @@ export function difficultyParams(rating: SkillRating): GenerationParams {
   return {
     nRange: [nMin, nMax],
     requiredTier,
-    styleWeights: { uniform: 0.55, directional: 0.45 },
+    styleWeights: { uniform: 0.3, directional: 0.25, thin: 0.25, jagged: 0.2 },
   };
 }
 
@@ -94,4 +94,16 @@ export function maxAttemptsFor(params: GenerationParams): number {
   if (nMax === 7) return 6000;
   if (nMax === 8) return 10000;
   return 30000;
+}
+
+/** Per-rung drop used by the generation fallback ladder (see
+ * createLevelForIndexRobust) when the skill-matched board can't be found in
+ * time. One step is tuned to move `difficultyParams` down roughly one grid
+ * size (e.g. rating 100 -> 70 takes nMax from 9 to 8) rather than dropping
+ * all the way to INITIAL_SKILL_RATING -- a player at the top of the range
+ * timing out should land on a still-hard board, not a beginner one. */
+const FALLBACK_STEP = 30;
+
+export function stepDownRating(rating: SkillRating): SkillRating {
+  return Math.max(MIN_RATING, rating - FALLBACK_STEP);
 }

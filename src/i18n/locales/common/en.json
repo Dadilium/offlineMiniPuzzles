@@ -17,7 +17,9 @@
     "languageLabel": "Language",
     "versionLabel": "Version",
     "gameProgressLabel": "Game Progress",
-    "gameProgressSub": "Reset progress for a specific game"
+    "gameProgressSub": "Reset progress for a specific game",
+    "privacyPolicyLabel": "Privacy Policy",
+    "privacyPolicySub": "Opens in your browser"
   },
   "gameProgress": {
     "eyebrow": "Settings",

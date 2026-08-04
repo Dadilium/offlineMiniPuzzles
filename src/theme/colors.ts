@@ -23,6 +23,8 @@ export const colors = {
   purple: '#a855f7',
   cyan: '#22d3ee',
   pink: '#f472b6',
+  teal: '#14b8a6',
+  indigo: '#6366f1',
 };
 
 export const fonts = {

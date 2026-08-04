@@ -1,6 +1,6 @@
 import type { RNG } from './rng';
 
-export type RegionStyle = 'uniform' | 'directional';
+export type RegionStyle = 'uniform' | 'directional' | 'thin' | 'jagged';
 
 interface Cell {
   r: number;
@@ -71,6 +71,33 @@ function directionalPick(n: number, regions: number[][], rid: number, frontier: 
   return best[Math.floor(rng() * best.length)];
 }
 
+/** Among a region's frontier, prefers cells that touch the region at only
+ * one point -- keeps growth path-like (roughly one cell wide) instead of
+ * blobbing out. The same hidden-singles/locked-candidates deduction reads
+ * as far less obvious on a thin, meandering region than on a compact one,
+ * even though the underlying logic is identical. Falls back to the full
+ * frontier when every candidate would blob up (e.g. a tightly boxed-in
+ * region with no thin option left). */
+function thinPick(n: number, regions: number[][], rid: number, frontier: Cell[], rng: RNG): Cell {
+  const attachPoints = (cand: Cell): number => {
+    let count = 0;
+    for (const [dr, dc] of DIRS) {
+      const rr = cand.r + dr;
+      const cc = cand.c + dc;
+      if (rr >= 0 && rr < n && cc >= 0 && cc < n && regions[rr][cc] === rid) count++;
+    }
+    return count;
+  };
+  const thin = frontier.filter((cand) => attachPoints(cand) === 1);
+  const pool = thin.length > 0 ? thin : frontier;
+  return pool[Math.floor(rng() * pool.length)];
+}
+
+/** How often a 'jagged' region re-rolls its preferred growth direction, per
+ * claimed cell -- frequent enough to bend into an L/Z shape instead of a
+ * straight snake, not so frequent it collapses into plain randomness. */
+const JAGGED_TURN_CHANCE = 0.3;
+
 /**
  * Random contiguous region growth: pick `n` seed cells, then grow every
  * region simultaneously and round-robin, one cell per region per round.
@@ -104,10 +131,17 @@ export function generateRegions(n: number, rng: RNG, style: RegionStyle = 'unifo
       const frontier = frontierFor(n, regions, rid);
       if (frontier.length === 0) continue;
 
-      const pick =
-        style === 'directional' && frontier.length > 1
-          ? directionalPick(n, regions, rid, frontier, preferredDir[rid], rng)
-          : frontier[Math.floor(rng() * frontier.length)];
+      let pick: Cell;
+      if (style === 'thin') {
+        pick = thinPick(n, regions, rid, frontier, rng);
+      } else if (style === 'jagged') {
+        if (rng() < JAGGED_TURN_CHANCE) preferredDir[rid] = DIRS[Math.floor(rng() * DIRS.length)];
+        pick = frontier.length > 1 ? directionalPick(n, regions, rid, frontier, preferredDir[rid], rng) : frontier[0];
+      } else if (style === 'directional' && frontier.length > 1) {
+        pick = directionalPick(n, regions, rid, frontier, preferredDir[rid], rng);
+      } else {
+        pick = frontier[Math.floor(rng() * frontier.length)];
+      }
 
       regions[pick.r][pick.c] = rid;
       remaining--;
