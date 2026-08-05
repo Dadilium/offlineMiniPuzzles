@@ -1,5 +1,5 @@
 import './src/i18n';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { colors } from './src/theme/colors';
 import * as Sentry from '@sentry/react-native';
 import { PostHogProvider } from 'posthog-react-native';
 import { posthog } from './src/config/posthog';
+import { initAds } from './src/config/ads';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
 Sentry.init({
@@ -38,6 +39,10 @@ Sentry.init({
 });
 
 export default Sentry.wrap(function App() {
+  useEffect(() => {
+    initAds().catch((error) => Sentry.captureException(error));
+  }, []);
+
   const navTheme = {
     dark: true,
     colors: {

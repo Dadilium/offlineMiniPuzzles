@@ -1,4 +1,4 @@
-# Signal Arcade
+# Puzzle Den
 
 A single-codebase Expo (React Native + TypeScript) app collecting small, self-contained logic puzzle games. Runs on iOS, Android, and web from one codebase.
 

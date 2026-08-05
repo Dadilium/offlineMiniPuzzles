@@ -10,6 +10,8 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
+import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import MatchingNumbersGrid, { type PendingMatch } from '../components/MatchingNumbersGrid';
 import FailOverlay from '../components/FailOverlay';
 import { attemptMatch, computeWin, hasLegalMove, MAX_ADD_NUMBERS } from '../engine';
@@ -79,6 +81,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const showFail = stuck && addNumbersRemaining <= 0 && !pendingMatch && !rejectedPair;
   const remainingTiles = useMemo(() => (board ? board.flat().filter((v) => v !== null).length : 0), [board]);
 
+  const { notifyLevelCompleted } = useInterstitialOnComplete('matching-numbers');
+
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {
     if (!board) return;
@@ -86,10 +90,11 @@ export default function GameScreen({ route, navigation }: Props) {
       markLevelComplete(levelIndex);
       posthog?.capture('puzzle_level_completed', { game_id: 'matching_numbers', level_index: levelIndex + 1 });
       setShowConfetti(true);
+      notifyLevelCompleted();
       const t = setTimeout(() => setShowConfetti(false), 1300);
       return () => clearTimeout(t);
     }
-  }, [win, board, levelIndex, levelsCompleted, markLevelComplete]);
+  }, [win, board, levelIndex, levelsCompleted, markLevelComplete, notifyLevelCompleted]);
 
   useEffect(() => {
     return () => {
@@ -159,12 +164,20 @@ export default function GameScreen({ route, navigation }: Props) {
     navigation.replace('MatchingNumbersGame', { levelIndex: levelIndex + 1 });
   }
 
-  function onSkipPress() {
-    if (win) return;
+  const { requestSkip, isAdReady: isSkipAdReady } = useRewardedSkip(() => {
     markLevelSkipped(levelIndex);
     posthog?.capture('puzzle_level_skipped', { game_id: 'matching_numbers', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
+  });
+
+  function onSkipPress() {
+    if (win) return;
+    if (!isSkipAdReady) {
+      showToast(tc('actions.skipAdNotReady'));
+      return;
+    }
+    requestSkip();
   }
 
   function onRetryPress() {

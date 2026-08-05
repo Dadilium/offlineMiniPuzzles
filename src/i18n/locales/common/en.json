@@ -1,10 +1,10 @@
 {
   "library": {
     "eyebrow": "Offline Game Library",
-    "title": "Signal Arcade",
+    "title": "Puzzle Den",
     "subtitle": "Pick up, play, no wifi required.",
     "readySection": "Ready to play",
-    "comingSoonSection": "More frequencies incoming",
+    "comingSoonSection": "More puzzles incoming",
     "navLibrary": "LIBRARY",
     "navSettings": "SETTINGS"
   },
@@ -41,6 +41,7 @@
     "resetLevel": "Reset level",
     "replayTutorial": "Replay the tutorial",
     "skipLevelAd": "Skip level (watch an ad)",
+    "skipAdNotReady": "Ad not ready yet, try again in a moment",
     "nextLevel": "Next level",
     "backToHub": "Back to hub",
     "backToLibrary": "Back to library"

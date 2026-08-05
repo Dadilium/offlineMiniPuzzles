@@ -10,6 +10,8 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
+import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import ShikakuGrid from '../components/ShikakuGrid';
 import { computeConflicts, computeWin } from '../engine';
 import type { ShikakuStackParamList } from '../navigation';
@@ -93,6 +95,8 @@ export default function GameScreen({ route, navigation }: Props) {
 
   useEffect(() => clearConfettiTimer, []);
 
+  const { notifyLevelCompleted } = useInterstitialOnComplete('shikaku');
+
   // Boards persist forever, so reopening an already-completed level would
   // otherwise land straight on the solved board with the win popup showing.
   // Auto-restart it once per mount so there's always a fresh board to play.
@@ -125,6 +129,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function handleCelebrationDone() {
     setRevealWin(true);
     setShowConfetti(true);
+    notifyLevelCompleted();
     clearConfettiTimer();
     confettiTimerRef.current = setTimeout(() => setShowConfetti(false), 1300);
   }
@@ -156,12 +161,20 @@ export default function GameScreen({ route, navigation }: Props) {
     navigation.replace('ShikakuGame', { levelIndex: levelIndex + 1 });
   }
 
-  function onSkipPress() {
-    if (win) return;
+  const { requestSkip, isAdReady: isSkipAdReady } = useRewardedSkip(() => {
     markLevelSkipped(levelIndex);
     posthog?.capture('puzzle_level_skipped', { game_id: 'shikaku', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
+  });
+
+  function onSkipPress() {
+    if (win) return;
+    if (!isSkipAdReady) {
+      showToast(tc('actions.skipAdNotReady'));
+      return;
+    }
+    requestSkip();
   }
 
   if (!level) {

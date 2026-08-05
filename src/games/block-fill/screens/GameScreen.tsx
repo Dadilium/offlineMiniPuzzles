@@ -10,6 +10,8 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
+import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import BlockFillGrid from '../components/BlockFillGrid';
 import { computeWin, isStuck } from '../engine';
 import { countFillable } from '../generation';
@@ -60,6 +62,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const totalFillable = level ? countFillable(level.fillable) : 0;
   const palette = useMemo(() => paletteForLevel(levelIndex), [levelIndex]);
 
+  const { notifyLevelCompleted } = useInterstitialOnComplete('block-fill');
+
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {
     if (!path) return;
@@ -67,10 +71,11 @@ export default function GameScreen({ route, navigation }: Props) {
       markLevelComplete(levelIndex);
       posthog?.capture('puzzle_level_completed', { game_id: 'block_fill', level_index: levelIndex + 1 });
       setShowConfetti(true);
+      notifyLevelCompleted();
       const t = setTimeout(() => setShowConfetti(false), 1300);
       return () => clearTimeout(t);
     }
-  }, [win, path, levelIndex, levelsCompleted, markLevelComplete]);
+  }, [win, path, levelIndex, levelsCompleted, markLevelComplete, notifyLevelCompleted]);
 
   useEffect(() => {
     return () => {
@@ -113,12 +118,20 @@ export default function GameScreen({ route, navigation }: Props) {
     navigation.replace('BlockFillGame', { levelIndex: levelIndex + 1 });
   }
 
-  function onSkipPress() {
-    if (win) return;
+  const { requestSkip, isAdReady: isSkipAdReady } = useRewardedSkip(() => {
     markLevelSkipped(levelIndex);
     posthog?.capture('puzzle_level_skipped', { game_id: 'block_fill', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
+  });
+
+  function onSkipPress() {
+    if (win) return;
+    if (!isSkipAdReady) {
+      showToast(tc('actions.skipAdNotReady'));
+      return;
+    }
+    requestSkip();
   }
 
   function onRetryPress() {

@@ -2,6 +2,7 @@ import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import AdBanner from '../components/AdBanner';
 import GameCard from '../components/GameCard';
 import { translateDynamic } from '../i18n/dynamicKey';
 import { games, comingSoon } from '../games/registry';
@@ -47,6 +48,8 @@ export default function LibraryScreen({ navigation }: Props) {
           </>
         )}
       </ScrollView>
+
+      <AdBanner />
 
       <View style={styles.bottomNav}>
         <View style={styles.navItem}>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts } from '../theme/colors';
+import AdBanner from './AdBanner';
 import TopBar from './TopBar';
 
 interface Props {
@@ -53,6 +54,8 @@ export default function GameScreenLayout({
       {legend ? <Text style={styles.legend}>{legend}</Text> : null}
 
       {controls && <View style={styles.controls}>{controls}</View>}
+
+      <AdBanner />
 
       {winOverlay}
     </SafeAreaView>

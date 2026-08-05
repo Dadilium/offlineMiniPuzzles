@@ -1,10 +1,10 @@
 {
   "library": {
     "eyebrow": "Ludothèque hors ligne",
-    "title": "Signal Arcade",
+    "title": "Puzzle Den",
     "subtitle": "Prenez en main et jouez, sans wifi.",
     "readySection": "Prêt à jouer",
-    "comingSoonSection": "D'autres fréquences arrivent",
+    "comingSoonSection": "D'autres jeux arrivent",
     "navLibrary": "LUDOTHÈQUE",
     "navSettings": "RÉGLAGES"
   },
@@ -41,6 +41,7 @@
     "resetLevel": "Réinitialiser le niveau",
     "replayTutorial": "Revoir le tutoriel",
     "skipLevelAd": "Passer le niveau (voir une pub)",
+    "skipAdNotReady": "Pub pas encore prête, réessayez dans un instant",
     "nextLevel": "Niveau suivant",
     "backToHub": "Retour à l'accueil",
     "backToLibrary": "Retour à la ludothèque"

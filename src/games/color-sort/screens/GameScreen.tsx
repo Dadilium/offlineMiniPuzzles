@@ -10,6 +10,8 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
+import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import ColorSortBoard from '../components/ColorSortBoard';
 import { ACCENT_PALETTE } from '../components/TutorialDiagram';
 import { computeWin, isStuck } from '../engine';
@@ -86,6 +88,8 @@ export default function GameScreen({ route, navigation }: Props) {
     celebratedForLevel.current = null;
   }
 
+  const { notifyLevelCompleted } = useInterstitialOnComplete('color-sort');
+
   useEffect(() => {
     if (!level) return;
     if (restartedForLevel.current === levelIndex) return;
@@ -106,9 +110,10 @@ export default function GameScreen({ route, navigation }: Props) {
     posthog?.capture('puzzle_level_completed', { game_id: 'color_sort', level_index: levelIndex + 1, move_count: moveCount });
     setCelebrate(true);
     setShowConfetti(true);
+    notifyLevelCompleted();
     const confettiTimer = setTimeout(() => setShowConfetti(false), 1300);
     return () => clearTimeout(confettiTimer);
-  }, [win, level, tubes, levelIndex, markLevelComplete]);
+  }, [win, level, tubes, levelIndex, markLevelComplete, notifyLevelCompleted]);
 
   function clearHint() {
     if (hintTimer.current) clearTimeout(hintTimer.current);
@@ -174,12 +179,20 @@ export default function GameScreen({ route, navigation }: Props) {
     navigation.replace('ColorSortGame', { levelIndex: levelIndex + 1 });
   }
 
-  function onSkipPress() {
-    if (win) return;
+  const { requestSkip, isAdReady: isSkipAdReady } = useRewardedSkip(() => {
     markLevelSkipped(levelIndex);
     posthog?.capture('puzzle_level_skipped', { game_id: 'color_sort', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
+  });
+
+  function onSkipPress() {
+    if (win) return;
+    if (!isSkipAdReady) {
+      showToast(tc('actions.skipAdNotReady'));
+      return;
+    }
+    requestSkip();
   }
 
   if (!level || !tubes) {

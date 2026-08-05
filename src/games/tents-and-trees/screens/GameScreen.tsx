@@ -10,6 +10,8 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
+import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import TentsAndTreesGrid, { waveDurationMs } from '../components/TentsAndTreesGrid';
 import { computeCounts, computeWin } from '../engine';
 import type { TentsAndTreesStackParamList } from '../navigation';
@@ -77,6 +79,8 @@ export default function GameScreen({ route, navigation }: Props) {
     celebratedForLevel.current = null;
   }
 
+  const { notifyLevelCompleted } = useInterstitialOnComplete('tents-and-trees');
+
   // Boards persist forever, so reopening an already-completed level would
   // otherwise land straight on the solved board with the win popup showing.
   // Auto-restart it once per mount so there's always a fresh board to play.
@@ -107,13 +111,14 @@ export default function GameScreen({ route, navigation }: Props) {
     const revealTimer = setTimeout(() => {
       setRevealWin(true);
       setShowConfetti(true);
+      notifyLevelCompleted();
     }, waveMs);
     const confettiTimer = setTimeout(() => setShowConfetti(false), waveMs + 1300);
     return () => {
       clearTimeout(revealTimer);
       clearTimeout(confettiTimer);
     };
-  }, [win, level, tents, levelIndex, markLevelComplete]);
+  }, [win, level, tents, levelIndex, markLevelComplete, notifyLevelCompleted]);
 
   function onCellPress(r: number, c: number) {
     toggleTentAt(levelIndex, r, c);
@@ -138,12 +143,20 @@ export default function GameScreen({ route, navigation }: Props) {
     navigation.replace('TentsAndTreesGame', { levelIndex: levelIndex + 1 });
   }
 
-  function onSkipPress() {
-    if (win) return;
+  const { requestSkip, isAdReady: isSkipAdReady } = useRewardedSkip(() => {
     markLevelSkipped(levelIndex);
     posthog?.capture('puzzle_level_skipped', { game_id: 'tents_and_trees', level_index: levelIndex + 1 });
     ensureLevel(levelIndex + 1);
     nextLevel();
+  });
+
+  function onSkipPress() {
+    if (win) return;
+    if (!isSkipAdReady) {
+      showToast(tc('actions.skipAdNotReady'));
+      return;
+    }
+    requestSkip();
   }
 
   if (!level || !tents) {

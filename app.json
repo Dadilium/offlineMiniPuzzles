@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Signal Arcade",
+    "name": "Puzzle Den",
     "slug": "puzzlegame",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,7 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "io.converge.signalarcade",
+      "bundleIdentifier": "com.antoineroy.puzzleden",
       "infoPlist": {
         "CFBundleLocalizations": [
           "en",
@@ -26,7 +26,7 @@
       }
     },
     "android": {
-      "package": "io.converge.signalarcade"
+      "package": "com.antoineroy.puzzleden"
     },
     "web": {
       "bundler": "metro"
@@ -47,6 +47,19 @@
           "ios": {
             "deploymentTarget": "15.0"
           }
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "This identifier is used to show you ads that are more relevant to your interests."
+        }
+      ],
+      [
+        "react-native-google-mobile-ads/app.plugin.js",
+        {
+          "androidAppId": "ca-app-pub-2631204280172241~3792617336",
+          "iosAppId": "ca-app-pub-2631204280172241~3357503060"
         }
       ]
     ],
