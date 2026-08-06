@@ -1,16 +1,21 @@
 import './src/i18n';
 import React, { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/Toast';
+import AdBanner from './src/components/AdBanner';
 import { colors } from './src/theme/colors';
 import * as Sentry from '@sentry/react-native';
 import { PostHogProvider } from 'posthog-react-native';
 import { posthog } from './src/config/posthog';
-import { initAds } from './src/config/ads';
+import { runStartupTasks } from './src/startup/bootstrap';
 import ErrorBoundary from './src/components/ErrorBoundary';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 Sentry.init({
   dsn: 'https://7d85d1b384a74779b5a811e55a9e746e@o4511837045784576.ingest.de.sentry.io/4511837059809360',
@@ -40,7 +45,9 @@ Sentry.init({
 
 export default Sentry.wrap(function App() {
   useEffect(() => {
-    initAds().catch((error) => Sentry.captureException(error));
+    runStartupTasks((error) => Sentry.captureException(error)).finally(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    });
   }, []);
 
   const navTheme = {
@@ -58,19 +65,32 @@ export default Sentry.wrap(function App() {
   return (
     <SafeAreaProvider>
       <ToastProvider>
-        <NavigationContainer theme={navTheme}>
-          <StatusBar style="light" />
-          <ErrorBoundary>
-            {posthog ? (
-              <PostHogProvider client={posthog}>
-                <RootNavigator />
-              </PostHogProvider>
-            ) : (
-              <RootNavigator />
-            )}
-          </ErrorBoundary>
-        </NavigationContainer>
+        <View style={styles.appRoot}>
+          <View style={styles.navigatorSlot}>
+            <NavigationContainer theme={navTheme}>
+              <StatusBar style="light" />
+              <ErrorBoundary>
+                {posthog ? (
+                  <PostHogProvider client={posthog}>
+                    <RootNavigator />
+                  </PostHogProvider>
+                ) : (
+                  <RootNavigator />
+                )}
+              </ErrorBoundary>
+            </NavigationContainer>
+          </View>
+          {/* Mounted once here rather than per-screen, so navigating between
+           * screens reuses this single native ad instance instead of
+           * requesting a new one on every push. */}
+          <AdBanner />
+        </View>
       </ToastProvider>
     </SafeAreaProvider>
   );
+});
+
+const styles = StyleSheet.create({
+  appRoot: { flex: 1, backgroundColor: colors.bgDeep },
+  navigatorSlot: { flex: 1 },
 });

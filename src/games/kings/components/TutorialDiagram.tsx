@@ -1,6 +1,7 @@
 import React from 'react';
-import Svg, { Circle, ClipPath, Defs, G, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, Rect } from 'react-native-svg';
 import { colors } from '../../../theme/colors';
+import { KingCrownGlyph } from './KingCrown';
 
 const BOARD_RADIUS = 10;
 
@@ -60,11 +61,7 @@ export function KingsMiniGrid({ cells, n, size }: { cells: MiniCell[]; n: number
     const cx = cell.c * cw + cw / 2;
     const cy = cell.r * cw + cw / 2;
     if (cell.piece === 'king') {
-      return (
-        <SvgText key={`p-${cell.r}-${cell.c}`} x={cx} y={cy + cw * 0.16} fontSize={cw * 0.62} textAnchor="middle" fill="#fffaf0">
-          ♚
-        </SvgText>
-      );
+      return <KingCrownGlyph key={`p-${cell.r}-${cell.c}`} x={cx} y={cy} size={cw * 0.62} fill="#fffaf0" />;
     }
     if (cell.piece === 'mark') {
       return <Circle key={`p-${cell.r}-${cell.c}`} cx={cx} cy={cy} r={cw * 0.09} fill="rgba(238,240,246,0.55)" />;

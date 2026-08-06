@@ -1,7 +1,7 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts } from '../theme/colors';
-import AdBanner from './AdBanner';
 import TopBar from './TopBar';
 
 interface Props {
@@ -38,7 +38,7 @@ export default function GameScreenLayout({
   winOverlay,
 }: Props) {
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <TopBar onBack={onBack} backAccessibilityLabel={backAccessibilityLabel} eyebrow={eyebrow} title={title} right={headerRight} />
 
       {statusRow && <View style={styles.statusRow}>{statusRow}</View>}
@@ -54,8 +54,6 @@ export default function GameScreenLayout({
       {legend ? <Text style={styles.legend}>{legend}</Text> : null}
 
       {controls && <View style={styles.controls}>{controls}</View>}
-
-      <AdBanner />
 
       {winOverlay}
     </SafeAreaView>

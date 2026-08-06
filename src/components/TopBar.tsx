@@ -19,7 +19,7 @@ export default function TopBar({ onBack, backAccessibilityLabel, eyebrow, title,
   const { t } = useTranslation();
   return (
     <View style={styles.topbar}>
-      <IconButton glyph="‹" onPress={onBack} accessibilityLabel={backAccessibilityLabel ?? t('topBar.back')} size={44} glyphSize={22} />
+      <IconButton name="chevron-back" onPress={onBack} accessibilityLabel={backAccessibilityLabel ?? t('topBar.back')} />
       {(eyebrow || title) && (
         <View style={styles.titleWrap}>
           {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}

@@ -136,8 +136,8 @@ export default function GameScreen({ route, navigation }: Props) {
       title={level.title}
       headerRight={
         <>
-          <IconButton glyph="↺" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
-          <IconButton glyph="⟲" onPress={() => resetLevel(levelIndex)} accessibilityLabel={tc('actions.resetLevel')} />
+          <IconButton name="help" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
+          <IconButton name="refresh-outline" onPress={() => resetLevel(levelIndex)} accessibilityLabel={tc('actions.resetLevel')} />
         </>
       }
       statusRow={

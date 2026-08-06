@@ -1,8 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Svg from 'react-native-svg';
 import { colors } from '../../../theme/colors';
 import type { CellState, KingsLevel } from '../types';
+import { KingCrownGlyph } from './KingCrown';
 import { REGION_PALETTE } from './TutorialDiagram';
+
+function KingPiece({ size, fill }: { size: number; fill: string }) {
+  return (
+    <Svg width={size} height={size}>
+      <KingCrownGlyph x={size / 2} y={size / 2} size={size} fill={fill} />
+    </Svg>
+  );
+}
 
 const MIN_CELL = 24;
 const MAX_CELL = 54;
@@ -148,15 +158,9 @@ function KingsCell({
         />
       )}
       {isKing && (
-        <Animated.Text
-          style={[
-            styles.king,
-            isHinted && styles.kingHinted,
-            { fontSize: size * 0.6, transform: [{ scale: kingScale }], pointerEvents: 'none' },
-          ]}
-        >
-          ♚
-        </Animated.Text>
+        <Animated.View pointerEvents="none" style={{ transform: [{ scale: kingScale }] }}>
+          <KingPiece size={size * 0.6} fill={isHinted ? colors.gold : '#fffaf0'} />
+        </Animated.View>
       )}
       {!isKing && (value === 1 || isAuto) && (
         <Animated.View
@@ -237,8 +241,6 @@ const styles = StyleSheet.create({
   inner: { borderRadius: BOARD_RADIUS, overflow: 'hidden' },
   row: { flexDirection: 'row' },
   cell: { alignItems: 'center', justifyContent: 'center' },
-  king: { color: '#fffaf0', fontWeight: '600', textShadowColor: 'rgba(255,176,32,0.65)', textShadowRadius: 6 },
-  kingHinted: { color: colors.gold, textShadowColor: 'rgba(255,196,64,0.9)', textShadowRadius: 10 },
   mark: {},
   conflictOverlay: { ...StyleSheet.absoluteFillObject, borderWidth: 2, borderColor: colors.signalRed },
 });

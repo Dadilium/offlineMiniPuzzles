@@ -4,7 +4,6 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensio
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { colors, fonts, radii } from '../theme/colors';
-import AdBanner from './AdBanner';
 import TopBar from './TopBar';
 
 // TopBar's own height (paddingTop + IconButton size) -- used so the banner
@@ -110,10 +109,6 @@ export default function GameHubScreen({
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <View style={{ paddingBottom: insets.bottom }}>
-        <AdBanner />
-      </View>
     </View>
   );
 }

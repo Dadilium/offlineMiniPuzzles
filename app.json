@@ -7,7 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "backgroundColor": "#05060a"
+      "image": "./assets/adaptive-icon-foreground.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f131d"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -26,13 +28,18 @@
       }
     },
     "android": {
-      "package": "com.antoineroy.puzzleden"
+      "package": "com.antoineroy.puzzleden",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundColor": "#0f131d"
+      }
     },
     "web": {
       "bundler": "metro"
     },
     "plugins": [
       "expo-localization",
+      "expo-splash-screen",
       [
         "@sentry/react-native/expo",
         {
@@ -61,7 +68,8 @@
           "androidAppId": "ca-app-pub-2631204280172241~3792617336",
           "iosAppId": "ca-app-pub-2631204280172241~3357503060"
         }
-      ]
+      ],
+      "./plugins/withSentryAndroidAutolinkFix.js"
     ],
     "extra": {
       "eas": {

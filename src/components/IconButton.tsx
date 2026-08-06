@@ -1,17 +1,22 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 interface Props {
-  glyph: string;
+  /** Ionicons glyph name (e.g. 'chevron-back', 'refresh-outline'). */
+  name: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
   accessibilityLabel?: string;
   size?: number;
-  glyphSize?: number;
+  iconSize?: number;
 }
 
-/** Small square icon button used in topbars (back / reset / replay-tutorial). */
-export default function IconButton({ glyph, onPress, accessibilityLabel, size = 34, glyphSize = 15 }: Props) {
+/** Small square icon button used in topbars (back / reset / replay-tutorial / settings).
+ * Always an Ionicons vector glyph -- text-character glyphs (e.g. '⟲') render
+ * inconsistently across platforms since they fall back to whatever the OS's
+ * default/emoji font happens to support. */
+export default function IconButton({ name, onPress, accessibilityLabel, size = 40, iconSize = 19 }: Props) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -19,7 +24,7 @@ export default function IconButton({ glyph, onPress, accessibilityLabel, size = 
       accessibilityLabel={accessibilityLabel}
       style={[styles.btn, { width: size, height: size, borderRadius: size * 0.32 }]}
     >
-      <Text style={[styles.glyph, { fontSize: glyphSize }]}>{glyph}</Text>
+      <Ionicons name={name} size={iconSize} color={colors.text} />
     </TouchableOpacity>
   );
 }
@@ -32,5 +37,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  glyph: { color: colors.text },
 });

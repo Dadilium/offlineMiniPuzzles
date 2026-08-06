@@ -110,7 +110,7 @@ export default function DraftPlayScreen({ route, navigation }: Props) {
         backAccessibilityLabel="Back to drafts"
         eyebrow="DRAFT"
         title={level.title ?? 'Untitled draft'}
-        right={<IconButton glyph="⟲" onPress={() => setRelays([])} accessibilityLabel="Reset level" />}
+        right={<IconButton name="refresh-outline" onPress={() => setRelays([])} accessibilityLabel="Reset level" />}
       />
 
       {level.instructions ? <Text style={styles.instructions}>{level.instructions}</Text> : null}
