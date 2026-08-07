@@ -1,5 +1,6 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import TopBar from '../../../components/TopBar';
 import { colors, fonts, radii } from '../../../theme/colors';
@@ -18,7 +19,7 @@ export default function DraftListScreen({ navigation }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <TopBar onBack={() => navigation.goBack()} backAccessibilityLabel="Back to hub" title="Test drafts" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.hint}>

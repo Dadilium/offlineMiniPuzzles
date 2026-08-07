@@ -1,6 +1,7 @@
 import React from 'react';
 import Svg, { Circle, ClipPath, Defs, G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { colors } from '../../../theme/colors';
+import type { CellMark } from '../engine';
 
 const BOARD_RADIUS = 10;
 
@@ -12,14 +13,14 @@ export interface MiniGridSpec {
   rows: number;
   cols: number;
   grid: number[][];
-  mask: boolean[][];
+  marks: CellMark[][];
   rowTargets: number[];
   colTargets: number[];
 }
 
-/** Small illustrative rows x cols board used by the Cross Sums tutorial steps -- kept cells circled, excluded cells crossed out, targets shown along the edges. */
+/** Small illustrative rows x cols board used by the Cross Sums tutorial steps -- circled ('selected') cells count toward the sum, crossed-out ('erased') ones don't, blank ('neutral') cells are still undecided. Targets shown along the edges. */
 export function CrossSumsMiniGrid({ spec, size }: { spec: MiniGridSpec; size: number }) {
-  const { rows, cols, grid, mask, rowTargets, colTargets } = spec;
+  const { rows, cols, grid, marks, rowTargets, colTargets } = spec;
   const cw = size / (cols + 1);
   const ch = size / (rows + 1);
   const boardW = cw * cols;
@@ -28,7 +29,8 @@ export function CrossSumsMiniGrid({ spec, size }: { spec: MiniGridSpec; size: nu
   const cells: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const kept = mask[r][c];
+      const selected = marks[r][c] === 'selected';
+      const erased = marks[r][c] === 'erased';
       const cx = c * cw + cw / 2;
       const cy = r * ch + ch / 2;
       cells.push(
@@ -43,7 +45,7 @@ export function CrossSumsMiniGrid({ spec, size }: { spec: MiniGridSpec; size: nu
           strokeWidth={1}
         />
       );
-      if (kept) {
+      if (selected) {
         cells.push(<Circle key={`ring-${r}-${c}`} cx={cx} cy={cy} r={Math.min(cw, ch) * 0.34} fill="none" stroke={colors.success} strokeWidth={1.6} />);
       }
       cells.push(
@@ -53,12 +55,12 @@ export function CrossSumsMiniGrid({ spec, size }: { spec: MiniGridSpec; size: nu
           y={cy + ch * 0.14}
           fontSize={ch * 0.42}
           textAnchor="middle"
-          fill={kept ? colors.text : colors.textFaint}
+          fill={erased ? colors.textFaint : colors.text}
         >
           {grid[r][c]}
         </SvgText>
       );
-      if (!kept) {
+      if (erased) {
         cells.push(
           <Line
             key={`x-${r}-${c}`}

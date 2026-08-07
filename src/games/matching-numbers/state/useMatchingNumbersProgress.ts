@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { applyAddNumbers, applyMatch, attemptMatch, findLegalMove, MAX_ADD_NUMBERS } from '../engine';
+import { applyAddNumbers, applyMatch, attemptMatch, findLegalMove, MAX_ADD_NUMBERS, removeRow } from '../engine';
 import { createLevelForIndexRobust, fingerprintGrid, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { Cell, GridValue, MatchingNumbersLevel } from '../types';
 
@@ -106,6 +106,8 @@ interface MatchingNumbersProgressContextValue {
   addNumbersUsedByLevel: Record<number, number>;
   /** Assumes the caller already validated legality via engine.attemptMatch (e.g. to drive a success/fail animation) -- unconditionally clears both cells. */
   commitMatch: (levelIndex: number, a: Cell, b: Cell) => void;
+  /** Removes a single row once its shift-up collapse animation has finished -- see engine.findFullyEmptyRow. */
+  collapseRow: (levelIndex: number, rowIndex: number) => void;
   /** Spends an Add Numbers charge if any remain. Returns false (no-op) once MAX_ADD_NUMBERS has been used this level. */
   addNumbers: (levelIndex: number) => boolean;
   /** Live scan of the current board for any currently-legal pair -- never reads the level's solutionOrder certificate (see engine.ts). Returns null if the board is stuck. */
@@ -185,6 +187,17 @@ export function MatchingNumbersProgressProvider({ children }: { children: React.
     const board = current.boardsByLevel[levelIndex];
     if (!board) return;
     const nextBoard = applyMatch(board, a, b);
+    const next: PersistedShape = { ...current, boardsByLevel: { ...current.boardsByLevel, [levelIndex]: nextBoard } };
+    stateRef.current = next;
+    setState(next);
+  }, []);
+
+  /** Called once a fully-cleared row's shift-up animation has finished playing -- see engine.findFullyEmptyRow. */
+  const collapseRow = useCallback((levelIndex: number, rowIndex: number) => {
+    const current = stateRef.current;
+    const board = current.boardsByLevel[levelIndex];
+    if (!board) return;
+    const nextBoard = removeRow(board, rowIndex);
     const next: PersistedShape = { ...current, boardsByLevel: { ...current.boardsByLevel, [levelIndex]: nextBoard } };
     stateRef.current = next;
     setState(next);
@@ -293,6 +306,7 @@ export function MatchingNumbersProgressProvider({ children }: { children: React.
       skillRating: state.skillRating,
       addNumbersUsedByLevel: state.addNumbersUsedByLevel,
       commitMatch,
+      collapseRow,
       addNumbers,
       giveHint,
       resetLevel,
@@ -307,6 +321,7 @@ export function MatchingNumbersProgressProvider({ children }: { children: React.
       levelFor,
       ensureLevel,
       commitMatch,
+      collapseRow,
       addNumbers,
       giveHint,
       resetLevel,

@@ -1,5 +1,5 @@
 import type { BoardBuildParams } from './boardBuilder';
-import { difficultyParams, INITIAL_SKILL_RATING, maxAttemptsFor, type SkillRating } from './difficulty';
+import { BOARD_COLS, difficultyParams, INITIAL_SKILL_RATING, maxAttemptsFor, type SkillRating } from './difficulty';
 import { generateMatchingNumbersLevel, type GenerateFailure, type GenerateSuccess } from './generator';
 import { mulberry32, seedFromLevelIndex } from './rng';
 import type { MatchingNumbersLevel } from '../types';
@@ -36,7 +36,7 @@ export function createLevelForIndexRobust(levelIndex: number, skillRating: Skill
   const rng = mulberry32(seedFromLevelIndex(levelIndex, 1));
   const lastResort = generateMatchingNumbersLevel(
     rng,
-    { rowsRange: [4, 4], colsRange: [4, 4], equalWeight: 0.7, boardParams: LAST_RESORT_BOARD_PARAMS },
+    { rowsRange: [4, 4], colsRange: [BOARD_COLS, BOARD_COLS], equalWeight: 0.7, boardParams: LAST_RESORT_BOARD_PARAMS },
     [],
     4000
   );

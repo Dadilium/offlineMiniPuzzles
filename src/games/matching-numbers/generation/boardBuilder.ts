@@ -12,23 +12,30 @@
 //     block. A board tiled entirely with adjacent dominoes is therefore
 //     trivially, unconditionally solvable in any order at all.
 //
-//  2. If a small pool of cells is played only AFTER every other (adjacent,
+//  2. If a pool of cells is played only AFTER every other (adjacent,
 //     always-safe) domino has already been cleared, that pool effectively
 //     has the WHOLE REST OF THE BOARD as empty background for the entire
 //     time it's being played -- so building a guaranteed-legal order for
 //     just that pool (via the same backward-construction idea, applied to
-//     a small subset of cells instead of the whole board) is a much smaller,
-//     fast problem, regardless of how big the overall board is.
+//     a subset of cells instead of the whole board) is a much smaller
+//     problem than solving the whole board at once.
 //
-// So the generator: (1) tiles the whole board with adjacent horizontal
-// dominoes (guaranteed valid, cols is kept even for exactly this reason),
-// (2) reserves a small "complex pool" of cells (a handful of whole dominoes,
-// pulled out of the plain tiling) sized independently of the board, and (3)
-// re-derives that pool's pairing via backward construction against a grid
-// where every non-pool cell is permanently empty -- producing genuinely
-// spread-out (non-adjacent) pairs. The final play order is simply: every
-// plain domino first (any order, they don't care), then the pool's pairs in
-// their constructed order.
+// In practice a single such pool only reliably solves up to ~10 pairs --
+// past that, there's too little guaranteed-empty background left to route
+// paths through and success probability collapses (see
+// scripts/sweep-matching-numbers-pool-batch.ts). So the generator scatters pairs across several
+// independent rounds of that size instead of one all-or-nothing ask: (1)
+// tile the whole board with adjacent horizontal dominoes (guaranteed valid,
+// cols is kept even for exactly this reason), (2) repeatedly pull a small
+// batch of whole dominoes out of the remaining plain tiling and re-derive
+// its pairing via backward construction, each round additionally treating
+// every previously-solved round's cells as permanent obstacles (they won't
+// be cleared yet from an earlier round's perspective). A round that fails
+// just leaves that batch as plain dominoes and the loop moves to the next
+// batch -- never a hard failure. The final play order is: every never-
+// scattered domino first (any order), then the scattered rounds in REVERSE
+// of the order they were built (the freest-built round, with zero cross-
+// round obstacles, has to be the last one actually played).
 import { canConnect } from '../engine';
 import type { Cell, GridValue } from '../types';
 import type { RNG } from './rng';
@@ -39,9 +46,10 @@ export interface PairPlanEntry {
 export type PairPlan = PairPlanEntry[];
 
 export interface BoardBuildParams {
-  /** How many pairs to try to make non-adjacent (spread across the board),
-   * independent of board size -- kept small so the pool's own backward
-   * construction stays fast no matter how big the overall board gets. */
+  /** Soft target for how many pairs to make non-adjacent (spread across the
+   * board). Realized via several small rounds (see POOL_BATCH_SIZE below)
+   * rather than one atomic ask, so the actual scattered count is often lower
+   * than this, especially past what a couple of rounds can absorb. */
   complexPairTarget: number;
   /** 0..1 -- among the pool's non-adjacent candidates, probability of
    * preferring a single-bend one over a same-row/col-with-a-gap one. */
@@ -176,6 +184,14 @@ function backtrackPool(
   return false;
 }
 
+// A single atomic backward-construction ask only reliably succeeds up to
+// roughly this many pairs -- past it, success probability collapses toward
+// zero regardless of search budget (see scripts/sweep-matching-numbers-pool-batch.ts), because
+// there's too little guaranteed-empty background left to route paths
+// through. Reaching a larger scattered fraction is done by running several
+// independent rounds of this size instead of one giant all-or-nothing ask.
+const POOL_BATCH_SIZE = 6;
+
 export function buildBoard(rng: RNG, rows: number, cols: number, pairPlan: PairPlan, params: BoardBuildParams): BuildBoardResult {
   const m = (rows * cols) / 2;
   if (pairPlan.length !== m) {
@@ -193,33 +209,50 @@ export function buildBoard(rng: RNG, rows: number, cols: number, pairPlan: PairP
     }
   }
 
-  const poolSize = Math.max(0, Math.min(params.complexPairTarget, m));
-  const shuffledDominoIdx = shuffle(
+  let remainingIdx = shuffle(
     rng,
     dominoes.map((_, i) => i)
   );
-  const poolIdxSet = new Set(shuffledDominoIdx.slice(0, poolSize));
+  let remainingTarget = Math.max(0, Math.min(params.complexPairTarget, m));
+  // Rounds are built in "freest first" order (round 1 assumes nothing but its
+  // own cells exist; each later round additionally treats every earlier
+  // round's cells as permanent obstacles, since those haven't been played
+  // yet from that later round's perspective). That means the play order has
+  // to be the REVERSE of construction order: the last, most-constrained
+  // round constructed is actually the first one played (right after the
+  // plain dominoes), and the freest round -- built first -- is played last,
+  // exactly mirroring how a single pool's own internal order works.
+  const scatteredRounds: Array<Array<[Cell, Cell]>> = [];
+  const scatteredIdxSet = new Set<number>();
+  const cumulativeGrid = makeEmptyGrid(rows, cols);
 
-  const plainDominoes = dominoes.filter((_, i) => !poolIdxSet.has(i));
-  const poolCells = shuffledDominoIdx.slice(0, poolSize).flatMap((i) => dominoes[i]);
+  while (remainingTarget > 0 && remainingIdx.length > 0) {
+    const batchSize = Math.min(POOL_BATCH_SIZE, remainingTarget, remainingIdx.length);
+    const batchIdx = remainingIdx.slice(0, batchSize);
+    remainingIdx = remainingIdx.slice(batchSize);
 
-  // Pool's own backward construction: every non-pool cell is permanently
-  // empty background (those dominoes are all played -- and so cleared --
-  // before the pool phase begins), so only pool cells count as "occupied"
-  // in this grid.
-  const poolGrid = makeEmptyGrid(rows, cols);
-  const poolOrder = new Array<[Cell, Cell]>(poolSize);
-  const budget: Budget = { remaining: params.backtrackBudget };
-  const poolBuilt = backtrackPool(rng, poolGrid, poolCells, poolSize, poolOrder, params.bendBias, params.candidatePoolCap, budget);
+    const batchCells = batchIdx.flatMap((i) => dominoes[i]);
+    // Fresh copy so this round's own backtracking undo/redo can't corrupt the
+    // obstacles carried forward from previously-built rounds.
+    const poolGrid = cumulativeGrid.map((row) => row.slice());
+    const order = new Array<[Cell, Cell]>(batchSize);
+    const budget: Budget = { remaining: params.backtrackBudget };
+    const built = backtrackPool(rng, poolGrid, batchCells, batchSize, order, params.bendBias, params.candidatePoolCap, budget);
 
-  // poolBuilt is expected to succeed given the generous background freedom,
-  // but if it doesn't (or only partially filled poolOrder), the untouched
-  // cells simply keep their original plain-domino pairing -- always safe,
-  // never a hard failure.
-  const finalPoolOrder = poolBuilt ? poolOrder : [];
-  const unusedPoolDominoes = poolSize > 0 && !poolBuilt ? shuffledDominoIdx.slice(0, poolSize).map((i) => dominoes[i]) : [];
+    if (built) {
+      scatteredRounds.push(order);
+      batchIdx.forEach((i) => scatteredIdxSet.add(i));
+      remainingTarget -= batchSize;
+      batchCells.forEach((cell) => {
+        cumulativeGrid[cell.r][cell.c] = 1;
+      });
+    }
+    // On failure this batch's dominoes just stay plain -- cumulativeGrid is
+    // untouched, so the next batch isn't penalized for it.
+  }
 
-  const solutionOrder: Array<[Cell, Cell]> = [...shuffle(rng, [...plainDominoes, ...unusedPoolDominoes]), ...finalPoolOrder];
+  const plainDominoes = dominoes.filter((_, i) => !scatteredIdxSet.has(i));
+  const solutionOrder: Array<[Cell, Cell]> = [...shuffle(rng, plainDominoes), ...scatteredRounds.reverse().flat()];
 
   const grid = makeEmptyGrid(rows, cols);
   solutionOrder.forEach(([a, b], i) => {

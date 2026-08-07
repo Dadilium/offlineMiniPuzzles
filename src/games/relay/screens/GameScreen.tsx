@@ -10,6 +10,7 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
+import { useHintGate } from '../../../ads/useHintGate';
 import BudgetChip from '../components/BudgetChip';
 import KindChip from '../components/KindChip';
 import RelayGrid, { RECEIVER_SETTLE_MS } from '../components/RelayGrid';
@@ -98,16 +99,20 @@ export default function GameScreen({ route, navigation }: Props) {
     if (outcome === 'locked') showToast(t('game.hintLockedToast'));
   }
 
-  function onHintPress() {
+  function attemptHint(): boolean {
     const result = giveHint(levelIndex);
     if (result.outcome === 'placed') {
       posthog?.capture('puzzle_hint_requested', { game_id: 'relay', level_index: levelIndex + 1 });
+      return true;
     }
     if (result.outcome === 'solved') showToast(t('game.hintSolvedToast'));
     if (result.outcome === 'budget-full' && result.color) {
       showToast(t('game.hintBudgetFullToast', { color: t(`game.colorNamesLower.${result.color}`) }));
     }
+    return false;
   }
+
+  const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   function nextLevel() {
     if (levelIndex < levels.length - 1) {
@@ -178,14 +183,14 @@ export default function GameScreen({ route, navigation }: Props) {
       legend={t('game.legend')}
       controls={
         <>
-          <GameActionButton label={tc('actions.hint')} onPress={onHintPress} />
+          <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />
           <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" hidden={allReached} />
         </>
       }
       winOverlay={
         <WinOverlay
           visible={showWinOverlay}
-          badge="🎉"
+          badge="👑"
           title={t('game.winTitle')}
           subtitle={levelIndex < levels.length - 1 ? t('game.winSubtitleNext') : t('game.winSubtitleLast')}
           nextLabel={levelIndex < levels.length - 1 ? tc('actions.nextLevel') : tc('actions.backToHub')}

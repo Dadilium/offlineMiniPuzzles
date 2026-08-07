@@ -10,6 +10,7 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors, fonts } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
+import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import KingsGrid from '../components/KingsGrid';
@@ -94,11 +95,14 @@ export default function GameScreen({ route, navigation }: Props) {
     cycleCell(levelIndex, r, c);
   }
 
-  function onHintPress() {
+  function attemptHint(): boolean {
     const gaveHint = giveHint(levelIndex);
     if (gaveHint) posthog?.capture('puzzle_hint_requested', { game_id: 'kings', level_index: levelIndex + 1 });
-    if (!gaveHint) showToast(t('game.hintFailToast'));
+    else showToast(t('game.hintFailToast'));
+    return gaveHint;
   }
+
+  const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   function replayTutorial() {
     navigation.navigate('KingsTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
@@ -165,7 +169,7 @@ export default function GameScreen({ route, navigation }: Props) {
       legend={t('game.legend')}
       controls={
         <>
-          <GameActionButton label={tc('actions.hint')} onPress={onHintPress} />
+          <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />
           {!state.win && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
         </>
       }

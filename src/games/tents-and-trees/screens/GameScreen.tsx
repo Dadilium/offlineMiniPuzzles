@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, SafeAreaView } from 'react-native';
+import { InteractionManager } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import GameActionButton from '../../../components/GameActionButton';
@@ -10,6 +11,7 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
+import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import TentsAndTreesGrid, { waveDurationMs } from '../components/TentsAndTreesGrid';
@@ -129,11 +131,14 @@ export default function GameScreen({ route, navigation }: Props) {
     resetLevel(levelIndex);
   }
 
-  function onHintPress() {
+  function attemptHint(): boolean {
     const gaveHint = giveHint(levelIndex);
     if (gaveHint) posthog?.capture('puzzle_hint_requested', { game_id: 'tents_and_trees', level_index: levelIndex + 1 });
-    if (!gaveHint) showToast(t('game.hintFailToast'));
+    else showToast(t('game.hintFailToast'));
+    return gaveHint;
   }
+
+  const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   function replayTutorial() {
     navigation.navigate('TentsAndTreesTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
@@ -187,14 +192,14 @@ export default function GameScreen({ route, navigation }: Props) {
       legend={t('game.legend')}
       controls={
         <>
-          <GameActionButton label={tc('actions.hint')} onPress={onHintPress} />
+          <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />
           {!revealWin && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
         </>
       }
       winOverlay={
         <WinOverlay
           visible={revealWin}
-          badge="✅"
+          badge="👑"
           showConfetti={showConfetti}
           confettiPalette={CONFETTI_PALETTE}
           title={t('game.winTitle')}

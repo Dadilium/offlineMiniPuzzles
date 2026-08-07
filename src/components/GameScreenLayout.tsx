@@ -1,8 +1,13 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts } from '../theme/colors';
 import TopBar from './TopBar';
+
+/** Vertical padding applied inside the scrollable board area -- exported so a
+ * game that measures `onBoardAreaLayout` can subtract it back out to get the
+ * actual usable height for its content. */
+export const BOARD_AREA_VERTICAL_PADDING = 12;
 
 interface Props {
   onBack: () => void;
@@ -14,6 +19,10 @@ interface Props {
   children: React.ReactNode;
   /** Board needs to scroll when it can exceed the viewport (e.g. large grids). */
   boardScrollable?: boolean;
+  /** Fires with the board area's rendered height -- lets a game compute how
+   * much vertical space its board actually has to work with (e.g. Matching
+   * Numbers padding a fixed-width board out with placeholder rows). */
+  onBoardAreaLayout?: (height: number) => void;
   legend?: string;
   controls?: React.ReactNode;
   /** Rendered last, inside the same SafeAreaView, so its absolute-position
@@ -33,10 +42,13 @@ export default function GameScreenLayout({
   statusRow,
   children,
   boardScrollable,
+  onBoardAreaLayout,
   legend,
   controls,
   winOverlay,
 }: Props) {
+  const handleBoardAreaLayout = onBoardAreaLayout ? (e: LayoutChangeEvent) => onBoardAreaLayout(e.nativeEvent.layout.height) : undefined;
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <TopBar onBack={onBack} backAccessibilityLabel={backAccessibilityLabel} eyebrow={eyebrow} title={title} right={headerRight} />
@@ -44,11 +56,13 @@ export default function GameScreenLayout({
       {statusRow && <View style={styles.statusRow}>{statusRow}</View>}
 
       {boardScrollable ? (
-        <ScrollView style={styles.boardAreaScroll} contentContainerStyle={styles.boardAreaScrollContent}>
+        <ScrollView style={styles.boardAreaScroll} contentContainerStyle={styles.boardAreaScrollContent} onLayout={handleBoardAreaLayout}>
           {children}
         </ScrollView>
       ) : (
-        <View style={styles.boardArea}>{children}</View>
+        <View style={styles.boardArea} onLayout={handleBoardAreaLayout}>
+          {children}
+        </View>
       )}
 
       {legend ? <Text style={styles.legend}>{legend}</Text> : null}
@@ -68,7 +82,13 @@ const styles = StyleSheet.create({
   // at the very bottom of the screen -- regardless of board size.
   boardArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   boardAreaScroll: { flex: 1 },
-  boardAreaScrollContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 12 },
+  boardAreaScrollContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: BOARD_AREA_VERTICAL_PADDING,
+    paddingHorizontal: 12,
+  },
   legend: {
     fontSize: 10.5,
     color: colors.textFaint,

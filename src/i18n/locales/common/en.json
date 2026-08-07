@@ -5,7 +5,11 @@
     "subtitle": "Pick up, play, no wifi required.",
     "readySection": "Ready to play",
     "comingSoonSection": "More puzzles incoming",
-    "navSettings": "SETTINGS"
+    "navSettings": "SETTINGS",
+    "dailyHintTitle": "Daily hint bonus!",
+    "dailyHintMessage_one": "+{{count}} hint added to your wallet. Come back tomorrow for another.",
+    "dailyHintMessage_other": "+{{count}} hints added to your wallet. Come back tomorrow for more.",
+    "dailyHintOk": "Nice"
   },
   "topBar": {
     "back": "Back"
@@ -36,7 +40,8 @@
     "resume": "Resume",
     "levels": "Levels",
     "howToPlay": "How to play",
-    "hint": "Hint",
+    "hintWithCount": "Hint ({{count}})",
+    "hintAdNotReady": "Out of hints — ad not ready yet, try again in a moment",
     "resetLevel": "Reset level",
     "replayTutorial": "Replay the tutorial",
     "skipLevelAd": "Skip level (watch an ad)",

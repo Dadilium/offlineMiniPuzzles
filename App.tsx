@@ -8,6 +8,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/Toast';
 import AdBanner from './src/components/AdBanner';
+import { HintWalletProvider } from './src/state/hintWallet';
 import { colors } from './src/theme/colors';
 import * as Sentry from '@sentry/react-native';
 import { PostHogProvider } from 'posthog-react-native';
@@ -65,26 +66,28 @@ export default Sentry.wrap(function App() {
   return (
     <SafeAreaProvider>
       <ToastProvider>
-        <View style={styles.appRoot}>
-          <View style={styles.navigatorSlot}>
-            <NavigationContainer theme={navTheme}>
-              <StatusBar style="light" />
-              <ErrorBoundary>
-                {posthog ? (
-                  <PostHogProvider client={posthog}>
+        <HintWalletProvider>
+          <View style={styles.appRoot}>
+            <View style={styles.navigatorSlot}>
+              <NavigationContainer theme={navTheme}>
+                <StatusBar style="light" />
+                <ErrorBoundary>
+                  {posthog ? (
+                    <PostHogProvider client={posthog}>
+                      <RootNavigator />
+                    </PostHogProvider>
+                  ) : (
                     <RootNavigator />
-                  </PostHogProvider>
-                ) : (
-                  <RootNavigator />
-                )}
-              </ErrorBoundary>
-            </NavigationContainer>
+                  )}
+                </ErrorBoundary>
+              </NavigationContainer>
+            </View>
+            {/* Mounted once here rather than per-screen, so navigating between
+             * screens reuses this single native ad instance instead of
+             * requesting a new one on every push. */}
+            <AdBanner />
           </View>
-          {/* Mounted once here rather than per-screen, so navigating between
-           * screens reuses this single native ad instance instead of
-           * requesting a new one on every push. */}
-          <AdBanner />
-        </View>
+        </HintWalletProvider>
       </ToastProvider>
     </SafeAreaProvider>
   );

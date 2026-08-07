@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import TopBar from '../components/TopBar';
@@ -14,7 +15,7 @@ export default function GameProgressScreen({ navigation }: Props) {
   const { t } = useTranslation();
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <TopBar onBack={() => navigation.goBack()} eyebrow={t('gameProgress.eyebrow')} title={t('gameProgress.title')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {games.map((game) => {

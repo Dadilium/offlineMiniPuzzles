@@ -1,24 +1,24 @@
 {
   "meta": {
     "name": "Sommes croisées",
-    "tag": "Puzzle de sommes à garder ou exclure"
+    "tag": "Puzzle d'entourage de sommes"
   },
   "hub": {
-    "tagline": "Chaque ligne et chaque colonne a une somme cible. Barrez des nombres jusqu'à ce que chaque ligne et chaque colonne corresponde — seules les cases gardées comptent."
+    "tagline": "Chaque ligne et chaque colonne a une somme cible. Entourez les nombres qui l'atteignent — le reste ne compte pas."
   },
   "tutorial": {
     "all": [
       {
         "title": "Chaque ligne et chaque colonne a une cible",
-        "desc": "Les nombres sur le bord droit et en bas sont les sommes que chaque ligne et chaque colonne doivent atteindre — mais en ne comptant que les cases que vous gardez."
+        "desc": "Les nombres sur le bord droit et en bas sont les sommes que chaque ligne et chaque colonne doivent atteindre — en ne comptant que les nombres que vous entourez."
       },
       {
-        "title": "Touchez un nombre pour le garder ou le barrer",
-        "desc": "Chaque case commence gardée. Touchez-en une pour la barrer de la somme, touchez à nouveau pour la reprendre — la valeur de la case ne change jamais, seul son décompte change."
+        "title": "Stylo pour entourer, gomme pour barrer",
+        "desc": "Deux outils se trouvent au-dessus de la grille. Le stylo entoure un nombre pour l'ajouter à la somme ; la gomme le barre pour l'exclure. Touchez un outil, puis une case — touchez à nouveau la même marque pour l'effacer."
       },
       {
         "title": "Atteignez chaque cible pour gagner",
-        "desc": "Dès que la somme des cases gardées de chaque ligne et de chaque colonne correspond à sa cible, la grille est résolue. Bloqué ? L'indice révèle une case pour vous."
+        "desc": "Dès que la somme des cases entourées de chaque ligne et de chaque colonne correspond à sa cible, la grille est résolue. Bloqué ? L'indice révèle une case pour vous."
       }
     ]
   },
@@ -26,9 +26,13 @@
     "levelTitle": "Niveau {{number}}",
     "statusRows": "Lignes {{count}}/{{total}}",
     "statusCols": "Colonnes {{count}}/{{total}}",
-    "legend": "touchez un nombre pour le barrer · touchez à nouveau pour le garder · les bords indiquent chaque cible",
+    "legend": "le stylo entoure un nombre dans la somme · la gomme le barre · les bords indiquent chaque cible",
     "hintFailToast": "Chaque case est déjà à sa place.",
     "winTitle": "Toutes les sommes s'équilibrent",
     "winSubtitle": "Chaque ligne et chaque colonne a atteint sa cible — grille suivante débloquée."
+  },
+  "tools": {
+    "pen": "Stylo",
+    "eraser": "Gomme"
   }
 }

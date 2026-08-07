@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, fonts } from '../../../theme/colors';
+import type { CellMark } from '../engine';
 import type { CrossSumsLevel } from '../types';
 
 const MIN_CELL = 34;
@@ -29,7 +30,7 @@ export function waveDurationMs(rows: number, cols: number): number {
 
 interface DigitCellProps {
   value: number;
-  kept: boolean;
+  mark: CellMark;
   hinted: boolean;
   size: number;
   /** Non-null while the win-wave is playing: this cell's diagonal-group delay in ms. */
@@ -37,19 +38,21 @@ interface DigitCellProps {
   onPress: () => void;
 }
 
-function DigitCell({ value, kept, hinted, size, celebrateDelay, onPress }: DigitCellProps) {
-  const ringScale = useRef(new Animated.Value(kept ? 1 : 0)).current;
-  const strikeOpacity = useRef(new Animated.Value(kept ? 0 : 1)).current;
-  const prevKept = useRef(kept);
+function DigitCell({ value, mark, hinted, size, celebrateDelay, onPress }: DigitCellProps) {
+  const selected = mark === 'selected';
+  const erased = mark === 'erased';
+  const ringScale = useRef(new Animated.Value(selected ? 1 : 0)).current;
+  const strikeOpacity = useRef(new Animated.Value(erased ? 1 : 0)).current;
+  const prevMark = useRef(mark);
   const bounceScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (kept !== prevKept.current) {
-      Animated.spring(ringScale, { toValue: kept ? 1 : 0, friction: 6, tension: 200, useNativeDriver: true }).start();
-      Animated.timing(strikeOpacity, { toValue: kept ? 0 : 1, duration: 140, useNativeDriver: true }).start();
-      prevKept.current = kept;
+    if (mark !== prevMark.current) {
+      Animated.spring(ringScale, { toValue: selected ? 1 : 0, friction: 6, tension: 200, useNativeDriver: true }).start();
+      Animated.timing(strikeOpacity, { toValue: erased ? 1 : 0, duration: 140, useNativeDriver: true }).start();
+      prevMark.current = mark;
     }
-  }, [kept, ringScale, strikeOpacity]);
+  }, [mark, selected, erased, ringScale, strikeOpacity]);
 
   // Diagonal win-wave: a little bounce that sweeps across the board by
   // (row + col) group, staggered via Animated.delay per cell.
@@ -89,7 +92,7 @@ function DigitCell({ value, kept, hinted, size, celebrateDelay, onPress }: Digit
             },
           ]}
         />
-        <Text style={[styles.digitText, { fontSize: size * 0.4, color: kept ? colors.text : colors.textFaint, pointerEvents: 'none' }]}>
+        <Text style={[styles.digitText, { fontSize: size * 0.4, color: erased ? colors.textFaint : colors.text, pointerEvents: 'none' }]}>
           {value}
         </Text>
         <Animated.View pointerEvents="none" style={[styles.strike, { width: size * 0.6, opacity: strikeOpacity }]} />
@@ -111,7 +114,7 @@ function TargetCell({ current, target, size, axisSize }: { current: number; targ
 
 interface Props {
   level: CrossSumsLevel;
-  mask: boolean[][];
+  marks: CellMark[][];
   hintedCells: Set<string>;
   rowSums: number[];
   colSums: number[];
@@ -120,7 +123,7 @@ interface Props {
   onCellPress: (r: number, c: number) => void;
 }
 
-export default function CrossSumsGrid({ level, mask, hintedCells, rowSums, colSums, celebrate, onCellPress }: Props) {
+export default function CrossSumsGrid({ level, marks, hintedCells, rowSums, colSums, celebrate, onCellPress }: Props) {
   const { rows, cols, grid } = level;
   const size = cellSizeFor(rows, cols);
   const axisSize = size * 0.82;
@@ -134,7 +137,7 @@ export default function CrossSumsGrid({ level, mask, hintedCells, rowSums, colSu
         <DigitCell
           key={key}
           value={grid[r][c]}
-          kept={mask[r][c]}
+          mark={marks[r][c]}
           hinted={hintedCells.has(key)}
           size={size}
           celebrateDelay={celebrate ? (r + c) * WAVE_STAGGER_MS : null}

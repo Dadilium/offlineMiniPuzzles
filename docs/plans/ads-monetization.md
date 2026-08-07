@@ -1,5 +1,14 @@
 # Ads monetization plan
 
+## Status
+Interstitial + rewarded skip shipped first (see `docs/shipping-readiness.md`). The hint wallet + daily reward described below was implemented on 2026-08-07, with a few deviations from the original spec:
+- Daily reward is **+2**, not +1.
+- The daily claim is surfaced via an `Alert` on the Library screen (`src/screens/LibraryScreen.tsx`), not silently applied.
+- Each game's Hint button shows the wallet balance in its own label (`Hint (3)`), not just a video-icon swap at 0.
+- Real file paths: `src/state/hintWallet.ts` (provider + `useHintWallet`), `src/ads/useRewardedHint.ts`, `src/ads/useHintGate.ts` (the per-game gate: spend-or-watch-ad, then refund/grant if the game's own hint logic reports nothing was actually revealed) — under `src/ads/`, not the `src/services/ads/` path this doc originally proposed, matching where `useRewardedSkip`/`useInterstitialOnComplete` actually live.
+- Reuses the single existing `rewarded` ad unit (`adUnitIds.rewarded`) rather than a separate `rewarded_hint` unit — only one rewarded unit was ever actually created.
+- Relay is included in the hint wallet (its Hint button now draws from the same global balance) even though it's excluded from the interstitial/skip `GameId` economy — the wallet has no such dependency.
+
 ## Context
 First monetization pass: rewarded ads for hints/skip (opt-in, never blocks solving) plus a periodic interstitial to monetize skilled players who rarely need hints. Landed on this shape after discussion:
 - Interstitial trigger is **level-completion count**, not "return to Library" — power users chain levels via the level list/hub and rarely revisit Library mid-session, so a Library-based trigger would miss the exact segment (fast players, many levels/session, never need hints) it's meant to monetize.

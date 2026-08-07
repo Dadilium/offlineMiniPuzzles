@@ -49,8 +49,12 @@ export const adUnitIds = {
 // per game for levels that run noticeably shorter or longer than average.
 const DEFAULT_INTERSTITIAL_FIRST = 5;
 const DEFAULT_INTERSTITIAL_INTERVAL = 3;
-const INTERSTITIAL_FIRST_OVERRIDES: Partial<Record<GameId, number>> = {};
-const INTERSTITIAL_INTERVAL_OVERRIDES: Partial<Record<GameId, number>> = {};
+const INTERSTITIAL_FIRST_OVERRIDES: Partial<Record<GameId, number>> = {
+  'matching-numbers': 2,
+};
+const INTERSTITIAL_INTERVAL_OVERRIDES: Partial<Record<GameId, number>> = {
+  'matching-numbers': 2,
+};
 
 export interface InterstitialSchedule {
   first: number;
@@ -63,6 +67,10 @@ export function interstitialScheduleFor(gameId: GameId): InterstitialSchedule {
     interval: INTERSTITIAL_INTERVAL_OVERRIDES[gameId] ?? DEFAULT_INTERSTITIAL_INTERVAL,
   };
 }
+
+/** Matching Numbers' Add Numbers assist gets its own interstitial cadence,
+ * tracked independently of level completions -- an ad every other press. */
+export const MATCHING_NUMBERS_ADD_NUMBERS_AD_SCHEDULE: InterstitialSchedule = { first: 2, interval: 2 };
 
 export interface InterstitialState {
   /** Level completions since the last interstitial the player actually
@@ -84,15 +92,20 @@ export const DEFAULT_INTERSTITIAL_STATE: InterstitialState = {
   pendingRetry: false,
 };
 
-/** Pure decision step for one level completion: bumps the counter and says
- * whether an interstitial is due. Persistence is the caller's job. */
+/** Pure decision step for one trigger event (a level completion, or any
+ * other cadence-tracked action): bumps the counter and says whether an
+ * interstitial is due. `forceDue` short-circuits straight to due regardless
+ * of the count-based threshold (e.g. Matching Numbers forces it when a level
+ * took unusually long to solve) without disturbing the counter bookkeeping.
+ * Persistence is the caller's job. */
 export function nextInterstitialDecision(
   state: InterstitialState,
   schedule: InterstitialSchedule,
+  forceDue: boolean = false
 ): { due: boolean; sinceLastAd: number } {
   const sinceLastAd = state.sinceLastAd + 1;
   const threshold = state.everShownAd ? schedule.interval : schedule.first;
-  const due = state.pendingRetry || sinceLastAd >= threshold;
+  const due = state.pendingRetry || forceDue || sinceLastAd >= threshold;
   return { due, sinceLastAd };
 }
 

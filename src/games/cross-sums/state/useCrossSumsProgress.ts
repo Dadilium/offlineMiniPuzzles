@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { applyHint, makeInitialMask, toggleCell } from '../engine';
+import { applyHint, applyTool, makeInitialMarks, type CellMark, type Tool } from '../engine';
 import { createLevelForIndexRobust, fingerprintCrossSums, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { CrossSumsLevel } from '../types';
 
-const STORAGE_KEY = '@signal-arcade/cross-sums/progress/v1';
+// v2: masksByLevel (boolean kept/crossed) replaced by marksByLevel
+// (neutral/selected/erased) for the pen+eraser tri-state mechanic.
+const STORAGE_KEY = '@signal-arcade/cross-sums/progress/v2';
 /** Bounds the shape-dedup history so it can't grow unbounded over 1000+ levels. */
 const MAX_RECENT_FINGERPRINTS = 50;
 
@@ -13,7 +15,7 @@ interface PersistedShape {
    * replaying an old level must show the same puzzle even after skill rating
    * has moved on. */
   generatedLevels: Record<number, CrossSumsLevel>;
-  masksByLevel: Record<number, boolean[][]>;
+  marksByLevel: Record<number, CellMark[][]>;
   /** "r,c" keys revealed via Hint -- locked, can't be toggled back. */
   hintedCellsByLevel: Record<number, string[]>;
   levelsCompleted: number[];
@@ -27,7 +29,7 @@ interface PersistedShape {
 function defaultState(): PersistedShape {
   return {
     generatedLevels: {},
-    masksByLevel: {},
+    marksByLevel: {},
     hintedCellsByLevel: {},
     levelsCompleted: [],
     levelsSkipped: [],
@@ -43,35 +45,39 @@ function isValidLevel(level: unknown): level is CrossSumsLevel {
   return !!l && typeof l.rows === 'number' && typeof l.cols === 'number' && Array.isArray(l.grid) && Array.isArray(l.solutionMask);
 }
 
-/** Guards against a corrupt/stale mask shape. */
-function sanitizeMask(mask: unknown, rows: number, cols: number): boolean[][] {
-  if (!Array.isArray(mask) || mask.length !== rows) return makeInitialMask(rows, cols);
-  for (const row of mask) {
-    if (!Array.isArray(row) || row.length !== cols) return makeInitialMask(rows, cols);
+const VALID_MARKS = new Set<CellMark>(['neutral', 'selected', 'erased']);
+
+/** Guards against a corrupt/stale marks shape (including the old v1 boolean mask). */
+function sanitizeMarks(marks: unknown, rows: number, cols: number): CellMark[][] {
+  if (!Array.isArray(marks) || marks.length !== rows) return makeInitialMarks(rows, cols);
+  for (const row of marks) {
+    if (!Array.isArray(row) || row.length !== cols || !row.every((cell) => VALID_MARKS.has(cell))) {
+      return makeInitialMarks(rows, cols);
+    }
   }
-  return mask as boolean[][];
+  return marks as CellMark[][];
 }
 
 function sanitizePersisted(parsed: Partial<PersistedShape> | null): PersistedShape {
   if (!parsed) return defaultState();
 
   const generatedLevels: Record<number, CrossSumsLevel> = {};
-  const masksByLevel: Record<number, boolean[][]> = {};
+  const marksByLevel: Record<number, CellMark[][]> = {};
   const hintedCellsByLevel: Record<number, string[]> = {};
-  const rawMasks = (parsed.masksByLevel ?? {}) as Record<string, unknown>;
+  const rawMarks = (parsed.marksByLevel ?? {}) as Record<string, unknown>;
   const rawHinted = (parsed.hintedCellsByLevel ?? {}) as Record<string, unknown>;
 
   for (const [key, level] of Object.entries(parsed.generatedLevels ?? {})) {
     if (!isValidLevel(level)) continue;
     const idx = Number(key);
     generatedLevels[idx] = level;
-    masksByLevel[idx] = sanitizeMask(rawMasks[key], level.rows, level.cols);
+    marksByLevel[idx] = sanitizeMarks(rawMarks[key], level.rows, level.cols);
     hintedCellsByLevel[idx] = Array.isArray(rawHinted[key]) ? (rawHinted[key] as string[]) : [];
   }
 
   return {
     generatedLevels,
-    masksByLevel,
+    marksByLevel,
     hintedCellsByLevel,
     levelsCompleted: Array.isArray(parsed.levelsCompleted) ? parsed.levelsCompleted : [],
     levelsSkipped: Array.isArray(parsed.levelsSkipped) ? parsed.levelsSkipped : [],
@@ -93,13 +99,13 @@ interface CrossSumsProgressContextValue {
    * (e.g. to prefetch the next level) since it's a no-op once a level has
    * already been generated for that index. */
   ensureLevel: (levelIndex: number) => void;
-  masksByLevel: Record<number, boolean[][]>;
+  marksByLevel: Record<number, CellMark[][]>;
   hintedCellsByLevel: Record<number, Set<string>>;
   levelsCompleted: Set<number>;
   levelsSkipped: Set<number>;
   tutorialsSeen: Set<string>;
   skillRating: SkillRating;
-  toggleCellAt: (levelIndex: number, r: number, c: number) => void;
+  toggleCellAt: (levelIndex: number, r: number, c: number, tool: Tool) => void;
   giveHint: (levelIndex: number) => boolean;
   resetLevel: (levelIndex: number) => void;
   markLevelComplete: (levelIndex: number) => void;
@@ -154,7 +160,7 @@ export function CrossSumsProgressProvider({ children }: { children: React.ReactN
     const next: PersistedShape = {
       ...current,
       generatedLevels: { ...current.generatedLevels, [levelIndex]: level },
-      masksByLevel: { ...current.masksByLevel, [levelIndex]: makeInitialMask(level.rows, level.cols) },
+      marksByLevel: { ...current.marksByLevel, [levelIndex]: makeInitialMarks(level.rows, level.cols) },
       hintedCellsByLevel: { ...current.hintedCellsByLevel, [levelIndex]: [] },
       recentFingerprints: [...current.recentFingerprints, fingerprint].slice(-MAX_RECENT_FINGERPRINTS),
     };
@@ -169,15 +175,15 @@ export function CrossSumsProgressProvider({ children }: { children: React.ReactN
     if (ready) ensureLevel(0);
   }, [ready, ensureLevel]);
 
-  const toggleCellAt = useCallback((levelIndex: number, r: number, c: number) => {
+  const toggleCellAt = useCallback((levelIndex: number, r: number, c: number, tool: Tool) => {
     const current = stateRef.current;
-    const mask = current.masksByLevel[levelIndex];
-    if (!mask) return;
+    const marks = current.marksByLevel[levelIndex];
+    if (!marks) return;
     const hinted = current.hintedCellsByLevel[levelIndex] ?? [];
     if (hinted.includes(`${r},${c}`)) return;
 
-    const nextMask = toggleCell(mask, r, c);
-    const next: PersistedShape = { ...current, masksByLevel: { ...current.masksByLevel, [levelIndex]: nextMask } };
+    const nextMarks = applyTool(marks, r, c, tool);
+    const next: PersistedShape = { ...current, marksByLevel: { ...current.marksByLevel, [levelIndex]: nextMarks } };
     stateRef.current = next;
     setState(next);
   }, []);
@@ -186,15 +192,15 @@ export function CrossSumsProgressProvider({ children }: { children: React.ReactN
   const giveHint = useCallback((levelIndex: number): boolean => {
     const current = stateRef.current;
     const level = current.generatedLevels[levelIndex];
-    const mask = current.masksByLevel[levelIndex];
-    if (!level || !mask) return false;
-    const result = applyHint(level, mask);
+    const marks = current.marksByLevel[levelIndex];
+    if (!level || !marks) return false;
+    const result = applyHint(level, marks);
     if (!result) return false;
 
     const hinted = current.hintedCellsByLevel[levelIndex] ?? [];
     const next: PersistedShape = {
       ...current,
-      masksByLevel: { ...current.masksByLevel, [levelIndex]: result.mask },
+      marksByLevel: { ...current.marksByLevel, [levelIndex]: result.marks },
       hintedCellsByLevel: { ...current.hintedCellsByLevel, [levelIndex]: hinted.concat(`${result.r},${result.c}`) },
       hintsUsedByLevel: { ...current.hintsUsedByLevel, [levelIndex]: (current.hintsUsedByLevel[levelIndex] ?? 0) + 1 },
     };
@@ -209,7 +215,7 @@ export function CrossSumsProgressProvider({ children }: { children: React.ReactN
     if (!level) return;
     const next: PersistedShape = {
       ...current,
-      masksByLevel: { ...current.masksByLevel, [levelIndex]: makeInitialMask(level.rows, level.cols) },
+      marksByLevel: { ...current.marksByLevel, [levelIndex]: makeInitialMarks(level.rows, level.cols) },
       hintedCellsByLevel: { ...current.hintedCellsByLevel, [levelIndex]: [] },
       hintsUsedByLevel: { ...current.hintsUsedByLevel, [levelIndex]: 0 },
     };
@@ -269,7 +275,7 @@ export function CrossSumsProgressProvider({ children }: { children: React.ReactN
       ready,
       levelFor,
       ensureLevel,
-      masksByLevel: state.masksByLevel,
+      marksByLevel: state.marksByLevel,
       hintedCellsByLevel,
       levelsCompleted: new Set(state.levelsCompleted),
       levelsSkipped: new Set(state.levelsSkipped),

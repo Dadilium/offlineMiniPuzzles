@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -7,12 +7,27 @@ import GameCard from '../components/GameCard';
 import IconButton from '../components/IconButton';
 import { translateDynamic } from '../i18n/dynamicKey';
 import { games, comingSoon } from '../games/registry';
+import { useHintWallet } from '../state/hintWallet';
 import { colors, fonts } from '../theme/colors';
 import type { RootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 
 export default function LibraryScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const { pendingDailyClaim, acknowledgeDailyClaim } = useHintWallet();
+
+  // Surfaces the daily free-hint claim exactly once per grant, whenever the
+  // player next lands on the Library -- not tied to app-launch timing, since
+  // the wallet may claim it before the Library is even the visible screen.
+  useEffect(() => {
+    if (pendingDailyClaim === null) return;
+    Alert.alert(
+      t('library.dailyHintTitle'),
+      t('library.dailyHintMessage', { count: pendingDailyClaim }),
+      [{ text: t('library.dailyHintOk'), onPress: acknowledgeDailyClaim }],
+      { onDismiss: acknowledgeDailyClaim }
+    );
+  }, [pendingDailyClaim, acknowledgeDailyClaim, t]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -23,6 +38,7 @@ export default function LibraryScreen({ navigation }: Props) {
               <Text style={styles.eyebrow}>{t('library.eyebrow')}</Text>
               <Text style={styles.title}>{t('library.title')}</Text>
             </View>
+            
             <IconButton
               name="settings-outline"
               onPress={() => navigation.navigate('Settings')}

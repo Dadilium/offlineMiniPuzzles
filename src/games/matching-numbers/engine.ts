@@ -125,10 +125,48 @@ export function hasLegalMove(grid: GridValue[][]): boolean {
 }
 
 /**
- * "Add Numbers": appends every currently non-empty value, in row-major
- * reading order, as new row(s) at the bottom of the grid.
+ * Row index of the first entirely-cleared row, if any. Removing a fully-null
+ * row and shifting everything below it up by one never changes what's
+ * connectable -- a fully-null row was never blocking anything to begin with,
+ * so every straight-line/bend check gives the same answer before and after,
+ * just addressed via shifted (relabeled) row indices. Used to trigger the
+ * shift-up collapse animation once a match clears a row out completely.
  */
-export function applyAddNumbers(grid: GridValue[][]): GridValue[][] {
+export function findFullyEmptyRow(grid: GridValue[][]): number | null {
+  const idx = grid.findIndex((row) => row.every((v) => v === null));
+  return idx === -1 ? null : idx;
+}
+
+/** Removes a single row -- e.g. once its shift-up collapse animation has finished -- so every row below it shifts up to fill the gap. */
+export function removeRow(grid: GridValue[][], rowIndex: number): GridValue[][] {
+  return grid.filter((_, r) => r !== rowIndex);
+}
+
+function shuffleValues(values: number[], rng: () => number): number[] {
+  const arr = values.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Cap on how many new rows a single Add Numbers press can append. Without
+ * it, duplicating the ENTIRE remaining pool every press compounds -- a
+ * second press duplicates the (now doubled) remaining pool again, and so on.
+ * Capping per press keeps growth bounded regardless of how large the board
+ * has already gotten. */
+const ADD_NUMBERS_MAX_ROWS = 4;
+
+/**
+ * "Add Numbers": duplicates a shuffled sample of the currently non-empty
+ * values (up to ADD_NUMBERS_MAX_ROWS worth) as new row(s) at the bottom of
+ * the grid -- shuffled so the duplicate isn't just a visual repeat of the
+ * existing layout. `rng` defaults to Math.random since this is a live player
+ * action, not part of seed-reproducible level generation; the parameter
+ * exists so tests can inject a deterministic one.
+ */
+export function applyAddNumbers(grid: GridValue[][], rng: () => number = Math.random): GridValue[][] {
   const cols = grid[0]?.length ?? 0;
   const remaining: number[] = [];
   for (const row of grid) {
@@ -140,12 +178,15 @@ export function applyAddNumbers(grid: GridValue[][]): GridValue[][] {
   const next = grid.map((row) => row.slice());
   if (remaining.length === 0 || cols === 0) return next;
 
-  const extraRows = Math.ceil(remaining.length / cols);
+  const capacity = ADD_NUMBERS_MAX_ROWS * cols;
+  const toAdd = shuffleValues(remaining, rng).slice(0, Math.min(capacity, remaining.length));
+
+  const extraRows = Math.ceil(toAdd.length / cols);
   for (let i = 0; i < extraRows; i++) {
     const row: GridValue[] = Array(cols).fill(null);
     for (let c = 0; c < cols; c++) {
       const idx = i * cols + c;
-      if (idx < remaining.length) row[c] = remaining[idx];
+      if (idx < toAdd.length) row[c] = toAdd[idx];
     }
     next.push(row);
   }

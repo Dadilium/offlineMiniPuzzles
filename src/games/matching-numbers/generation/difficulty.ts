@@ -8,6 +8,13 @@ const MIN_RATING = 0;
 const MAX_RATING = 100;
 const STEP = 3;
 
+/** Fixed board width -- the board is always full-width with this many
+ * columns, at every difficulty. Only row count (and thus total tile count)
+ * scales with skill rating; see GameScreen/MatchingNumbersGrid for how the
+ * remaining screen height is padded out with placeholder cells when a level
+ * doesn't need every row. */
+export const BOARD_COLS = 10;
+
 export interface LevelResult {
   hintsUsed: number;
   /** Genre-standard assist, not a cheat -- weighted the same as a hint, not harsher. */
@@ -39,10 +46,12 @@ export interface GenerationParams {
   boardParams: BoardBuildParams;
 }
 
+// Bumped up across the board (even at the floor) -- with most pairs now
+// scattered rather than sitting in obvious adjacent dominoes (see
+// poolFraction below), the board needs more room for those non-adjacent/bent
+// connections to actually fit.
 const ROWS_FLOOR = 4;
-const ROWS_CEILING = 8;
-const COLS_FLOOR = 6;
-const COLS_CEILING = 10;
+const ROWS_CEILING = 10;
 
 /**
  * First-cut curve, tune by feel once playable. Board grows gently with
@@ -54,22 +63,22 @@ export function difficultyParams(rating: SkillRating): GenerationParams {
   const t = Math.max(0, Math.min(1, rating / MAX_RATING));
 
   const rows = ROWS_FLOOR + Math.round(t * (ROWS_CEILING - ROWS_FLOOR));
-  const cols = COLS_FLOOR + Math.round(t * (COLS_CEILING - COLS_FLOOR));
+  const m = (rows * BOARD_COLS) / 2;
 
   const equalWeight = 0.75 - 0.35 * t; // 0.75 -> 0.40
   const bendBias = 0.1 + 0.6 * t; // 0.1 -> 0.7
-  // Absolute count, independent of board size, of pairs the generator tries
-  // to make non-adjacent (spread across the board) -- kept small so the
-  // search for them stays fast no matter how big the board itself gets.
-  // Most pairs stay plain adjacent dominoes even at max difficulty;
-  // difficulty comes from a growing (but still small) pool of pairs that
-  // require an actual search for their partner, not from that pool becoming
-  // the majority of the board.
-  const complexPairTarget = Math.round(2 + t * 10); // 2 -> 12
+  // Fraction of the board's pairs to scatter (non-adjacent), rather than a
+  // small flat count -- most of the board should require real searching, not
+  // just a handful of cells sitting apart from an otherwise-trivial grid of
+  // adjacent dominoes. buildBoard realizes this in independent small rounds
+  // rather than one atomic ask (see POOL_BATCH_SIZE there), so a high
+  // fraction here is realistic, not just aspirational.
+  const poolFraction = 0.4 + 0.5 * t; // 0.4 -> 0.9
+  const complexPairTarget = Math.round(m * poolFraction);
 
   return {
     rowsRange: [Math.max(ROWS_FLOOR, rows - 1), rows],
-    colsRange: [Math.max(COLS_FLOOR, cols - 1), cols],
+    colsRange: [BOARD_COLS, BOARD_COLS],
     equalWeight,
     boardParams: { complexPairTarget, bendBias, candidatePoolCap: 40, backtrackBudget: 4000 },
   };

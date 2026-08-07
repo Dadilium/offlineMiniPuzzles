@@ -1,5 +1,6 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import LevelList, { type LevelListItem } from './LevelList';
 import TopBar from './TopBar';
@@ -15,7 +16,7 @@ interface Props {
 /** Shared Levels screen used by every game: TopBar + the level picker list. */
 export default function GameLevelListScreen({ onBack, backAccessibilityLabel, title, items, onPress }: Props) {
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <TopBar onBack={onBack} backAccessibilityLabel={backAccessibilityLabel} title={title} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <LevelList items={items} onPress={onPress} />

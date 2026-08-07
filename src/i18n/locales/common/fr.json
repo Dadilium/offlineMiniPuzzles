@@ -5,7 +5,11 @@
     "subtitle": "Prenez en main et jouez, sans wifi.",
     "readySection": "Prêt à jouer",
     "comingSoonSection": "D'autres jeux arrivent",
-    "navSettings": "RÉGLAGES"
+    "navSettings": "RÉGLAGES",
+    "dailyHintTitle": "Bonus d'indice quotidien !",
+    "dailyHintMessage_one": "+{{count}} indice ajouté à votre réserve. Revenez demain pour un autre.",
+    "dailyHintMessage_other": "+{{count}} indices ajoutés à votre réserve. Revenez demain pour d'autres.",
+    "dailyHintOk": "Super"
   },
   "topBar": {
     "back": "Retour"
@@ -36,7 +40,8 @@
     "resume": "Reprendre",
     "levels": "Niveaux",
     "howToPlay": "Comment jouer",
-    "hint": "Indice",
+    "hintWithCount": "Indice ({{count}})",
+    "hintAdNotReady": "Plus d'indices — pub pas encore prête, réessayez dans un instant",
     "resetLevel": "Réinitialiser le niveau",
     "replayTutorial": "Revoir le tutoriel",
     "skipLevelAd": "Passer le niveau (voir une pub)",

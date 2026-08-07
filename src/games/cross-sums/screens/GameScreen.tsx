@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, SafeAreaView } from 'react-native';
+import { InteractionManager, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import GameActionButton from '../../../components/GameActionButton';
@@ -10,11 +11,13 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
+import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import CrossSumsGrid, { waveDurationMs } from '../components/CrossSumsGrid';
+import ToolToggle from '../components/ToolToggle';
 import { ACCENT_PALETTE } from '../components/TutorialDiagram';
-import { computeSums, computeWin } from '../engine';
+import { computeSums, computeWin, type Tool } from '../engine';
 import type { CrossSumsStackParamList } from '../navigation';
 import { useCrossSumsProgress } from '../state/useCrossSumsProgress';
 
@@ -28,7 +31,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const {
     levelFor,
     ensureLevel,
-    masksByLevel,
+    marksByLevel,
     hintedCellsByLevel,
     toggleCellAt,
     giveHint,
@@ -40,6 +43,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const { showToast } = useToast();
   const { t } = useTranslation('cross-sums');
   const { t: tc } = useTranslation('common');
+  const [tool, setTool] = useState<Tool>('pen');
 
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect, never during
@@ -52,11 +56,11 @@ export default function GameScreen({ route, navigation }: Props) {
   }, [levelIndex, ensureLevel]);
 
   const level = levelFor(levelIndex);
-  const mask = level ? masksByLevel[levelIndex] : undefined;
+  const marks = level ? marksByLevel[levelIndex] : undefined;
   const hintedCells = hintedCellsByLevel[levelIndex] ?? EMPTY_HINTED;
 
-  const sums = useMemo(() => (level && mask ? computeSums(level.grid, mask) : EMPTY_SUMS), [level, mask]);
-  const win = useMemo(() => (level && mask ? computeWin(level, mask) : false), [level, mask]);
+  const sums = useMemo(() => (level && marks ? computeSums(level.grid, marks) : EMPTY_SUMS), [level, marks]);
+  const win = useMemo(() => (level && marks ? computeWin(level, marks) : false), [level, marks]);
   const rowsMatched = level ? sums.rowSums.filter((sum, r) => sum === level.rowTargets[r]).length : 0;
   const colsMatched = level ? sums.colSums.filter((sum, c) => sum === level.colTargets[c]).length : 0;
 
@@ -99,7 +103,7 @@ export default function GameScreen({ route, navigation }: Props) {
   // then reveal the win overlay/confetti once the wave has swept through --
   // gives the completion a beat of celebration before the popup covers it.
   useEffect(() => {
-    if (!level || !mask) return;
+    if (!level || !marks) return;
     if (!win) return;
     if (celebratedForLevel.current === levelIndex) return;
     celebratedForLevel.current = levelIndex;
@@ -118,10 +122,10 @@ export default function GameScreen({ route, navigation }: Props) {
       clearTimeout(revealTimer);
       clearTimeout(confettiTimer);
     };
-  }, [win, level, mask, levelIndex, markLevelComplete, notifyLevelCompleted]);
+  }, [win, level, marks, levelIndex, markLevelComplete, notifyLevelCompleted]);
 
   function onCellPress(r: number, c: number) {
-    toggleCellAt(levelIndex, r, c);
+    toggleCellAt(levelIndex, r, c, tool);
   }
 
   function onResetPress() {
@@ -129,11 +133,14 @@ export default function GameScreen({ route, navigation }: Props) {
     resetLevel(levelIndex);
   }
 
-  function onHintPress() {
+  function attemptHint(): boolean {
     const gaveHint = giveHint(levelIndex);
     if (gaveHint) posthog?.capture('puzzle_hint_requested', { game_id: 'cross_sums', level_index: levelIndex + 1 });
-    if (!gaveHint) showToast(t('game.hintFailToast'));
+    else showToast(t('game.hintFailToast'));
+    return gaveHint;
   }
+
+  const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   function replayTutorial() {
     navigation.navigate('CrossSumsTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
@@ -159,7 +166,7 @@ export default function GameScreen({ route, navigation }: Props) {
     requestSkip();
   }
 
-  if (!level || !mask) {
+  if (!level || !marks) {
     return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
@@ -187,14 +194,14 @@ export default function GameScreen({ route, navigation }: Props) {
       legend={t('game.legend')}
       controls={
         <>
-          <GameActionButton label={tc('actions.hint')} onPress={onHintPress} />
+          <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />
           {!revealWin && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
         </>
       }
       winOverlay={
         <WinOverlay
           visible={revealWin}
-          badge="✅"
+          badge="👑"
           showConfetti={showConfetti}
           confettiPalette={ACCENT_PALETTE}
           title={t('game.winTitle')}
@@ -204,15 +211,18 @@ export default function GameScreen({ route, navigation }: Props) {
         />
       }
     >
-      <CrossSumsGrid
-        level={level}
-        mask={mask}
-        hintedCells={hintedCells}
-        rowSums={sums.rowSums}
-        colSums={sums.colSums}
-        celebrate={celebrate}
-        onCellPress={onCellPress}
-      />
+      <View style={{ alignItems: 'center' }}>
+        <ToolToggle tool={tool} onChange={setTool} penLabel={t('tools.pen')} eraserLabel={t('tools.eraser')} />
+        <CrossSumsGrid
+          level={level}
+          marks={marks}
+          hintedCells={hintedCells}
+          rowSums={sums.rowSums}
+          colSums={sums.colSums}
+          celebrate={celebrate}
+          onCellPress={onCellPress}
+        />
+      </View>
     </GameScreenLayout>
   );
 }

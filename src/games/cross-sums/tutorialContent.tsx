@@ -1,4 +1,5 @@
 import React from 'react';
+import type { CellMark } from './engine';
 import { CrossSumsMiniGrid, type MiniGridSpec } from './components/TutorialDiagram';
 
 const EXAMPLE_GRID = [
@@ -7,23 +8,25 @@ const EXAMPLE_GRID = [
   [6, 8, 2],
 ];
 
-const SOLVED_MASK = [
-  [false, true, true],
-  [true, false, true],
-  [true, true, false],
+const SOLVED_MARKS: CellMark[][] = [
+  ['erased', 'selected', 'selected'],
+  ['selected', 'erased', 'selected'],
+  ['selected', 'selected', 'erased'],
 ];
 
-const PARTIAL_MASK = [
-  [true, true, true],
-  [true, false, true],
-  [true, true, false],
+// Mid-solve snapshot for the pen/eraser step: one number circled with the
+// pen, one crossed out with the eraser, everything else still undecided.
+const PARTIAL_MARKS: CellMark[][] = [
+  ['neutral', 'selected', 'neutral'],
+  ['neutral', 'erased', 'neutral'],
+  ['neutral', 'neutral', 'neutral'],
 ];
 
 const ROW_TARGETS = [8, 11, 14];
 const COL_TARGETS = [13, 13, 7];
 
-const solvedSpec: MiniGridSpec = { rows: 3, cols: 3, grid: EXAMPLE_GRID, mask: SOLVED_MASK, rowTargets: ROW_TARGETS, colTargets: COL_TARGETS };
-const partialSpec: MiniGridSpec = { rows: 3, cols: 3, grid: EXAMPLE_GRID, mask: PARTIAL_MASK, rowTargets: ROW_TARGETS, colTargets: COL_TARGETS };
+const solvedSpec: MiniGridSpec = { rows: 3, cols: 3, grid: EXAMPLE_GRID, marks: SOLVED_MARKS, rowTargets: ROW_TARGETS, colTargets: COL_TARGETS };
+const partialSpec: MiniGridSpec = { rows: 3, cols: 3, grid: EXAMPLE_GRID, marks: PARTIAL_MARKS, rowTargets: ROW_TARGETS, colTargets: COL_TARGETS };
 
 // A single combined tutorial (all 3 steps), shown once before the player's
 // very first level -- gated on the shared 'all' key in tutorialsSeen

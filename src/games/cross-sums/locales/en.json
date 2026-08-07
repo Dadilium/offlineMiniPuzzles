@@ -1,24 +1,24 @@
 {
   "meta": {
     "name": "Cross Sums",
-    "tag": "Keep/exclude sum puzzle"
+    "tag": "Circle-the-sum puzzle"
   },
   "hub": {
-    "tagline": "Every row and column has a target sum. Cross out numbers until every row and column matches — kept cells only."
+    "tagline": "Every row and column has a target sum. Circle the numbers that add up to it — everything else stays out."
   },
   "tutorial": {
     "all": [
       {
         "title": "Every row and column has a target",
-        "desc": "The numbers along the right edge and bottom edge are the sums each row and column must reach — but only counting the cells you keep."
+        "desc": "The numbers along the right edge and bottom edge are the sums each row and column must reach — counting only the numbers you circle."
       },
       {
-        "title": "Tap a number to keep or cross it out",
-        "desc": "Every cell starts kept. Tap one to cross it out of the sum, tap again to bring it back — the cell value never changes, only whether it counts."
+        "title": "Pen to circle, eraser to cross out",
+        "desc": "Two tools sit above the board. Pen circles a number into the sum; eraser crosses one out to mark it as excluded. Tap a tool, then tap a cell — tap the same mark again to clear it."
       },
       {
         "title": "Match every target to win",
-        "desc": "Once every row's and every column's kept-cell sum matches its target, the board is solved. Stuck? Hint reveals one cell for you."
+        "desc": "Once every row's and every column's circled-cell sum matches its target, the board is solved. Stuck? Hint reveals one cell for you."
       }
     ]
   },
@@ -26,9 +26,13 @@
     "levelTitle": "Level {{number}}",
     "statusRows": "Rows {{count}}/{{total}}",
     "statusCols": "Cols {{count}}/{{total}}",
-    "legend": "tap a number to cross it out · tap again to keep it · edges show each target",
+    "legend": "pen circles a number into the sum · eraser crosses it out · edges show each target",
     "hintFailToast": "Every cell is already right where it should be.",
     "winTitle": "Every sum balances",
     "winSubtitle": "Every row and column landed on target — next board unlocked."
+  },
+  "tools": {
+    "pen": "Pen",
+    "eraser": "Eraser"
   }
 }
