@@ -15,6 +15,10 @@ import type { Cell, FindWordsLevel } from '../types';
 const STORAGE_KEY = '@signal-arcade/find-words/progress/v1';
 /** Bounds the shape-dedup history so it can't grow unbounded over 1000+ levels. */
 const MAX_RECENT_FINGERPRINTS = 50;
+/** Bounds the word-repeat-avoidance history -- large enough to cover several
+ * levels' worth of words, small enough to stay well under even the smallest
+ * word bank tier so generation never runs short of fresh words to pick from. */
+const MAX_RECENT_WORDS = 40;
 /**
  * Sanity ceiling on how many per-level entries a real player could ever
  * legitimately reach -- see useShikakuProgress.ts's identical guard for why
@@ -39,6 +43,7 @@ interface PersistedShape {
   tutorialsSeen: string[];
   skillRating: SkillRating;
   recentFingerprints: string[];
+  recentWords: string[];
 }
 
 function defaultState(): PersistedShape {
@@ -50,6 +55,7 @@ function defaultState(): PersistedShape {
     tutorialsSeen: [],
     skillRating: INITIAL_SKILL_RATING,
     recentFingerprints: [],
+    recentWords: [],
   };
 }
 
@@ -90,6 +96,7 @@ function sanitizePersisted(parsed: Partial<PersistedShape> | null): PersistedSha
     tutorialsSeen: Array.isArray(parsed.tutorialsSeen) ? parsed.tutorialsSeen : [],
     skillRating: typeof parsed.skillRating === 'number' ? parsed.skillRating : INITIAL_SKILL_RATING,
     recentFingerprints: Array.isArray(parsed.recentFingerprints) ? parsed.recentFingerprints.slice(-MAX_RECENT_FINGERPRINTS) : [],
+    recentWords: Array.isArray(parsed.recentWords) ? parsed.recentWords.slice(-MAX_RECENT_WORDS) : [],
   };
 }
 
@@ -167,13 +174,20 @@ export function FindWordsProgressProvider({ children }: { children: React.ReactN
     const current = stateRef.current;
     if (current.generatedLevels[levelIndex]) return;
 
-    const level = createLevelForIndexRobust(levelIndex, current.skillRating, currentLanguage(), current.recentFingerprints);
+    const level = createLevelForIndexRobust(
+      levelIndex,
+      current.skillRating,
+      currentLanguage(),
+      current.recentFingerprints,
+      current.recentWords
+    );
     const fingerprint = fingerprintFindWords(level.rows, level.cols, level.placements);
     const next: PersistedShape = {
       ...current,
       generatedLevels: { ...current.generatedLevels, [levelIndex]: level },
       foundIndicesByLevel: { ...current.foundIndicesByLevel, [levelIndex]: [] },
       recentFingerprints: [...current.recentFingerprints, fingerprint].slice(-MAX_RECENT_FINGERPRINTS),
+      recentWords: [...current.recentWords, ...level.placements.map((p) => p.word)].slice(-MAX_RECENT_WORDS),
     };
     stateRef.current = next;
     setState(next);

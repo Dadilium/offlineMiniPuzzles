@@ -24,10 +24,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "statusMoves": "Coups {{count}}",
-    "statusPar": "· par {{count}}",
-    "stuckMessage": "Aucune solution depuis ici -- réinitialisez et réessayez",
-    "legend": "touchez un tube pour le prendre · touchez un autre pour verser",
     "hintFailToast": "Aucun coup d'ici ne mène à la victoire -- essayez de réinitialiser.",
     "winTitle": "Tous les tubes sont triés",
     "winSubtitle_one": "Résolu en {{count}} coup -- le par est {{par}}.",

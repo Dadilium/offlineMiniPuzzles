@@ -24,9 +24,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "statusSolved": "Résolus {{count}}/{{total}}",
-    "statusConflicts": "Conflits {{count}}",
-    "legend": "glissez pour tracer un rectangle sur un indice · touchez un rectangle pour le supprimer",
     "hintFailToast": "Chaque indice est déjà correctement rempli.",
     "winTitle": "Toutes les cases sont partitionnées",
     "winSubtitle": "Le rectangle de chaque indice est correct — prochain plateau débloqué."

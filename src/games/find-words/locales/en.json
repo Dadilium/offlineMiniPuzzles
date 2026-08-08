@@ -24,8 +24,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "statusFound": "Found {{count}}/{{total}}",
-    "legend": "drag across letters to select a word · words can read backwards too",
     "winTitle": "Every word found",
     "winSubtitle": "The whole list is crossed off — next board unlocked."
   }

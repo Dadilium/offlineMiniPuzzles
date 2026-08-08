@@ -46,7 +46,6 @@
     "hintLockedToast": "That relay was revealed by a hint — remove another one instead.",
     "hintSolvedToast": "Every signal is already connected.",
     "hintBudgetFullToast": "No {{color}} relays left — remove one to make room for a hint.",
-    "legend": "S = source · ◎ = receiver · ● = relay · tap a cell to place / remove",
     "kindCircle": "Circle",
     "kindBeam": "Beam",
     "winTitle": "Level complete",

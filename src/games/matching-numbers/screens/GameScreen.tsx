@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
@@ -118,7 +117,6 @@ export default function GameScreen({ route, navigation }: Props) {
   const addNumbersUsed = addNumbersUsedByLevel[levelIndex] ?? 0;
   const addNumbersRemaining = MAX_ADD_NUMBERS - addNumbersUsed;
   const showFail = stuck && addNumbersRemaining <= 0 && !pendingMatch && !rejectedPair;
-  const remainingTiles = useMemo(() => (board ? board.flat().filter((v) => v !== null).length : 0), [board]);
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('matching-numbers');
 
@@ -268,10 +266,8 @@ export default function GameScreen({ route, navigation }: Props) {
           <IconButton name="refresh-outline" onPress={onRetryPress} accessibilityLabel={tc('actions.resetLevel')} />
         </>
       }
-      statusRow={<StatusPill color={colors.purple}>{t('game.statusTilesLeft', { count: remainingTiles })}</StatusPill>}
       boardScrollable
       onBoardAreaLayout={setBoardAreaHeight}
-      legend={t('game.legend')}
       controls={
         <>
           <View style={{ flexDirection: 'row', gap: 8 }}>

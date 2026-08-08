@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
@@ -62,10 +61,6 @@ export default function GameScreen({ route, navigation }: Props) {
 
   const conflicts = useMemo(() => (level ? computeConflicts(level, placed) : EMPTY_CONFLICTS), [level, placed]);
   const win = useMemo(() => (level ? computeWin(level, placed) : false), [level, placed]);
-  // "Solved" -- placed AND matching its clue's value, not just placed, so a
-  // mismatched-area rectangle doesn't inflate the count (the conflicts pill
-  // right next to it already flags it).
-  const cluesSolved = level ? placed.filter((rect) => !conflicts.has(rect.clueIndex)).length : 0;
 
   const [celebrate, setCelebrate] = useState(false);
   const [revealWin, setRevealWin] = useState(false);
@@ -197,15 +192,6 @@ export default function GameScreen({ route, navigation }: Props) {
           <IconButton name="refresh-outline" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} />
         </>
       }
-      statusRow={
-        <>
-          <StatusPill color={cluesSolved === level.clues.length ? colors.success : colors.textDim}>
-            {t('game.statusSolved', { count: cluesSolved, total: level.clues.length })}
-          </StatusPill>
-          {conflicts.size > 0 && <StatusPill color={colors.signalRed}>{t('game.statusConflicts', { count: conflicts.size })}</StatusPill>}
-        </>
-      }
-      legend={t('game.legend')}
       controls={
         <>
           <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />

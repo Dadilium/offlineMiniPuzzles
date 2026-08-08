@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import IconButton from '../../../components/IconButton';
 import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
-import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors, fonts } from '../../../theme/colors';
@@ -158,15 +157,6 @@ export default function GameScreen({ route, navigation }: Props) {
           <IconButton name="refresh-outline" onPress={() => resetLevel(levelIndex)} accessibilityLabel={tc('actions.resetLevel')} />
         </>
       }
-      statusRow={
-        <>
-          <StatusPill color={colors.warn}>{t('game.statusKings', { count: state.kings.length, total: level.n })}</StatusPill>
-          {state.conflictSet.size > 0 && (
-            <StatusPill color={colors.signalRed}>{t('game.statusConflict', { count: state.conflictSet.size })}</StatusPill>
-          )}
-        </>
-      }
-      legend={t('game.legend')}
       controls={
         <>
           <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />

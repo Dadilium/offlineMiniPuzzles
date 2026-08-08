@@ -28,9 +28,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "statusFilled": "{{count}} / {{total}} remplies",
-    "stuckMessage": "Aucune solution depuis ici -- revenez en arrière et réessayez",
-    "legend": "glissez à travers les cases libres pour les remplir -- touchez votre tracé pour revenir en arrière",
     "hintFailToast": "Aucun chemin d'ici ne mène à toutes les cases -- essayez de revenir en arrière.",
     "winTitle": "Plateau rempli",
     "winSubtitle": "Toutes les cases sont remplies -- prochain plateau débloqué."

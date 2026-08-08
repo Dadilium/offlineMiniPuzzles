@@ -24,9 +24,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "statusSolved": "Solved {{count}}/{{total}}",
-    "statusConflicts": "Conflicts {{count}}",
-    "legend": "drag to draw a rectangle over a clue · tap a rectangle to remove it",
     "hintFailToast": "Every clue is already correctly filled in.",
     "winTitle": "Every cell partitioned",
     "winSubtitle": "Every clue's rectangle fits — next board unlocked."

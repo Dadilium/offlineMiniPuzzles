@@ -24,9 +24,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "statusRows": "Rows {{count}}/{{total}}",
-    "statusCols": "Cols {{count}}/{{total}}",
-    "legend": "tap a cell to pitch a tent · tap again to remove it · edges show each target",
     "hintFailToast": "Every tent is already right where it should be.",
     "winTitle": "Every tree matched",
     "winSubtitle": "Every tree found its tent — next board unlocked."

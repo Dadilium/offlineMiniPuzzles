@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
@@ -171,13 +170,7 @@ export default function GameScreen({ route, navigation }: Props) {
           <IconButton name="refresh-outline" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} />
         </>
       }
-      statusRow={
-        <StatusPill color={foundIndices.length === level.placements.length ? colors.success : colors.textDim}>
-          {t('game.statusFound', { count: foundIndices.length, total: level.placements.length })}
-        </StatusPill>
-      }
       boardScrollable
-      legend={t('game.legend')}
       controls={!revealWin && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
       winOverlay={
         <WinOverlay

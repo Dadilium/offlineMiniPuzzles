@@ -112,11 +112,18 @@ export function generateFindWordsLevel(
   params: GenerationParams,
   language: WordBankLanguage,
   recentFingerprints: string[] = [],
-  maxAttempts = 200
+  maxAttempts = 200,
+  recentWords: string[] = []
 ): GenerateSuccess | GenerateFailure {
   const recent = new Set(recentFingerprints);
-  const pool = wordBankFor(language).filter((w) => w.length >= params.wordLengthRange[0] && w.length <= params.wordLengthRange[1]);
-  if (pool.length < params.wordCount) return { attempts: 0 };
+  const fullPool = wordBankFor(language).filter((w) => w.length >= params.wordLengthRange[0] && w.length <= params.wordLengthRange[1]);
+  if (fullPool.length < params.wordCount) return { attempts: 0 };
+
+  // Prefer words the player hasn't seen in recent levels -- falls back to the
+  // full pool only if avoiding them would leave too few words to fill a level.
+  const recentSet = new Set(recentWords);
+  const freshPool = fullPool.filter((w) => !recentSet.has(w));
+  const pool = freshPool.length >= params.wordCount ? freshPool : fullPool;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const rows = randInt(rng, params.sizeRange[0], params.sizeRange[1]);

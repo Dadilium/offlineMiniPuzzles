@@ -24,9 +24,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "statusRows": "Lignes {{count}}/{{total}}",
-    "statusCols": "Colonnes {{count}}/{{total}}",
-    "legend": "touchez une case pour planter une tente · touchez à nouveau pour la retirer · les bords indiquent chaque objectif",
     "hintFailToast": "Chaque tente est déjà exactement là où elle doit être.",
     "winTitle": "Tous les arbres sont associés",
     "winSubtitle": "Chaque arbre a trouvé sa tente — prochaine grille débloquée."

@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import IconButton from '../../../components/IconButton';
 import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
-import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
@@ -16,7 +15,7 @@ import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplet
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import ColorSortBoard from '../components/ColorSortBoard';
 import { ACCENT_PALETTE } from '../components/TutorialDiagram';
-import { computeWin, isStuck } from '../engine';
+import { computeWin } from '../engine';
 import type { Move } from '../generation';
 import type { ColorSortStackParamList } from '../navigation';
 import { useColorSortProgress } from '../state/useColorSortProgress';
@@ -80,7 +79,6 @@ export default function GameScreen({ route, navigation }: Props) {
   }, []);
 
   const win = useMemo(() => (level && tubes ? computeWin(tubes, level.capacity) : false), [level, tubes]);
-  const stuck = useMemo(() => (level && tubes && !win ? isStuck(tubes, level.capacity) : false), [level, tubes, win]);
 
   // Tubes persist forever, so reopening an already-completed level would
   // otherwise land straight on the solved board with the win popup showing.
@@ -236,15 +234,6 @@ export default function GameScreen({ route, navigation }: Props) {
           <IconButton name="refresh-outline" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} />
         </>
       }
-      statusRow={
-        <>
-          <StatusPill color={colors.text} dim={t('game.statusPar', { count: level.parMoves })}>
-            {t('game.statusMoves', { count: moveCount })}
-          </StatusPill>
-          {stuck && <StatusPill color={colors.signalRed}>{t('game.stuckMessage')}</StatusPill>}
-        </>
-      }
-      legend={t('game.legend')}
       controls={
         <>
           <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />

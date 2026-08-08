@@ -24,10 +24,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "statusMoves": "Moves {{count}}",
-    "statusPar": "· par {{count}}",
-    "stuckMessage": "No route from here -- reset and try again",
-    "legend": "tap a tube to pick it up · tap another to pour",
     "hintFailToast": "No move from here reaches a win -- try resetting.",
     "winTitle": "All tubes sorted",
     "winSubtitle_one": "Solved in {{count}} move -- par is {{par}}.",

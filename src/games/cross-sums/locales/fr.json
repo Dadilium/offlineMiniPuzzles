@@ -24,9 +24,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "statusRows": "Lignes {{count}}/{{total}}",
-    "statusCols": "Colonnes {{count}}/{{total}}",
-    "legend": "le stylo entoure un nombre dans la somme · la gomme le barre · les bords indiquent chaque cible",
     "hintFailToast": "Chaque case est déjà à sa place.",
     "winTitle": "Toutes les sommes s'équilibrent",
     "winSubtitle": "Chaque ligne et chaque colonne a atteint sa cible — grille suivante débloquée."

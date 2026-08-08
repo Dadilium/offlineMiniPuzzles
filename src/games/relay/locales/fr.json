@@ -46,7 +46,6 @@
     "hintLockedToast": "Ce relais a été révélé par un indice — retirez-en un autre à la place.",
     "hintSolvedToast": "Chaque signal est déjà connecté.",
     "hintBudgetFullToast": "Plus aucun relais {{color}} disponible — retirez-en un pour faire de la place à un indice.",
-    "legend": "S = source · ◎ = récepteur · ● = relais · touchez une case pour placer / retirer",
     "kindCircle": "Cercle",
     "kindBeam": "Faisceau",
     "winTitle": "Niveau terminé",

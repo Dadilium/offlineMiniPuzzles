@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
@@ -15,8 +14,7 @@ import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import BlockFillGrid from '../components/BlockFillGrid';
-import { computeWin, isStuck } from '../engine';
-import { countFillable } from '../generation';
+import { computeWin } from '../engine';
 import type { BlockFillStackParamList } from '../navigation';
 import { paletteForLevel } from '../palette';
 import { useBlockFillProgress } from '../state/useBlockFillProgress';
@@ -60,8 +58,6 @@ export default function GameScreen({ route, navigation }: Props) {
   }, [levelIndex, level, levelsCompleted, resetLevel]);
 
   const win = useMemo(() => (level && path ? computeWin(level, path) : false), [level, path]);
-  const stuck = useMemo(() => (level && path && !win ? isStuck(level, path) : false), [level, path, win]);
-  const totalFillable = level ? countFillable(level.fillable) : 0;
   const palette = useMemo(() => paletteForLevel(levelIndex), [levelIndex]);
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('block-fill');
@@ -148,8 +144,6 @@ export default function GameScreen({ route, navigation }: Props) {
     return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
-  const filledCount = path.length;
-
   return (
     <GameScreenLayout
       onBack={() => navigation.navigate('BlockFillHub')}
@@ -161,14 +155,7 @@ export default function GameScreen({ route, navigation }: Props) {
           <IconButton name="refresh-outline" onPress={onRetryPress} accessibilityLabel={tc('actions.resetLevel')} />
         </>
       }
-      statusRow={
-        <>
-          <StatusPill color={palette.stroke}>{t('game.statusFilled', { count: filledCount, total: totalFillable })}</StatusPill>
-          {stuck && <StatusPill color={colors.signalRed}>{t('game.stuckMessage')}</StatusPill>}
-        </>
-      }
       boardScrollable
-      legend={t('game.legend')}
       controls={
         <>
           <View style={{ flexDirection: 'row', gap: 8 }}>

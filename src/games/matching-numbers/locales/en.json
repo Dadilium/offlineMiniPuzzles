@@ -32,9 +32,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "statusTilesLeft_one": "{{count}} tile left",
-    "statusTilesLeft_other": "{{count}} tiles left",
-    "legend": "tap two tiles that are equal or sum to 10 -- connect with a straight or single-bend path",
     "hintFailToast": "No matches available right now -- try Add Numbers.",
     "addNumbersAction": "Add Numbers",
     "addNumbersActionWithCount": "Add Numbers ({{count}})",

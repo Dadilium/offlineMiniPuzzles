@@ -32,9 +32,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "statusTilesLeft_one": "{{count}} tuile restante",
-    "statusTilesLeft_other": "{{count}} tuiles restantes",
-    "legend": "touchez deux tuiles égales ou dont la somme fait 10 -- reliez-les par un chemin droit ou à un seul coude",
     "hintFailToast": "Aucune correspondance disponible pour l'instant -- essayez Ajouter des nombres.",
     "addNumbersAction": "Ajouter des nombres",
     "addNumbersActionWithCount": "Ajouter des nombres ({{count}})",

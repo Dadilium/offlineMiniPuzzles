@@ -10,22 +10,23 @@ function areaBudgetFor(params: ReturnType<typeof difficultyParams>): number {
 }
 
 /**
- * Pure function of (levelIndex, skillRating, language, recentFingerprints):
- * the seed is derived solely from the level index, so replaying the same
- * index with the same history always reconstructs the same puzzle. Callers
- * persist the resulting level once created (see state/useFindWordsProgress)
- * rather than re-deriving it, since both skill rating and the player's app
- * language can move on after that.
+ * Pure function of (levelIndex, skillRating, language, recentFingerprints,
+ * recentWords): the seed is derived solely from the level index, so replaying
+ * the same index with the same history always reconstructs the same puzzle.
+ * Callers persist the resulting level once created (see
+ * state/useFindWordsProgress) rather than re-deriving it, since both skill
+ * rating and the player's app language can move on after that.
  */
 export function createLevelForIndex(
   levelIndex: number,
   skillRating: SkillRating,
   language: WordBankLanguage,
-  recentFingerprints: string[]
+  recentFingerprints: string[],
+  recentWords: string[] = []
 ): GenerateSuccess | GenerateFailure {
   const rng = mulberry32(seedFromLevelIndex(levelIndex));
   const params = difficultyParams(skillRating);
-  return generateFindWordsLevel(rng, params, language, recentFingerprints, maxGridAttemptsFor(areaBudgetFor(params)));
+  return generateFindWordsLevel(rng, params, language, recentFingerprints, maxGridAttemptsFor(areaBudgetFor(params)), recentWords);
 }
 
 /**
@@ -42,19 +43,21 @@ export function createLevelForIndexRobust(
   levelIndex: number,
   skillRating: SkillRating,
   language: WordBankLanguage,
-  recentFingerprints: string[]
+  recentFingerprints: string[],
+  recentWords: string[] = []
 ): FindWordsLevel {
   const params = difficultyParams(skillRating);
   const attempts: Array<() => GenerateSuccess | GenerateFailure> = [
-    () => createLevelForIndex(levelIndex, skillRating, language, recentFingerprints),
-    () => createLevelForIndex(levelIndex, skillRating, language, []),
+    () => createLevelForIndex(levelIndex, skillRating, language, recentFingerprints, recentWords),
+    () => createLevelForIndex(levelIndex, skillRating, language, [], recentWords),
     () =>
       generateFindWordsLevel(
         mulberry32(seedFromLevelIndex(levelIndex, 1)),
         params,
         language,
         [],
-        maxGridAttemptsFor(areaBudgetFor(params)) * 4
+        maxGridAttemptsFor(areaBudgetFor(params)) * 4,
+        recentWords
       ),
   ];
   for (const attempt of attempts) {

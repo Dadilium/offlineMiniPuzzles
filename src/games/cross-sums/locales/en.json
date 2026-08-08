@@ -24,9 +24,6 @@
   },
   "game": {
     "levelTitle": "Level {{number}}",
-    "statusRows": "Rows {{count}}/{{total}}",
-    "statusCols": "Cols {{count}}/{{total}}",
-    "legend": "pen circles a number into the sum · eraser crosses it out · edges show each target",
     "hintFailToast": "Every cell is already right where it should be.",
     "winTitle": "Every sum balances",
     "winSubtitle": "Every row and column landed on target — next board unlocked."

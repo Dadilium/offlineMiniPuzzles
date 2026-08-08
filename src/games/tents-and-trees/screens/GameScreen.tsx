@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { colors } from '../../../theme/colors';
@@ -59,8 +58,6 @@ export default function GameScreen({ route, navigation }: Props) {
 
   const counts = useMemo(() => (level && tents ? computeCounts(tents) : EMPTY_COUNTS), [level, tents]);
   const win = useMemo(() => (level && tents ? computeWin(level, tents) : false), [level, tents]);
-  const rowsMatched = level ? counts.rowCounts.filter((count, r) => count === level.rowTargets[r]).length : 0;
-  const colsMatched = level ? counts.colCounts.filter((count, c) => count === level.colTargets[c]).length : 0;
 
   const [celebrate, setCelebrate] = useState(false);
   const [revealWin, setRevealWin] = useState(false);
@@ -120,7 +117,13 @@ export default function GameScreen({ route, navigation }: Props) {
       clearTimeout(revealTimer);
       clearTimeout(confettiTimer);
     };
-  }, [win, level, tents, levelIndex, markLevelComplete, notifyLevelCompleted]);
+    // notifyLevelCompleted deliberately excluded -- its identity changes
+    // whenever the interstitial ad hook's loaded state changes, which would
+    // re-run this effect, cancel the pending reveal timer in cleanup, and
+    // then the celebratedForLevel guard above would block it from ever
+    // rescheduling -- leaving the wave played but the win popup never shown.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [win, level, tents, levelIndex, markLevelComplete]);
 
   function onCellPress(r: number, c: number) {
     toggleTentAt(levelIndex, r, c);
@@ -179,17 +182,6 @@ export default function GameScreen({ route, navigation }: Props) {
           <IconButton name="refresh-outline" onPress={onResetPress} accessibilityLabel={tc('actions.resetLevel')} />
         </>
       }
-      statusRow={
-        <>
-          <StatusPill color={rowsMatched === level.rows ? colors.success : colors.textDim}>
-            {t('game.statusRows', { count: rowsMatched, total: level.rows })}
-          </StatusPill>
-          <StatusPill color={colsMatched === level.cols ? colors.success : colors.textDim}>
-            {t('game.statusCols', { count: colsMatched, total: level.cols })}
-          </StatusPill>
-        </>
-      }
-      legend={t('game.legend')}
       controls={
         <>
           <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />

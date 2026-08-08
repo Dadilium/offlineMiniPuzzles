@@ -1,14 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
-import StatusPill from '../../../components/StatusPill';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
-import { colors } from '../../../theme/colors';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
 import BudgetChip from '../components/BudgetChip';
@@ -23,8 +21,6 @@ import type { ConnectivityResult, RelayKind, SignalColor } from '../types';
 const RELAY_KINDS: RelayKind[] = ['circle', 'beam'];
 
 type Props = NativeStackScreenProps<RelayStackParamList, 'RelayGame'>;
-
-const SIGNAL_COLORS: Record<SignalColor, string> = { blue: colors.signalBlue, red: colors.signalRed };
 
 export default function GameScreen({ route, navigation }: Props) {
   const { levelIndex } = route.params;
@@ -145,42 +141,6 @@ export default function GameScreen({ route, navigation }: Props) {
           <IconButton name="refresh-outline" onPress={() => resetLevel(levelIndex)} accessibilityLabel={tc('actions.resetLevel')} />
         </>
       }
-      statusRow={
-        <View style={styles.statusRowInner}>
-          {level.instructions ? <Text style={styles.instructions}>{level.instructions}</Text> : null}
-
-          <View style={styles.chipsRow}>
-            {colorList.map((color) => (
-              <BudgetChip
-                key={color}
-                color={color}
-                used={relays.filter((r) => r.color === color).length}
-                budget={level.budgets[color] ?? 0}
-                active={isMulti && activeColor === color}
-                selectable={isMulti}
-                onPress={() => setSelectedColor(color)}
-              />
-            ))}
-          </View>
-
-          {hasMirrors ? (
-            <View style={styles.chipsRow}>
-              {RELAY_KINDS.map((kind) => (
-                <KindChip key={kind} kind={kind} active={selectedKind === kind} onPress={() => setSelectedKind(kind)} />
-              ))}
-            </View>
-          ) : null}
-
-          <View style={styles.pillsRow}>
-            {level.sources.map((s) => (
-              <StatusPill key={s.color} color={SIGNAL_COLORS[s.color]}>
-                {t(`game.colorNames.${s.color}`)}: {results[s.color]?.receiverReached ? '✅' : '❌'}
-              </StatusPill>
-            ))}
-          </View>
-        </View>
-      }
-      legend={t('game.legend')}
       controls={
         <>
           <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />
@@ -198,14 +158,38 @@ export default function GameScreen({ route, navigation }: Props) {
         />
       }
     >
+      <View style={styles.pickers}>
+        {isMulti && (
+          <View style={styles.chipsRow}>
+            {colorList.map((color) => (
+              <BudgetChip
+                key={color}
+                color={color}
+                used={relays.filter((r) => r.color === color).length}
+                budget={level.budgets[color] ?? 0}
+                active={activeColor === color}
+                selectable
+                onPress={() => setSelectedColor(color)}
+              />
+            ))}
+          </View>
+        )}
+
+        {hasMirrors && (
+          <View style={styles.chipsRow}>
+            {RELAY_KINDS.map((kind) => (
+              <KindChip key={kind} kind={kind} active={selectedKind === kind} onPress={() => setSelectedKind(kind)} />
+            ))}
+          </View>
+        )}
+      </View>
+
       <RelayGrid level={level} relays={relays} jammed={jammed} results={results} onCellPress={onCellPress} />
     </GameScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  statusRowInner: { width: '100%' },
-  instructions: { fontSize: 12, color: colors.textDim, textAlign: 'center', marginBottom: 8 },
+  pickers: { width: '100%' },
   chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 8 },
-  pillsRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap', justifyContent: 'center', minHeight: 34 },
 });

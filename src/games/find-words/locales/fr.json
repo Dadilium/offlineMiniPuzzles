@@ -24,8 +24,6 @@
   },
   "game": {
     "levelTitle": "Niveau {{number}}",
-    "statusFound": "Trouvés {{count}}/{{total}}",
-    "legend": "glissez sur les lettres pour sélectionner un mot · les mots peuvent aussi se lire à l'envers",
     "winTitle": "Tous les mots trouvés",
     "winSubtitle": "Toute la liste est barrée — prochaine grille débloquée."
   }
