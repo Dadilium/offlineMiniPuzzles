@@ -7,7 +7,7 @@
  *
  * Run with: npx tsx src/games/tents-and-trees/__scripts__/engineSmoke.ts
  */
-import { applyHint, computeWin, hasPerfectMatching, makeInitialTents } from '../engine';
+import { applyHint, computeWin, hasPerfectMatching, makeInitialTents, matchedTreeCells } from '../engine';
 import { createLevelForIndex } from '../generation';
 import type { TentsAndTreesLevel } from '../types';
 
@@ -104,5 +104,20 @@ assert(
   ),
   'hasPerfectMatching directly reports no perfect matching for the shared-tent case'
 );
+
+// Regression check for a live-UI bug caught during playtest: a single tent
+// bordering three trees ([-,T,-] / [T,-,T] with the tent in the empty middle
+// cell of the second row) used to mark all three trees "matched" since the
+// old check was just "has *some* adjacent tent". Only one of the three can
+// actually claim this tent, so exactly one should light up.
+const threeTreesOneTent = matchedTreeCells(
+  [
+    { r: 0, c: 1 },
+    { r: 1, c: 0 },
+    { r: 1, c: 2 },
+  ],
+  [{ r: 1, c: 1 }]
+);
+assert(threeTreesOneTent.size === 1, 'a tent bordering three trees only matches exactly one of them, not all three');
 
 console.log('\nAll engine smoke checks passed.');

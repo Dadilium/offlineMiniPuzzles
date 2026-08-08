@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager } from 'react-native';
+import { InteractionManager, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -193,10 +193,24 @@ export default function GameScreen({ route, navigation }: Props) {
         </>
       }
       controls={
-        <>
-          <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />
-          {!revealWin && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
-        </>
+        <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
+          <GameActionButton
+            icon="bulb"
+            caption={tc('actions.hint')}
+            accessibilityLabel={tc('actions.hintWithCount', { count: hintCount })}
+            onPress={onHintPress}
+            badge={hintCount > 0 ? hintCount : 'ad'}
+          />
+          {!revealWin && (
+            <GameActionButton
+              icon="play-skip-forward"
+              caption={tc('actions.skip')}
+              accessibilityLabel={tc('actions.skipLevelAd')}
+              onPress={onSkipPress}
+              badge="ad"
+            />
+          )}
+        </View>
       }
       winOverlay={
         <WinOverlay

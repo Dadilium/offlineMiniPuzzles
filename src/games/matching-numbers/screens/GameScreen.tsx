@@ -298,17 +298,31 @@ export default function GameScreen({ route, navigation }: Props) {
       boardScrollable
       onBoardAreaLayout={setBoardAreaHeight}
       controls={
-        <>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} style={{ flex: 1 }} />
+        <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
+          <GameActionButton
+            icon="bulb"
+            caption={tc('actions.hint')}
+            accessibilityLabel={tc('actions.hintWithCount', { count: hintCount })}
+            onPress={onHintPress}
+            badge={hintCount > 0 ? hintCount : 'ad'}
+          />
+          <GameActionButton
+            icon="add-circle"
+            caption={t('game.addNumbers')}
+            accessibilityLabel={t('game.addNumbersActionWithCount', { count: addNumbersRemaining })}
+            onPress={onAddNumbersPress}
+            badge={addNumbersRemaining}
+          />
+          {!win && (
             <GameActionButton
-              label={t('game.addNumbersActionWithCount', { count: addNumbersRemaining })}
-              onPress={onAddNumbersPress}
-              style={{ flex: 1 }}
+              icon="play-skip-forward"
+              caption={tc('actions.skip')}
+              accessibilityLabel={tc('actions.skipLevelAd')}
+              onPress={onSkipPress}
+              badge="ad"
             />
-          </View>
-          {!win && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
-        </>
+          )}
+        </View>
       }
       winOverlay={
         <>

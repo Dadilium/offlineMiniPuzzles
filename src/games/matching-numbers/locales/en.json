@@ -34,6 +34,7 @@
     "levelTitle": "Level {{number}}",
     "hintFailToast": "No matches available right now -- try Add Numbers.",
     "addNumbersAction": "Add Numbers",
+    "addNumbers": "Add",
     "addNumbersActionWithCount": "Add Numbers ({{count}})",
     "addNumbersFailToast": "No Add Numbers left for this level.",
     "winTitle": "Board cleared",

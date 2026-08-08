@@ -34,6 +34,7 @@
     "levelTitle": "Niveau {{number}}",
     "hintFailToast": "Aucune correspondance disponible pour l'instant -- essayez Ajouter des nombres.",
     "addNumbersAction": "Ajouter des nombres",
+    "addNumbers": "Ajouter",
     "addNumbersActionWithCount": "Ajouter des nombres ({{count}})",
     "addNumbersFailToast": "Plus d'Ajouter des nombres disponible pour ce niveau.",
     "winTitle": "Plateau vidé",

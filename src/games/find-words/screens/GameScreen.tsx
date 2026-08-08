@@ -171,7 +171,19 @@ export default function GameScreen({ route, navigation }: Props) {
         </>
       }
       boardScrollable
-      controls={!revealWin && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
+      controls={
+        !revealWin && (
+          <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+            <GameActionButton
+              icon="play-skip-forward"
+              caption={tc('actions.skip')}
+              accessibilityLabel={tc('actions.skipLevelAd')}
+              onPress={onSkipPress}
+              badge="ad"
+            />
+          </View>
+        )
+      }
       winOverlay={
         <WinOverlay
           visible={revealWin}

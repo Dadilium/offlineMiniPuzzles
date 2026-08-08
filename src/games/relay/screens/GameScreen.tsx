@@ -142,10 +142,23 @@ export default function GameScreen({ route, navigation }: Props) {
         </>
       }
       controls={
-        <>
-          <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />
-          <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" hidden={allReached} />
-        </>
+        <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
+          <GameActionButton
+            icon="bulb"
+            caption={tc('actions.hint')}
+            accessibilityLabel={tc('actions.hintWithCount', { count: hintCount })}
+            onPress={onHintPress}
+            badge={hintCount > 0 ? hintCount : 'ad'}
+          />
+          <GameActionButton
+            icon="play-skip-forward"
+            caption={tc('actions.skip')}
+            accessibilityLabel={tc('actions.skipLevelAd')}
+            onPress={onSkipPress}
+            badge="ad"
+            hidden={allReached}
+          />
+        </View>
       }
       winOverlay={
         <WinOverlay

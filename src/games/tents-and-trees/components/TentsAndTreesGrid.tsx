@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, fonts } from '../../../theme/colors';
-import { hasOrthogonalNeighbor, wouldTouchExistingTent } from '../engine';
+import { cellsFromGrid, matchedTreeCells, wouldTouchExistingTent } from '../engine';
 import type { TentsAndTreesLevel } from '../types';
 
 const MIN_CELL = 34;
@@ -61,11 +61,9 @@ function TreeCell({ size, celebrateDelay, matched }: TreeCellProps) {
 
   return (
     <Animated.View style={[styles.cell, { width: size, height: size, backgroundColor }]}>
-      <Animated.Text
-        style={[styles.glyph, { fontSize: size * 0.5, opacity: glyphOpacity, transform: [{ scale: bounceScale }] }]}
-      >
-        🌲
-      </Animated.Text>
+      <Animated.View style={{ transform: [{ scale: bounceScale }] }}>
+        <Animated.Text style={[styles.glyph, { fontSize: size * 0.5, opacity: glyphOpacity }]}>🌲</Animated.Text>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -182,6 +180,7 @@ export default function TentsAndTreesGrid({ level, tents, hintedCells, rowCounts
   const { rows, cols, trees } = level;
   const size = cellSizeFor(rows, cols);
   const axisSize = size * 0.82;
+  const matchedTrees = matchedTreeCells(cellsFromGrid(trees), cellsFromGrid(tents));
 
   const bodyRows: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
@@ -190,9 +189,7 @@ export default function TentsAndTreesGrid({ level, tents, hintedCells, rowCounts
       const key = `${r},${c}`;
       const celebrateDelay = celebrate ? (r + c) * WAVE_STAGGER_MS : null;
       if (trees[r][c]) {
-        cellsInRow.push(
-          <TreeCell key={key} size={size} celebrateDelay={celebrateDelay} matched={hasOrthogonalNeighbor(tents, r, c)} />
-        );
+        cellsInRow.push(<TreeCell key={key} size={size} celebrateDelay={celebrateDelay} matched={matchedTrees.has(key)} />);
       } else {
         cellsInRow.push(
           <TentCell
