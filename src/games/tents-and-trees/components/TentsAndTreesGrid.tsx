@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, fonts } from '../../../theme/colors';
-import { wouldTouchExistingTent } from '../engine';
+import { hasOrthogonalNeighbor, wouldTouchExistingTent } from '../engine';
 import type { TentsAndTreesLevel } from '../types';
 
 const MIN_CELL = 34;
@@ -27,8 +27,17 @@ export function waveDurationMs(rows: number, cols: number): number {
   return (rows - 1 + cols - 1) * WAVE_STAGGER_MS + WAVE_BOUNCE_MS;
 }
 
-function TreeCell({ size, celebrateDelay }: { size: number; celebrateDelay: number | null }) {
+interface TreeCellProps {
+  size: number;
+  celebrateDelay: number | null;
+  /** True once this tree has an orthogonally-adjacent tent placed. */
+  matched: boolean;
+}
+
+function TreeCell({ size, celebrateDelay, matched }: TreeCellProps) {
   const bounceScale = useRef(new Animated.Value(1)).current;
+  const matchProgress = useRef(new Animated.Value(matched ? 1 : 0)).current;
+  const prevMatched = useRef(matched);
 
   useEffect(() => {
     if (celebrateDelay === null) return;
@@ -40,10 +49,24 @@ function TreeCell({ size, celebrateDelay }: { size: number; celebrateDelay: numb
     ]).start();
   }, [celebrateDelay, bounceScale]);
 
+  useEffect(() => {
+    if (matched !== prevMatched.current) {
+      prevMatched.current = matched;
+      Animated.timing(matchProgress, { toValue: matched ? 1 : 0, duration: 200, useNativeDriver: false }).start();
+    }
+  }, [matched, matchProgress]);
+
+  const backgroundColor = matchProgress.interpolate({ inputRange: [0, 1], outputRange: [colors.surface3, `${colors.success}26`] });
+  const glyphOpacity = matchProgress.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
+
   return (
-    <View style={[styles.cell, styles.treeCell, { width: size, height: size }]}>
-      <Animated.Text style={[styles.glyph, { fontSize: size * 0.5, transform: [{ scale: bounceScale }] }]}>🌲</Animated.Text>
-    </View>
+    <Animated.View style={[styles.cell, { width: size, height: size, backgroundColor }]}>
+      <Animated.Text
+        style={[styles.glyph, { fontSize: size * 0.5, opacity: glyphOpacity, transform: [{ scale: bounceScale }] }]}
+      >
+        🌲
+      </Animated.Text>
+    </Animated.View>
   );
 }
 
@@ -62,6 +85,7 @@ function TentCell({ isTent, hasConflict, hinted, size, celebrateDelay, onPress }
   const shakeX = useRef(new Animated.Value(0)).current;
   const prevConflict = useRef(hasConflict);
   const bounceScale = useRef(new Animated.Value(1)).current;
+  const conflictProgress = useRef(new Animated.Value(hasConflict ? 1 : 0)).current;
 
   useEffect(() => {
     if (isTent !== prevIsTent.current) {
@@ -86,7 +110,8 @@ function TentCell({ isTent, hasConflict, hinted, size, celebrateDelay, onPress }
       ]).start();
     }
     prevConflict.current = hasConflict;
-  }, [hasConflict, shakeX]);
+    Animated.timing(conflictProgress, { toValue: hasConflict ? 1 : 0, duration: 150, useNativeDriver: false }).start();
+  }, [hasConflict, shakeX, conflictProgress]);
 
   useEffect(() => {
     if (celebrateDelay === null) return;
@@ -98,6 +123,9 @@ function TentCell({ isTent, hasConflict, hinted, size, celebrateDelay, onPress }
     ]).start();
   }, [celebrateDelay, bounceScale]);
 
+  const conflictBorderColor = conflictProgress.interpolate({ inputRange: [0, 1], outputRange: ['transparent', colors.signalRed] });
+  const conflictBorderWidth = conflictProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 2] });
+
   return (
     <TouchableOpacity
       activeOpacity={0.6}
@@ -105,6 +133,10 @@ function TentCell({ isTent, hasConflict, hinted, size, celebrateDelay, onPress }
       disabled={hinted}
       style={[styles.cell, { width: size, height: size }, hinted && styles.cellHinted]}
     >
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { borderColor: conflictBorderColor, borderWidth: conflictBorderWidth }]}
+      />
       <Animated.View style={{ transform: [{ translateX: shakeX }, { scale: bounceScale }] }}>
         <Animated.Text
           style={[
@@ -158,7 +190,9 @@ export default function TentsAndTreesGrid({ level, tents, hintedCells, rowCounts
       const key = `${r},${c}`;
       const celebrateDelay = celebrate ? (r + c) * WAVE_STAGGER_MS : null;
       if (trees[r][c]) {
-        cellsInRow.push(<TreeCell key={key} size={size} celebrateDelay={celebrateDelay} />);
+        cellsInRow.push(
+          <TreeCell key={key} size={size} celebrateDelay={celebrateDelay} matched={hasOrthogonalNeighbor(tents, r, c)} />
+        );
       } else {
         cellsInRow.push(
           <TentCell
@@ -205,7 +239,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSoft,
   },
-  treeCell: { backgroundColor: colors.surface3 },
   cellHinted: { borderColor: colors.gold, borderWidth: 1.5 },
   glyph: { textAlign: 'center' },
   targetCell: { alignItems: 'center', justifyContent: 'center' },

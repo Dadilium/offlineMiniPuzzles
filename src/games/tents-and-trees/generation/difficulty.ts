@@ -40,7 +40,8 @@ export type DifficultyTierKey = 'starter' | 'growing' | 'skilled' | 'expert';
 interface Tier {
   key: DifficultyTierKey;
   minRating: number;
-  sizeRange: [number, number];
+  rowsRange: [number, number];
+  colsRange: [number, number];
   treeDensity: [number, number];
 }
 
@@ -50,12 +51,16 @@ interface Tier {
  * the no-touch constraint on tents caps how dense a solvable board can get
  * well before that, so pushing density higher just burns generator attempts
  * without making the puzzle meaningfully harder.
+ *
+ * Expert is rows > cols on purpose -- a taller board fills more of a phone
+ * screen at the difficulty tier where players want the extra challenge to
+ * feel physically bigger, not just denser.
  */
 const TIERS: Tier[] = [
-  { key: 'expert', minRating: 80, sizeRange: [8, 8], treeDensity: [0.16, 0.2] },
-  { key: 'skilled', minRating: 60, sizeRange: [7, 7], treeDensity: [0.14, 0.18] },
-  { key: 'growing', minRating: 40, sizeRange: [6, 6], treeDensity: [0.12, 0.16] },
-  { key: 'starter', minRating: 0, sizeRange: [5, 5], treeDensity: [0.1, 0.14] },
+  { key: 'expert', minRating: 80, rowsRange: [11, 11], colsRange: [8, 8], treeDensity: [0.16, 0.2] },
+  { key: 'skilled', minRating: 60, rowsRange: [7, 7], colsRange: [7, 7], treeDensity: [0.14, 0.18] },
+  { key: 'growing', minRating: 40, rowsRange: [6, 6], colsRange: [6, 6], treeDensity: [0.12, 0.16] },
+  { key: 'starter', minRating: 0, rowsRange: [5, 5], colsRange: [5, 5], treeDensity: [0.1, 0.14] },
 ];
 
 function tierFor(rating: SkillRating): Tier {
@@ -69,8 +74,8 @@ export function tierKeyFor(rating: SkillRating): DifficultyTierKey {
 export function difficultyParams(rating: SkillRating): GenerationParams {
   const tier = tierFor(rating);
   return {
-    rowsRange: tier.sizeRange,
-    colsRange: tier.sizeRange,
+    rowsRange: tier.rowsRange,
+    colsRange: tier.colsRange,
     treeDensity: tier.treeDensity,
   };
 }

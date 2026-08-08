@@ -140,7 +140,7 @@ function MatchingNumbersCell({ value, size, selected, pulsing, clearing, rejecte
       <View style={styles.cellBase}>
         <Animated.View pointerEvents="none" style={[styles.highlight, { opacity: highlight }]} />
         <Animated.View pointerEvents="none" style={[styles.rejectOverlay, { opacity: rejectBlink }]} />
-        <Text style={[styles.digit, { fontSize: size * 0.42 }]}>{value}</Text>
+        <Text style={[styles.digit, { fontSize: size * 0.58 }]}>{value}</Text>
       </View>
       <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={0.7} onPress={onPress} />
     </Animated.View>
@@ -378,7 +378,7 @@ export default function MatchingNumbersGrid({
 const styles = StyleSheet.create({
   wrap: { alignSelf: 'center' },
   row: { flexDirection: 'row' },
-  cellOuter: { padding: 2 },
+  cellOuter: { padding: 0.5 },
   cellBase: {
     flex: 1,
     alignItems: 'center',
