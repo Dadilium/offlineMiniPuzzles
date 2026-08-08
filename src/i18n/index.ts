@@ -20,6 +20,8 @@ import tentsAndTreesEn from '../games/tents-and-trees/locales/en.json';
 import tentsAndTreesFr from '../games/tents-and-trees/locales/fr.json';
 import shikakuEn from '../games/shikaku/locales/en.json';
 import shikakuFr from '../games/shikaku/locales/fr.json';
+import findWordsEn from '../games/find-words/locales/en.json';
+import findWordsFr from '../games/find-words/locales/fr.json';
 import relayEn from '../games/relay/locales/en.json';
 import relayFr from '../games/relay/locales/fr.json';
 
@@ -42,6 +44,7 @@ export const resources = {
     'cross-sums': crossSumsEn,
     'tents-and-trees': tentsAndTreesEn,
     shikaku: shikakuEn,
+    'find-words': findWordsEn,
     relay: relayEn,
   },
   fr: {
@@ -53,6 +56,7 @@ export const resources = {
     'cross-sums': crossSumsFr,
     'tents-and-trees': tentsAndTreesFr,
     shikaku: shikakuFr,
+    'find-words': findWordsFr,
     relay: relayFr,
   },
 } as const;

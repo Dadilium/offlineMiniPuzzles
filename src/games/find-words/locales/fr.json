@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "name": "Mots mêlés",
+    "tag": "Trouvez les mots cachés dans la grille"
+  },
+  "hub": {
+    "tagline": "Faites glisser votre doigt sur les lettres pour former chaque mot de la liste — de gauche à droite, de haut en bas, en diagonale, et à l'envers dans les niveaux avancés."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Glissez sur les lettres pour sélectionner un mot",
+        "desc": "Appuyez sur une lettre et glissez en ligne droite jusqu'à la dernière lettre du mot. Votre sélection suit une bulle de couleur pour rester bien visible."
+      },
+      {
+        "title": "Chaque mot trouvé garde sa propre couleur",
+        "desc": "Trouvez un mot de la liste et il se fixe sur la grille avec sa propre couleur, pour que chaque mot trouvé reste bien visible."
+      },
+      {
+        "title": "Trouvez tous les mots de la liste pour gagner",
+        "desc": "Un mot trouvé est barré dans la liste en bas de l'écran. La grille est résolue une fois que tous les mots ont été trouvés."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Niveau {{number}}",
+    "statusFound": "Trouvés {{count}}/{{total}}",
+    "legend": "glissez sur les lettres pour sélectionner un mot · les mots peuvent aussi se lire à l'envers",
+    "winTitle": "Tous les mots trouvés",
+    "winSubtitle": "Toute la liste est barrée — prochaine grille débloquée."
+  }
+}

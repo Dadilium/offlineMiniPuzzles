@@ -9,7 +9,8 @@ export type GameId =
   | 'cross-sums'
   | 'color-sort'
   | 'tents-and-trees'
-  | 'shikaku';
+  | 'shikaku'
+  | 'find-words';
 
 type AdFormat = 'banner' | 'interstitial' | 'rewarded';
 
@@ -51,9 +52,11 @@ const DEFAULT_INTERSTITIAL_FIRST = 5;
 const DEFAULT_INTERSTITIAL_INTERVAL = 3;
 const INTERSTITIAL_FIRST_OVERRIDES: Partial<Record<GameId, number>> = {
   'matching-numbers': 2,
+  'find-words': 3,
 };
 const INTERSTITIAL_INTERVAL_OVERRIDES: Partial<Record<GameId, number>> = {
   'matching-numbers': 2,
+  'find-words': 2,
 };
 
 export interface InterstitialSchedule {

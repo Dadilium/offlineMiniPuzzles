@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "name": "Find Words",
+    "tag": "Search the grid for hidden words"
+  },
+  "hub": {
+    "tagline": "Drag across letters to spell out every word on the list — words can run left-to-right, top-to-bottom, or diagonally, and at higher levels, backwards too."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Drag across letters to select a word",
+        "desc": "Press on a letter and drag in a straight line to the word's last letter. Your selection follows a bubble of color so it stays easy to see."
+      },
+      {
+        "title": "Each word you find keeps its own color",
+        "desc": "Find a word from the list and it locks in place with its own distinct color, so every found word stays clearly visible on the board."
+      },
+      {
+        "title": "Cross off every word on the list to win",
+        "desc": "A found word is struck off the list at the bottom of the screen. The board is solved once every word has been found."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Level {{number}}",
+    "statusFound": "Found {{count}}/{{total}}",
+    "legend": "drag across letters to select a word · words can read backwards too",
+    "winTitle": "Every word found",
+    "winSubtitle": "The whole list is crossed off — next board unlocked."
+  }
+}

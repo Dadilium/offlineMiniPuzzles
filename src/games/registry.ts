@@ -9,6 +9,7 @@ import { crossSumsGame } from './cross-sums';
 import { colorSortGame } from './color-sort';
 import { tentsAndTreesGame } from './tents-and-trees';
 import { shikakuGame } from './shikaku';
+import { findWordsGame } from './find-words';
 import type { ComingSoonEntry, GameModule } from './types';
 
 // Add new games here as they're built, e.g.:
@@ -22,6 +23,7 @@ export const games: GameModule[] = [
   colorSortGame,
   tentsAndTreesGame,
   shikakuGame,
+  findWordsGame,
 ];
 
 export const comingSoon: ComingSoonEntry[] = [];
