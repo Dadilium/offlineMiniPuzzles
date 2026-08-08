@@ -43,7 +43,7 @@ function defaultState(): PersistedShape {
 
 function isValidLevel(level: unknown): level is MatchingNumbersLevel {
   const l = level as MatchingNumbersLevel | null;
-  return !!l && typeof l.rows === 'number' && typeof l.cols === 'number' && Array.isArray(l.grid) && Array.isArray(l.solutionOrder);
+  return !!l && typeof l.rows === 'number' && typeof l.cols === 'number' && Array.isArray(l.grid);
 }
 
 function cloneGrid(grid: GridValue[][]): GridValue[][] {
@@ -110,7 +110,7 @@ interface MatchingNumbersProgressContextValue {
   collapseRow: (levelIndex: number, rowIndex: number) => void;
   /** Spends an Add Numbers charge if any remain. Returns false (no-op) once MAX_ADD_NUMBERS has been used this level. */
   addNumbers: (levelIndex: number) => boolean;
-  /** Live scan of the current board for any currently-legal pair -- never reads the level's solutionOrder certificate (see engine.ts). Returns null if the board is stuck. */
+  /** Live scan of the current board for any currently-legal pair (see engine.ts). Returns null if the board is stuck. */
   giveHint: (levelIndex: number) => [Cell, Cell] | null;
   /** Restores the level's pristine board and resets its Add Numbers charges. */
   resetLevel: (levelIndex: number) => void;
@@ -221,7 +221,7 @@ export function MatchingNumbersProgressProvider({ children }: { children: React.
     return true;
   }, []);
 
-  /** Never reads a level's solutionOrder certificate -- always a live scan of the current board, so it stays correct no matter how far the player has diverged from the certificate's original order. */
+  /** Always a live scan of the current board (see engine.findLegalMove) -- can genuinely return null once the player exhausts what the random layout happened to offer. */
   const giveHint = useCallback((levelIndex: number): [Cell, Cell] | null => {
     const current = stateRef.current;
     const board = current.boardsByLevel[levelIndex];

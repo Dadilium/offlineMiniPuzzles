@@ -8,6 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "environment": "development",
+      "channel": "development",
       "ios": {
         "simulator": true,
         "image": "macos-sonoma-14.6-xcode-16.0"
@@ -19,6 +20,7 @@
     "preview": {
       "distribution": "internal",
       "environment": "preview",
+      "channel": "preview",
       "env": {
         "SENTRY_ALLOW_FAILURE": "true"
       },
@@ -33,6 +35,7 @@
     "production": {
       "autoIncrement": true,
       "environment": "production",
+      "channel": "production",
       "ios": {
         "image": "macos-sonoma-14.6-xcode-16.0"
       }

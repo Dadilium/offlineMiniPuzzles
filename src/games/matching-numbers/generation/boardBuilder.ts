@@ -1,43 +1,38 @@
-// The guaranteed-solvable board generator.
+// Random-shuffle board generator with a headstart guarantee, not a
+// full-solvability one.
 //
-// Key insight: a connectable path only ever depends on cells being EMPTY
-// (never on a cell being filled with some specific value), and cells only
-// ever go from filled -> empty during play, never the reverse (Add Numbers
-// appends new rows, it never re-fills an already-cleared cell). So
-// connectivity is monotonic -- once a path is clear, it stays clear forever.
-// Two consequences fall out of that:
+// An earlier version of this generator guaranteed the WHOLE board was
+// solvable, built via backward construction (deciding pairs in reverse play
+// order against an initially-empty grid, then scattering as many as possible
+// away from plain adjacent dominoes). No matter how that was tuned --
+// batch size, retries, recursive splitting -- the scattered fraction capped
+// out around 50-60%, because guaranteeing full solvability structurally
+// forces a large minority of pairs into whatever adjacent slots are left
+// once obstacle density climbs. See project memory / git history for the
+// tuning trail.
 //
-//  1. Two grid-ADJACENT cells (sharing an edge) are ALWAYS connectable, no
-//     matter what else is on the board -- there's nothing between them to
-//     block. A board tiled entirely with adjacent dominoes is therefore
-//     trivially, unconditionally solvable in any order at all.
+// This version drops the full-solvability guarantee entirely: every value
+// is placed via a genuine uniform-random shuffle, so a matching pair ending
+// up adjacent is pure chance (roughly "number of adjacent cell-pairs on the
+// board" out of "all possible cell-pairs" -- a small fraction for any
+// reasonably sized board), not a side effect of a construction algorithm.
+// The only thing generation still guarantees is a HEADSTART: simulating
+// greedy play (engine.findLegalMove, repeatedly taking whatever legal move
+// it finds) must succeed for at least `minHeadstartMoves` moves before the
+// player could possibly get stuck, so a level never opens on a dead board.
+// Past that headstart, the player might genuinely get stuck -- that's an
+// accepted, already-handled outcome (Add Numbers, then Retry/Skip -- see
+// GameScreen's FailOverlay), not a generation bug to design away.
 //
-//  2. If a pool of cells is played only AFTER every other (adjacent,
-//     always-safe) domino has already been cleared, that pool effectively
-//     has the WHOLE REST OF THE BOARD as empty background for the entire
-//     time it's being played -- so building a guaranteed-legal order for
-//     just that pool (via the same backward-construction idea, applied to
-//     a subset of cells instead of the whole board) is a much smaller
-//     problem than solving the whole board at once.
-//
-// In practice a single such pool only reliably solves up to ~10 pairs --
-// past that, there's too little guaranteed-empty background left to route
-// paths through and success probability collapses (see
-// scripts/sweep-matching-numbers-pool-batch.ts). So the generator scatters pairs across several
-// independent rounds of that size instead of one all-or-nothing ask: (1)
-// tile the whole board with adjacent horizontal dominoes (guaranteed valid,
-// cols is kept even for exactly this reason), (2) repeatedly pull a small
-// batch of whole dominoes out of the remaining plain tiling and re-derive
-// its pairing via backward construction, each round additionally treating
-// every previously-solved round's cells as permanent obstacles (they won't
-// be cleared yet from an earlier round's perspective). A round that fails
-// just leaves that batch as plain dominoes and the loop moves to the next
-// batch -- never a hard failure. The final play order is: every never-
-// scattered domino first (any order), then the scattered rounds in REVERSE
-// of the order they were built (the freest-built round, with zero cross-
-// round obstacles, has to be the last one actually played).
-import { canConnect } from '../engine';
-import type { Cell, GridValue } from '../types';
+// Note the very first move of ANY matching game is necessarily an adjacent
+// pair: with the board completely full, nothing sits between any two cells
+// except themselves, so no non-adjacent connection can exist yet. That's a
+// physical property of the game, not this generator -- it's why the first
+// move or two of the headstart will always look "obvious" no matter what
+// generates the board, and it stops applying the instant the first pair
+// clears and the board gains its first bit of empty space.
+import { applyMatch, findLegalMove } from '../engine';
+import type { GridValue } from '../types';
 import type { RNG } from './rng';
 
 export interface PairPlanEntry {
@@ -46,38 +41,20 @@ export interface PairPlanEntry {
 export type PairPlan = PairPlanEntry[];
 
 export interface BoardBuildParams {
-  /** Soft target for how many pairs to make non-adjacent (spread across the
-   * board). Realized via several small rounds (see POOL_BATCH_SIZE below)
-   * rather than one atomic ask, so the actual scattered count is often lower
-   * than this, especially past what a couple of rounds can absorb. */
-  complexPairTarget: number;
-  /** 0..1 -- among the pool's non-adjacent candidates, probability of
-   * preferring a single-bend one over a same-row/col-with-a-gap one. */
-  bendBias: number;
-  /** Caps how many candidate pairs are collected at each pool construction
-   * step before choosing among them. */
-  candidatePoolCap: number;
-  /** Total candidate placements the pool's backward-construction search may
-   * try before giving up on making a cell pair non-adjacent (falls back to
-   * leaving those cells as a plain adjacent domino -- never a hard failure). */
-  backtrackBudget: number;
+  /** Generation reshuffles until simulated greedy play can make at least
+   * this many moves in a row without getting stuck. */
+  minHeadstartMoves: number;
+  /** Reshuffle attempts before giving up and returning the last shuffle
+   * regardless (never a hard failure -- see generateMatchingNumbersLevel). */
+  maxAttempts: number;
 }
 
 export interface BuildBoardResult {
   grid: GridValue[][];
-  solutionOrder: Array<[Cell, Cell]>;
 }
 
 function makeEmptyGrid(rows: number, cols: number): GridValue[][] {
   return Array.from({ length: rows }, () => Array<GridValue>(cols).fill(null));
-}
-
-function sameCell(a: Cell, b: Cell): boolean {
-  return a.r === b.r && a.c === b.c;
-}
-
-function isAdjacent(a: Cell, b: Cell): boolean {
-  return (a.r === b.r && Math.abs(a.c - b.c) === 1) || (a.c === b.c && Math.abs(a.r - b.r) === 1);
 }
 
 function shuffle<T>(rng: RNG, items: T[]): T[] {
@@ -89,13 +66,22 @@ function shuffle<T>(rng: RNG, items: T[]): T[] {
   return arr;
 }
 
-/** Picks rows freely and cols even (within range) -- an even column count is what makes the base horizontal-domino tiling always exist. */
-export function pickDims(rng: RNG, rowsRange: [number, number], colsRange: [number, number]): { rows: number; cols: number } {
-  const rows = rowsRange[0] + Math.floor(rng() * (rowsRange[1] - rowsRange[0] + 1));
-  const evenFloor = colsRange[0] % 2 === 0 ? colsRange[0] : colsRange[0] + 1;
-  const evenCeil = colsRange[1] % 2 === 0 ? colsRange[1] : colsRange[1] - 1;
+function pickInRange(rng: RNG, range: [number, number]): number {
+  return range[0] + Math.floor(rng() * (range[1] - range[0] + 1));
+}
+
+/** Nearest even value within range, rounded inward -- used whenever the other dimension is odd, since rows*cols must stay even for every cell to have a partner. */
+function pickEvenInRange(rng: RNG, range: [number, number]): number {
+  const evenFloor = range[0] % 2 === 0 ? range[0] : range[0] + 1;
+  const evenCeil = range[1] % 2 === 0 ? range[1] : range[1] - 1;
   const span = Math.max(0, evenCeil - evenFloor) / 2;
-  const cols = evenFloor + 2 * Math.floor(rng() * (span + 1));
+  return evenFloor + 2 * Math.floor(rng() * (span + 1));
+}
+
+/** Cols are picked freely; rows are forced even only when cols lands odd (rows*cols must stay even). */
+export function pickDims(rng: RNG, rowsRange: [number, number], colsRange: [number, number]): { rows: number; cols: number } {
+  const cols = pickInRange(rng, colsRange);
+  const rows = cols % 2 !== 0 ? pickEvenInRange(rng, rowsRange) : pickInRange(rng, rowsRange);
   return { rows, cols };
 }
 
@@ -103,165 +89,54 @@ export function buildPairPlan(rng: RNG, m: number, equalWeight: number): PairPla
   return Array.from({ length: m }, () => ({ kind: rng() < equalWeight ? 'equal' : 'sum10' }));
 }
 
-/**
- * Scans a fully-shuffled list of all cell pairs within `uncommitted` (not a
- * nested loop over shuffled cells, which would anchor the collected
- * candidates on whichever cell happens to land first). Classifies into
- * adjacent / same-row-or-col / bent; `preferNonAdjacentRate` weights how
- * often a non-adjacent candidate is tried before falling back to an
- * adjacent one, and `bendBias` weights bent vs. same-row/col-with-a-gap
- * within the non-adjacent set.
- */
-function collectConnectablePairs(
-  rng: RNG,
-  grid: GridValue[][],
-  uncommitted: Cell[],
-  preferNonAdjacentRate: number,
-  bendBias: number,
-  candidatePoolCap: number
-): Array<[Cell, Cell]> {
-  const allPairs: Array<[Cell, Cell]> = [];
-  for (let i = 0; i < uncommitted.length; i++) {
-    for (let j = i + 1; j < uncommitted.length; j++) {
-      allPairs.push([uncommitted[i], uncommitted[j]]);
-    }
+function valuesFromPairPlan(rng: RNG, pairPlan: PairPlan): number[] {
+  const values: number[] = [];
+  for (const entry of pairPlan) {
+    const d = 1 + Math.floor(rng() * 9);
+    if (entry.kind === 'equal') values.push(d, d);
+    else values.push(d, 10 - d);
   }
-  const shuffledPairs = shuffle(rng, allPairs);
-
-  const adjacent: Array<[Cell, Cell]> = [];
-  const straightFar: Array<[Cell, Cell]> = [];
-  const bent: Array<[Cell, Cell]> = [];
-  for (const [a, b] of shuffledPairs) {
-    const conn = canConnect(grid, a, b);
-    if (!conn.ok) continue;
-    if (!conn.bend && isAdjacent(a, b)) adjacent.push([a, b]);
-    else (conn.bend ? bent : straightFar).push([a, b]);
-    if (adjacent.length + straightFar.length + bent.length >= candidatePoolCap) break;
-  }
-
-  const nonAdjacent = rng() < bendBias ? [...bent, ...straightFar] : [...straightFar, ...bent];
-  return rng() < preferNonAdjacentRate ? [...nonAdjacent, ...adjacent] : [...adjacent, ...nonAdjacent];
+  return values;
 }
 
-interface Budget {
-  remaining: number;
+function valuesToGrid(values: number[], rows: number, cols: number): GridValue[][] {
+  const grid = makeEmptyGrid(rows, cols);
+  values.forEach((v, i) => {
+    grid[Math.floor(i / cols)][i % cols] = v;
+  });
+  return grid;
 }
 
-/**
- * DFS backtracking over the pool's pair-placement tree: try candidates
- * (non-adjacent strongly preferred) and recurse; if a candidate's subtree
- * can't complete the remaining pairs, undo it and try the next one. Bounded
- * by a global `budget` -- returns false on exhaustion, at which point the
- * caller just leaves those cells as their original plain adjacent dominoes.
- */
-function backtrackPool(
-  rng: RNG,
-  grid: GridValue[][],
-  uncommitted: Cell[],
-  k: number,
-  order: Array<[Cell, Cell]>,
-  bendBias: number,
-  candidatePoolCap: number,
-  budget: Budget
-): boolean {
-  if (k === 0) return true;
-
-  const candidates = collectConnectablePairs(rng, grid, uncommitted, 0.92, bendBias, candidatePoolCap);
-  for (const [a, b] of candidates) {
-    if (budget.remaining <= 0) return false;
-    budget.remaining--;
-
-    grid[a.r][a.c] = 1; // placeholder marker -- real digit values are assigned after the whole order is known
-    grid[b.r][b.c] = 1;
-    order[k - 1] = [a, b];
-    const nextUncommitted = uncommitted.filter((cell) => !sameCell(cell, a) && !sameCell(cell, b));
-
-    if (backtrackPool(rng, grid, nextUncommitted, k - 1, order, bendBias, candidatePoolCap, budget)) return true;
-
-    grid[a.r][a.c] = null;
-    grid[b.r][b.c] = null;
+/** True if greedy play (always taking whatever legal move engine.findLegalMove finds, not necessarily the "best" one) survives `minMoves` steps without getting stuck. A cheap, honest proxy for "the player has room to get going" -- not a claim about optimal play. */
+function hasHeadstart(grid: GridValue[][], minMoves: number): boolean {
+  let current = grid;
+  for (let i = 0; i < minMoves; i++) {
+    const move = findLegalMove(current);
+    if (!move) return false;
+    current = applyMatch(current, move[0], move[1]);
   }
-  return false;
+  return true;
 }
-
-// A single atomic backward-construction ask only reliably succeeds up to
-// roughly this many pairs -- past it, success probability collapses toward
-// zero regardless of search budget (see scripts/sweep-matching-numbers-pool-batch.ts), because
-// there's too little guaranteed-empty background left to route paths
-// through. Reaching a larger scattered fraction is done by running several
-// independent rounds of this size instead of one giant all-or-nothing ask.
-const POOL_BATCH_SIZE = 6;
 
 export function buildBoard(rng: RNG, rows: number, cols: number, pairPlan: PairPlan, params: BoardBuildParams): BuildBoardResult {
   const m = (rows * cols) / 2;
   if (pairPlan.length !== m) {
     throw new Error(`pairPlan length ${pairPlan.length} does not match ${rows}x${cols} grid (expected ${m})`);
   }
-  if (cols % 2 !== 0) {
-    throw new Error(`buildBoard requires an even column count (got ${cols})`);
+  if ((rows * cols) % 2 !== 0) {
+    throw new Error(`buildBoard requires an even total cell count (got ${rows}x${cols})`);
   }
 
-  // Base tiling: every row split into adjacent horizontal dominoes.
-  const dominoes: Array<[Cell, Cell]> = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c += 2) {
-      dominoes.push([{ r, c }, { r, c: c + 1 }]);
-    }
+  const values = valuesFromPairPlan(rng, pairPlan);
+  const attempts = Math.max(1, params.maxAttempts);
+
+  // Falls back to whatever the last attempt shuffled to if none hit the
+  // headstart target -- never a hard failure, matching every other level of
+  // this generator (see generateMatchingNumbersLevel's own retry loop).
+  let grid = makeEmptyGrid(rows, cols);
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    grid = valuesToGrid(shuffle(rng, values), rows, cols);
+    if (hasHeadstart(grid, params.minHeadstartMoves)) break;
   }
-
-  let remainingIdx = shuffle(
-    rng,
-    dominoes.map((_, i) => i)
-  );
-  let remainingTarget = Math.max(0, Math.min(params.complexPairTarget, m));
-  // Rounds are built in "freest first" order (round 1 assumes nothing but its
-  // own cells exist; each later round additionally treats every earlier
-  // round's cells as permanent obstacles, since those haven't been played
-  // yet from that later round's perspective). That means the play order has
-  // to be the REVERSE of construction order: the last, most-constrained
-  // round constructed is actually the first one played (right after the
-  // plain dominoes), and the freest round -- built first -- is played last,
-  // exactly mirroring how a single pool's own internal order works.
-  const scatteredRounds: Array<Array<[Cell, Cell]>> = [];
-  const scatteredIdxSet = new Set<number>();
-  const cumulativeGrid = makeEmptyGrid(rows, cols);
-
-  while (remainingTarget > 0 && remainingIdx.length > 0) {
-    const batchSize = Math.min(POOL_BATCH_SIZE, remainingTarget, remainingIdx.length);
-    const batchIdx = remainingIdx.slice(0, batchSize);
-    remainingIdx = remainingIdx.slice(batchSize);
-
-    const batchCells = batchIdx.flatMap((i) => dominoes[i]);
-    // Fresh copy so this round's own backtracking undo/redo can't corrupt the
-    // obstacles carried forward from previously-built rounds.
-    const poolGrid = cumulativeGrid.map((row) => row.slice());
-    const order = new Array<[Cell, Cell]>(batchSize);
-    const budget: Budget = { remaining: params.backtrackBudget };
-    const built = backtrackPool(rng, poolGrid, batchCells, batchSize, order, params.bendBias, params.candidatePoolCap, budget);
-
-    if (built) {
-      scatteredRounds.push(order);
-      batchIdx.forEach((i) => scatteredIdxSet.add(i));
-      remainingTarget -= batchSize;
-      batchCells.forEach((cell) => {
-        cumulativeGrid[cell.r][cell.c] = 1;
-      });
-    }
-    // On failure this batch's dominoes just stay plain -- cumulativeGrid is
-    // untouched, so the next batch isn't penalized for it.
-  }
-
-  const plainDominoes = dominoes.filter((_, i) => !scatteredIdxSet.has(i));
-  const solutionOrder: Array<[Cell, Cell]> = [...shuffle(rng, plainDominoes), ...scatteredRounds.reverse().flat()];
-
-  const grid = makeEmptyGrid(rows, cols);
-  solutionOrder.forEach(([a, b], i) => {
-    const entry = pairPlan[i];
-    const d = 1 + Math.floor(rng() * 9);
-    const [va, vb] = entry.kind === 'equal' ? [d, d] : [d, 10 - d];
-    grid[a.r][a.c] = va;
-    grid[b.r][b.c] = vb;
-  });
-
-  return { grid, solutionOrder };
+  return { grid };
 }

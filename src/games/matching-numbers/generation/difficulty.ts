@@ -12,8 +12,10 @@ const STEP = 3;
  * columns, at every difficulty. Only row count (and thus total tile count)
  * scales with skill rating; see GameScreen/MatchingNumbersGrid for how the
  * remaining screen height is padded out with placeholder cells when a level
- * doesn't need every row. */
-export const BOARD_COLS = 10;
+ * doesn't need every row. Odd on purpose (bigger cells than 10 cols) --
+ * since it's odd, `rows` below is kept even (rows*cols must stay even for
+ * every cell to have a partner -- see boardBuilder.ts's pickDims). */
+export const BOARD_COLS = 9;
 
 export interface LevelResult {
   hintsUsed: number;
@@ -46,41 +48,40 @@ export interface GenerationParams {
   boardParams: BoardBuildParams;
 }
 
-// Bumped up across the board (even at the floor) -- with most pairs now
-// scattered rather than sitting in obvious adjacent dominoes (see
-// poolFraction below), the board needs more room for those non-adjacent/bent
-// connections to actually fit.
 const ROWS_FLOOR = 4;
 const ROWS_CEILING = 10;
 
+// Flat across every difficulty, not scaled by rating -- a "headstart" is
+// about the board never opening on a dead end, not a difficulty lever in
+// itself. Board size and equalWeight are what carry the difficulty curve now
+// that positions are a genuine random shuffle (see boardBuilder.ts) rather
+// than a constructed layout.
+const MIN_HEADSTART_MOVES = 5;
+// hasHeadstart's simulation is cheap (a handful of engine.findLegalMove
+// scans), so this can afford to be generous -- worth many reshuffles to find
+// one that clears the headstart bar before ever falling back to whatever the
+// last attempt happened to produce.
+const RESHUFFLE_ATTEMPTS = 40;
+
 /**
- * First-cut curve, tune by feel once playable. Board grows gently with
- * rating; equalWeight drifts down (more sum10 pairs, which need a small
- * arithmetic step the trivial equal-match doesn't); bendBias climbs (more
- * single-bend connections required instead of free straight lines).
+ * Board grows gently with rating (more cells to scan, longer to fully
+ * clear); equalWeight drifts down so sum10 pairs (which need an actual
+ * d+(10-d) check) dominate over identical-digit pairs (an instant visual
+ * pop-out, no arithmetic needed) at higher skill.
  */
 export function difficultyParams(rating: SkillRating): GenerationParams {
   const t = Math.max(0, Math.min(1, rating / MAX_RATING));
 
-  const rows = ROWS_FLOOR + Math.round(t * (ROWS_CEILING - ROWS_FLOOR));
-  const m = (rows * BOARD_COLS) / 2;
+  // Rounded to even -- BOARD_COLS is odd, so rows must stay even (see comment above).
+  const rows = Math.round((ROWS_FLOOR + t * (ROWS_CEILING - ROWS_FLOOR)) / 2) * 2;
 
-  const equalWeight = 0.75 - 0.35 * t; // 0.75 -> 0.40
-  const bendBias = 0.1 + 0.6 * t; // 0.1 -> 0.7
-  // Fraction of the board's pairs to scatter (non-adjacent), rather than a
-  // small flat count -- most of the board should require real searching, not
-  // just a handful of cells sitting apart from an otherwise-trivial grid of
-  // adjacent dominoes. buildBoard realizes this in independent small rounds
-  // rather than one atomic ask (see POOL_BATCH_SIZE there), so a high
-  // fraction here is realistic, not just aspirational.
-  const poolFraction = 0.4 + 0.5 * t; // 0.4 -> 0.9
-  const complexPairTarget = Math.round(m * poolFraction);
+  const equalWeight = 0.6 - 0.45 * t; // 0.6 -> 0.15
 
   return {
-    rowsRange: [Math.max(ROWS_FLOOR, rows - 1), rows],
+    rowsRange: [Math.max(ROWS_FLOOR, rows - 2), rows],
     colsRange: [BOARD_COLS, BOARD_COLS],
     equalWeight,
-    boardParams: { complexPairTarget, bendBias, candidatePoolCap: 40, backtrackBudget: 4000 },
+    boardParams: { minHeadstartMoves: MIN_HEADSTART_MOVES, maxAttempts: RESHUFFLE_ATTEMPTS },
   };
 }
 

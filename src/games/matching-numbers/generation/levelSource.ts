@@ -15,7 +15,7 @@ export function createLevelForIndex(
   return generateMatchingNumbersLevel(rng, params, recentFingerprints, maxAttemptsFor());
 }
 
-const LAST_RESORT_BOARD_PARAMS: BoardBuildParams = { complexPairTarget: 2, bendBias: 0.1, candidatePoolCap: 40, backtrackBudget: 4000 };
+const LAST_RESORT_BOARD_PARAMS: BoardBuildParams = { minHeadstartMoves: 5, maxAttempts: 40 };
 
 /**
  * Fallback ladder, never fails in practice -- same shape as Kings'

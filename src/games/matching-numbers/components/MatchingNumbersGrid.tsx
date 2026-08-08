@@ -292,6 +292,10 @@ export default function MatchingNumbersGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rejectedPair]);
 
+  // Keeps both cells looking "selected" while the connecting line draws,
+  // instead of the highlight vanishing the instant the second cell is tapped
+  // and only reappearing once the line finishes (as a pulse).
+  const lineKeys = new Set(pendingMatch && matchStage === 'line' ? [cellKey(pendingMatch.a), cellKey(pendingMatch.b)] : []);
   const pulseKeys = new Set(pendingMatch && matchStage === 'pulse' ? [cellKey(pendingMatch.a), cellKey(pendingMatch.b)] : []);
   const clearingKeys = new Set(pendingMatch && matchStage === 'clear' ? [cellKey(pendingMatch.a), cellKey(pendingMatch.b)] : []);
   const rejectedKeys = new Set(rejectedPair ? [cellKey(rejectedPair[0]), cellKey(rejectedPair[1])] : []);
@@ -312,7 +316,7 @@ export default function MatchingNumbersGrid({
           key={k}
           value={v}
           size={size}
-          selected={highlightedCells.has(k)}
+          selected={highlightedCells.has(k) || lineKeys.has(k)}
           pulsing={pulseKeys.has(k)}
           clearing={clearingKeys.has(k)}
           rejected={rejectedKeys.has(k)}

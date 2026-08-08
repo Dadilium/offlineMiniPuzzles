@@ -78,6 +78,11 @@ export default function GameScreen({ route, navigation }: Props) {
   // if any -- board is only mutated (removeRow, via collapseRow) once that
   // row's collapse animation has actually finished playing.
   const [collapsingRow, setCollapsingRow] = useState<number | null>(null);
+  // Backs the collapse timer below -- kept in a ref (not just the setTimeout
+  // return value local to the effect) so it survives re-renders without
+  // being torn down by React's own effect-cleanup mechanism. See that effect
+  // for why that distinction matters.
+  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Wall-clock time this level attempt began -- reset on level change and on
   // retry, so it always reflects the current attempt, not cumulative time
   // across retries. Used to force the level-completion interstitial due when
@@ -89,17 +94,37 @@ export default function GameScreen({ route, navigation }: Props) {
     levelStartRef.current = Date.now();
   }, [levelIndex]);
 
+  // Deliberately does NOT return a cleanup that clears the timer -- this
+  // effect re-runs on every `board` change (e.g. an unrelated match clearing
+  // cells elsewhere while this row's collapse is still counting down), and a
+  // cleanup tied to that would cancel the in-flight timer before it ever
+  // calls collapseRow, permanently orphaning `collapsingRow` (stuck non-null
+  // forever, since nothing else resets it) -- no row ever collapses again for
+  // the rest of the level, and every future match's line/highlight math goes
+  // stale against the frozen-but-never-applied visual shift. The `board ||
+  // collapsingRow != null` guard below is what actually prevents double-
+  // scheduling, not the cleanup.
   useEffect(() => {
     if (!board || collapsingRow != null) return;
     const emptyRow = findFullyEmptyRow(board);
     if (emptyRow == null) return;
     setCollapsingRow(emptyRow);
-    const t = setTimeout(() => {
+    collapseTimerRef.current = setTimeout(() => {
+      collapseTimerRef.current = null;
       collapseRow(levelIndex, emptyRow);
       setCollapsingRow(null);
     }, ROW_COLLAPSE_MS);
-    return () => clearTimeout(t);
   }, [board, collapsingRow, levelIndex, collapseRow]);
+
+  // Unmount/level-switch safety net only -- clears any still-pending timer so
+  // it can't fire collapseRow/setCollapsingRow against a screen that's gone
+  // or has since moved on to a different level.
+  useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    };
+  }, [levelIndex]);
 
   // Boards persist forever, so reopening an already-completed level would
   // otherwise land straight on the cleared board with the win popup showing.
@@ -141,7 +166,11 @@ export default function GameScreen({ route, navigation }: Props) {
   }, []);
 
   function onCellPress(r: number, c: number) {
-    if (!board || pendingMatch || rejectedPair) return;
+    // Also blocked during collapsingRow: a match started now would capture
+    // (r, c) coordinates that go stale the instant this row's collapse
+    // actually removes a row and shifts everything below it up by one --
+    // see the collapse effect above for the full story.
+    if (!board || pendingMatch || rejectedPair || collapsingRow != null) return;
     if (board[r][c] === null) return;
     if (hintPair) {
       if (hintTimer.current) clearTimeout(hintTimer.current);

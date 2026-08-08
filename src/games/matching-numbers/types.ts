@@ -12,11 +12,4 @@ export interface MatchingNumbersLevel {
   rows: number;
   cols: number;
   grid: GridValue[][];
-  /**
-   * Certificate produced by generation/boardBuilder.ts: replaying these
-   * pairs in order against `grid` is guaranteed legal and clears the board.
-   * Generation-time proof only -- never read at runtime (hints and stuck
-   * detection always re-scan the live board, see engine.ts).
-   */
-  solutionOrder: Array<[Cell, Cell]>;
 }

@@ -14,6 +14,8 @@ import * as Sentry from '@sentry/react-native';
 import { PostHogProvider } from 'posthog-react-native';
 import { posthog } from './src/config/posthog';
 import { runStartupTasks } from './src/startup/bootstrap';
+import { checkForUpdates } from './src/startup/updates';
+import { getVersionLabel } from './src/startup/version';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -32,10 +34,7 @@ Sentry.init({
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1,
   integrations: (defaults) => [
-    // Crashes trying to optionally hook into `expo-updates`, which this project
-    // doesn't use (no EAS Update/OTA updates) -- drop it rather than installing
-    // an update pipeline just to satisfy it.
-    ...defaults.filter((integration) => integration.name !== 'ExpoUpdatesListener'),
+    ...defaults,
     Sentry.mobileReplayIntegration(),
     Sentry.feedbackIntegration(),
   ],
@@ -44,11 +43,16 @@ Sentry.init({
   // spotlight: __DEV__,
 });
 
+const versionLabel = getVersionLabel();
+Sentry.setTag('app_build', versionLabel);
+posthog?.register({ app_build: versionLabel });
+
 export default Sentry.wrap(function App() {
   useEffect(() => {
     runStartupTasks((error) => Sentry.captureException(error)).finally(() => {
       SplashScreen.hideAsync().catch(() => {});
     });
+    checkForUpdates((error) => Sentry.captureException(error));
   }, []);
 
   const navTheme = {

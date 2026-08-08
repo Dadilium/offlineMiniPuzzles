@@ -99,9 +99,9 @@ export function computeWin(grid: GridValue[][]): boolean {
 /**
  * First currently-legal pair found via a live scan of the board -- the same
  * function backs Hint, "is the board stuck" detection, and the fail-overlay
- * trigger. Never reads a level's `solutionOrder` certificate, which stops
- * corresponding to reality the moment the player clears a pair in a
- * different order than the one it was built around.
+ * trigger. Generation no longer guarantees the whole board is solvable (see
+ * generation/boardBuilder.ts), so this genuinely can return null once the
+ * player exhausts what the random layout happened to offer.
  */
 export function findLegalMove(grid: GridValue[][]): [Cell, Cell] | null {
   const rows = grid.length;
@@ -151,20 +151,15 @@ function shuffleValues(values: number[], rng: () => number): number[] {
   return arr;
 }
 
-/** Cap on how many new rows a single Add Numbers press can append. Without
- * it, duplicating the ENTIRE remaining pool every press compounds -- a
- * second press duplicates the (now doubled) remaining pool again, and so on.
- * Capping per press keeps growth bounded regardless of how large the board
- * has already gotten. */
-const ADD_NUMBERS_MAX_ROWS = 4;
-
 /**
- * "Add Numbers": duplicates a shuffled sample of the currently non-empty
- * values (up to ADD_NUMBERS_MAX_ROWS worth) as new row(s) at the bottom of
- * the grid -- shuffled so the duplicate isn't just a visual repeat of the
- * existing layout. `rng` defaults to Math.random since this is a live player
- * action, not part of seed-reproducible level generation; the parameter
- * exists so tests can inject a deterministic one.
+ * "Add Numbers": duplicates every currently non-empty value as new row(s) at
+ * the bottom of the grid, shuffled so the duplicate isn't just a visual
+ * repeat of the existing layout. The board area scrolls (see GameScreen's
+ * `boardScrollable`), so there's no screen-fit ceiling on how tall this can
+ * grow -- MAX_ADD_NUMBERS charges per level is what bounds how many times a
+ * player can compound it. `rng` defaults to Math.random since this is a live
+ * player action, not part of seed-reproducible level generation; the
+ * parameter exists so tests can inject a deterministic one.
  */
 export function applyAddNumbers(grid: GridValue[][], rng: () => number = Math.random): GridValue[][] {
   const cols = grid[0]?.length ?? 0;
@@ -178,8 +173,7 @@ export function applyAddNumbers(grid: GridValue[][], rng: () => number = Math.ra
   const next = grid.map((row) => row.slice());
   if (remaining.length === 0 || cols === 0) return next;
 
-  const capacity = ADD_NUMBERS_MAX_ROWS * cols;
-  const toAdd = shuffleValues(remaining, rng).slice(0, Math.min(capacity, remaining.length));
+  const toAdd = shuffleValues(remaining, rng);
 
   const extraRows = Math.ceil(toAdd.length / cols);
   for (let i = 0; i < extraRows; i++) {
