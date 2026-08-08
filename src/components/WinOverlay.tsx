@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   badge: { fontSize: 34, marginBottom: 8 },
-  title: { fontFamily: fonts.display, fontWeight: '700', fontSize: 18, color: colors.text, marginBottom: 4 },
+  title: { fontFamily: fonts.display, fontWeight: '700', fontSize: 18, color: colors.text, marginBottom: 4, textAlign: 'center' },
   sub: { fontSize: 12.5, color: colors.textDim, marginBottom: 18, textAlign: 'center' },
   button: { backgroundColor: colors.accent, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 18, alignSelf: 'stretch', alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 14 },

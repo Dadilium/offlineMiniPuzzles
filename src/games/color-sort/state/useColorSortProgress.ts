@@ -104,6 +104,8 @@ interface ColorSortProgressContextValue {
   giveHint: (levelIndex: number) => Move | null;
   /** Restores the level's tubes back to their generated starting arrangement. */
   resetLevel: (levelIndex: number) => void;
+  /** Restores tubes to a caller-supplied prior snapshot and rolls moveCount back by one -- backs the undo-last-move button, whose history lives in the screen, not here. */
+  undoMove: (levelIndex: number, tubes: Tube[]) => void;
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
   markTutorialSeen: (key: string) => void;
@@ -219,6 +221,18 @@ export function ColorSortProgressProvider({ children }: { children: React.ReactN
     setState(next);
   }, []);
 
+  const undoMove = useCallback((levelIndex: number, tubes: Tube[]) => {
+    const current = stateRef.current;
+    if (!current.generatedLevels[levelIndex]) return;
+    const next: PersistedShape = {
+      ...current,
+      tubesByLevel: { ...current.tubesByLevel, [levelIndex]: tubes },
+      moveCountByLevel: { ...current.moveCountByLevel, [levelIndex]: Math.max(0, (current.moveCountByLevel[levelIndex] ?? 0) - 1) },
+    };
+    stateRef.current = next;
+    setState(next);
+  }, []);
+
   const markLevelComplete = useCallback((levelIndex: number) => {
     const current = stateRef.current;
     if (current.levelsCompleted.includes(levelIndex)) return;
@@ -274,12 +288,26 @@ export function ColorSortProgressProvider({ children }: { children: React.ReactN
       pourAt,
       giveHint,
       resetLevel,
+      undoMove,
       markLevelComplete,
       markLevelSkipped,
       markTutorialSeen,
       resetAllProgress,
     }),
-    [ready, state, levelFor, ensureLevel, pourAt, giveHint, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen, resetAllProgress]
+    [
+      ready,
+      state,
+      levelFor,
+      ensureLevel,
+      pourAt,
+      giveHint,
+      resetLevel,
+      undoMove,
+      markLevelComplete,
+      markLevelSkipped,
+      markTutorialSeen,
+      resetAllProgress,
+    ]
   );
 
   return React.createElement(ColorSortProgressContext.Provider, { value }, children);

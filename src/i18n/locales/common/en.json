@@ -43,6 +43,7 @@
     "hintWithCount": "Hint ({{count}})",
     "hintAdNotReady": "Out of hints — ad not ready yet, try again in a moment",
     "resetLevel": "Reset level",
+    "undoMove": "Undo move",
     "replayTutorial": "Replay the tutorial",
     "skipLevelAd": "Skip level (watch an ad)",
     "skipAdNotReady": "Ad not ready yet, try again in a moment",

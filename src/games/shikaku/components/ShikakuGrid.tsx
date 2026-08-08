@@ -171,24 +171,6 @@ export default function ShikakuGrid({
   const [rejecting, setRejecting] = useState(false);
   const shakeX = useRef(new Animated.Value(0)).current;
 
-  // `nativeEvent.locationX/Y` is unreliable on the very first touch
-  // (`onPanResponderGrant`) once the responder view has nested child Views
-  // under the finger (every cell here is its own View) -- it can report a
-  // location relative to whichever deepest child was hit rather than this
-  // container, which reads as "the anchor is always near the top-left cell".
-  // Measuring the container's on-screen origin once (kept fresh via
-  // onLayout) and deriving cell coordinates from the touch's absolute
-  // `pageX/pageY` instead sidesteps that quirk entirely -- pageX/Y is always
-  // screen-absolute regardless of which nested view is underneath.
-  const containerRef = useRef<View>(null);
-  const originRef = useRef({ x: 0, y: 0 });
-
-  function measureOrigin(): void {
-    containerRef.current?.measureInWindow((x, y) => {
-      originRef.current = { x, y };
-    });
-  }
-
   // PanResponder.create runs once, inside the useRef initializer below, so
   // its handlers close over whatever `placed`/`previewRect` looked like on
   // that first render -- `placed` changes on every commit, so the handlers
@@ -241,23 +223,31 @@ export default function ShikakuGrid({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      // Capture-phase claims too -- the board sits inside a ScrollView (for
-      // centering; see GameScreen), and without these the ScrollView's own
-      // native pan gesture can win the touch before onPanResponderMove ever
-      // fires, which reads as "dragging does nothing".
+      // Capture-phase claims too, so an ancestor (e.g. the stack navigator's
+      // edge-swipe-back gesture) can't win the touch before
+      // onPanResponderMove ever fires -- that would read as "dragging does
+      // nothing".
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
+      // Once granted, never yield to an ancestor mid-gesture -- without
+      // this, dragging past the board's edge (where an ancestor is more
+      // likely to contest the touch) can hand the gesture off natively and
+      // the drag stops tracking or the preview resets, which reads as "the
+      // selection changes on its own". `onShouldBlockNativeResponder` is
+      // Android-only; iOS ignores it.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
       onPanResponderGrant: (evt) => {
-        const { pageX, pageY } = evt.nativeEvent;
-        const cell = cellAt(pageX - originRef.current.x, pageY - originRef.current.y);
+        const { locationX, locationY } = evt.nativeEvent;
+        const cell = cellAt(locationX, locationY);
         anchorRef.current = cell;
         updatePreview(rectFromCorners(cell.r, cell.c, cell.r, cell.c));
       },
       onPanResponderMove: (evt) => {
         const anchor = anchorRef.current;
         if (!anchor) return;
-        const { pageX, pageY } = evt.nativeEvent;
-        const cell = cellAt(pageX - originRef.current.x, pageY - originRef.current.y);
+        const { locationX, locationY } = evt.nativeEvent;
+        const cell = cellAt(locationX, locationY);
         updatePreview(rectFromCorners(anchor.r, anchor.c, cell.r, cell.c));
       },
       onPanResponderRelease: (_evt, gestureState) => {
@@ -323,12 +313,7 @@ export default function ShikakuGrid({
   const previewColor = previewValid ? colors.signalBlue : colors.signalRed;
 
   return (
-    <View
-      ref={containerRef}
-      style={[styles.wrap, { width: boardWidth, height: boardHeight }]}
-      onLayout={measureOrigin}
-      {...panResponder.panHandlers}
-    >
+    <View style={[styles.wrap, { width: boardWidth, height: boardHeight }]}>
       <View>{gridRows}</View>
 
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -370,6 +355,13 @@ export default function ShikakuGrid({
           ]}
         />
       )}
+
+      {/* Childless overlay carries the PanResponder, on top of and matching
+          the grid exactly. With nothing nested inside it to be hit-tested
+          instead, `locationX/Y` on every touch is guaranteed relative to
+          this view's own bounds on both platforms -- no window/page
+          coordinate translation (and its Android-only drift) needed. */}
+      <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
     </View>
   );
 }

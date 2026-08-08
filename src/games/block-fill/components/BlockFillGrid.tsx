@@ -68,6 +68,18 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
 
   const pathSet = new Set(path.map(cellKey));
   const lastCellRef = useRef<Cell | null>(null);
+  // `panResponder` below is created once inside a `useRef` initializer, so
+  // its handlers permanently close over whatever `onDragToCell` looked like
+  // on that very first render -- which itself closed over GameScreen's
+  // *first-render* `path`. Calling the prop directly would mean every
+  // press forever decides "is this cell already on the path?" against that
+  // frozen, ever-stale path, so a cell filled after mount always reads as
+  // new and gets routed to extend (which then legitimately no-ops since
+  // it's really already colored) -- rewind never visibly does anything.
+  // Reading it through a ref kept fresh every render (same trick
+  // ShikakuGrid uses for its onCommitRect/onTapCell props) fixes that.
+  const onDragToCellRef = useRef(onDragToCell);
+  onDragToCellRef.current = onDragToCell;
 
   function cellAt(locationX: number, locationY: number): Cell | null {
     const c = Math.floor(locationX / size);
@@ -97,8 +109,8 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
     const from = lastCellRef.current;
     if (from && from.r === cell.r && from.c === cell.c) return;
     lastCellRef.current = cell;
-    if (from) stepsBetween(from, cell).forEach(onDragToCell);
-    else onDragToCell(cell);
+    if (from) stepsBetween(from, cell).forEach((step) => onDragToCellRef.current(step));
+    else onDragToCellRef.current(cell);
   }
 
   const panResponder = useRef(
@@ -111,6 +123,11 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
       // fires, which reads as "dragging does nothing".
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
+      // Once granted, never yield to the ScrollView mid-drag -- otherwise it
+      // can reclaim the gesture natively while dragging, which reads as the
+      // drag randomly stopping or jumping.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
       onPanResponderGrant: (evt) => {
         lastCellRef.current = null;
         handleTouch(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
@@ -156,7 +173,7 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
   }
 
   return (
-    <View style={[styles.wrap, { width: W, height: H }]} {...panResponder.panHandlers}>
+    <View style={[styles.wrap, { width: W, height: H }]}>
       <View>{rowViews}</View>
       {path.length > 1 && (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -172,6 +189,13 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
           </Svg>
         </View>
       )}
+
+      {/* Childless overlay carries the PanResponder, on top of and matching
+          the grid exactly. With nothing nested inside it to be hit-tested
+          instead, `locationX/Y` on every touch is guaranteed relative to
+          this view's own bounds -- each cell View underneath no longer
+          hijacks the coordinate space. */}
+      <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
     </View>
   );
 }

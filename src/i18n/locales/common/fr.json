@@ -43,6 +43,7 @@
     "hintWithCount": "Indice ({{count}})",
     "hintAdNotReady": "Plus d'indices — pub pas encore prête, réessayez dans un instant",
     "resetLevel": "Réinitialiser le niveau",
+    "undoMove": "Annuler le dernier coup",
     "replayTutorial": "Revoir le tutoriel",
     "skipLevelAd": "Passer le niveau (voir une pub)",
     "skipAdNotReady": "Pub pas encore prête, réessayez dans un instant",

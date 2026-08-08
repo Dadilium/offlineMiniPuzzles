@@ -20,6 +20,7 @@ import { computeWin, isStuck } from '../engine';
 import type { Move } from '../generation';
 import type { ColorSortStackParamList } from '../navigation';
 import { useColorSortProgress } from '../state/useColorSortProgress';
+import type { Tube } from '../types';
 
 type Props = NativeStackScreenProps<ColorSortStackParamList, 'ColorSortGame'>;
 
@@ -37,6 +38,7 @@ export default function GameScreen({ route, navigation }: Props) {
     pourAt,
     giveHint,
     resetLevel,
+    undoMove,
     markLevelComplete,
     markLevelSkipped,
     levelsCompleted,
@@ -59,6 +61,10 @@ export default function GameScreen({ route, navigation }: Props) {
 
   const [selected, setSelected] = useState<number | null>(null);
   const [hint, setHint] = useState<Move | null>(null);
+  // Snapshots of `tubes` taken right before each valid pour -- backs the undo
+  // button. Lives here (not in the persisted provider) since it's only ever
+  // needed for the current play session and shouldn't grow storage forever.
+  const [history, setHistory] = useState<Tube[][]>([]);
   const [shakeTube, setShakeTube] = useState<number | null>(null);
   const [pouring, setPouring] = useState<Move | null>(null);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,6 +105,7 @@ export default function GameScreen({ route, navigation }: Props) {
     if (levelsCompleted.has(levelIndex)) {
       resetCelebration();
       resetLevel(levelIndex);
+      setHistory([]);
     }
   }, [levelIndex, level, levelsCompleted, resetLevel]);
 
@@ -135,8 +142,10 @@ export default function GameScreen({ route, navigation }: Props) {
       return;
     }
 
+    const snapshot = tubes.map((t) => t.slice());
     const applied = pourAt(levelIndex, selected, index);
     if (applied) {
+      setHistory((h) => [...h, snapshot]);
       setPouring({ from: selected, to: index });
       if (pourTimer.current) clearTimeout(pourTimer.current);
       pourTimer.current = setTimeout(() => setPouring(null), POUR_DURATION_MS);
@@ -158,6 +167,18 @@ export default function GameScreen({ route, navigation }: Props) {
     setPouring(null);
     resetCelebration();
     resetLevel(levelIndex);
+    setHistory([]);
+  }
+
+  function onUndoPress() {
+    if (history.length === 0 || win) return;
+    const previous = history[history.length - 1];
+    setSelected(null);
+    clearHint();
+    if (pourTimer.current) clearTimeout(pourTimer.current);
+    setPouring(null);
+    undoMove(levelIndex, previous);
+    setHistory((h) => h.slice(0, -1));
   }
 
   function attemptHint(): boolean {
@@ -227,6 +248,7 @@ export default function GameScreen({ route, navigation }: Props) {
       controls={
         <>
           <GameActionButton label={tc('actions.hintWithCount', { count: hintCount })} onPress={onHintPress} />
+          {!celebrate && <GameActionButton label={tc('actions.undoMove')} onPress={onUndoPress} disabled={history.length === 0} />}
           {!celebrate && <GameActionButton label={tc('actions.skipLevelAd')} onPress={onSkipPress} variant="ghost" />}
         </>
       }

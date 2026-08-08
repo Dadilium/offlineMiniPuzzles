@@ -8,6 +8,10 @@ interface Props {
   onPress: () => void;
   variant?: 'primary' | 'ghost';
   hidden?: boolean;
+  /** Dims and disables the button while keeping it visible -- for actions
+   * that are legal but currently have nothing to act on (e.g. undo with an
+   * empty history), as opposed to `hidden` which hides it entirely. */
+  disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -15,13 +19,13 @@ interface Props {
  * "primary" button for Hint/Retry/etc, or a plain-text "ghost" button for
  * Skip. `hidden` keeps the layout slot reserved (opacity 0) instead of
  * unmounting, for screens where controls shouldn't reflow on solve. */
-export default function GameActionButton({ label, onPress, variant = 'primary', hidden, style }: Props) {
+export default function GameActionButton({ label, onPress, variant = 'primary', hidden, disabled, style }: Props) {
   return (
     <TouchableOpacity
-      style={[variant === 'primary' ? styles.primary : styles.ghost, hidden && styles.hidden, style]}
+      style={[variant === 'primary' ? styles.primary : styles.ghost, disabled && styles.disabled, hidden && styles.hidden, style]}
       activeOpacity={0.75}
       onPress={onPress}
-      disabled={hidden}
+      disabled={hidden || disabled}
     >
       <Text style={variant === 'primary' ? styles.primaryText : styles.ghostText}>{label}</Text>
     </TouchableOpacity>
@@ -34,4 +38,5 @@ const styles = StyleSheet.create({
   ghost: { paddingVertical: 8, alignItems: 'center' },
   ghostText: { color: colors.textFaint, fontWeight: '600', fontSize: 12 },
   hidden: { opacity: 0 },
+  disabled: { opacity: 0.4 },
 });
