@@ -388,8 +388,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  highlight: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(168,85,247,0.35)', borderRadius: 8 },
-  rejectOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,92,92,0.45)', borderRadius: 8 },
+  highlight: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(168,85,247,0.35)', borderRadius: 8 },
+  rejectOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,92,92,0.45)', borderRadius: 8 },
   digit: { fontWeight: '700', color: colors.text, fontFamily: fonts.display },
   placeholderCell: {
     flex: 1,

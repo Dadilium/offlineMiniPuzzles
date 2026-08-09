@@ -11,7 +11,7 @@
       "channel": "development",
       "ios": {
         "simulator": true,
-        "image": "macos-sonoma-14.6-xcode-16.0"
+        "image": "macos-tahoe-26.5-xcode-26.6"
       },
       "android": {
         "buildType": "apk"
@@ -26,7 +26,7 @@
       },
       "ios": {
         "simulator": true,
-        "image": "macos-sonoma-14.6-xcode-16.0"
+        "image": "macos-tahoe-26.5-xcode-26.6"
       },
       "android": {
         "buildType": "apk"
@@ -37,7 +37,7 @@
       "environment": "production",
       "channel": "production",
       "ios": {
-        "image": "macos-sonoma-14.6-xcode-16.0"
+        "image": "macos-tahoe-26.5-xcode-26.6"
       }
     }
   },

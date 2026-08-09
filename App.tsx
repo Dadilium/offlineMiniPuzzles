@@ -1,8 +1,8 @@
 import './src/i18n';
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import RootNavigator from './src/navigation/RootNavigator';
@@ -17,6 +17,7 @@ import { runStartupTasks } from './src/startup/bootstrap';
 import { checkForUpdates } from './src/startup/updates';
 import { getVersionLabel } from './src/startup/version';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import type { RootStackParamList } from './src/navigation/types';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -55,8 +56,25 @@ export default Sentry.wrap(function App() {
     checkForUpdates((error) => Sentry.captureException(error));
   }, []);
 
+  // PostHog's own screen-autocapture hook calls `useNavigationState` eagerly
+  // during render, before the NavigationContainer's state is committed --
+  // that throws once on every cold start. Tracking screens ourselves off the
+  // container's own ref/callbacks (never called before the state exists)
+  // avoids the race entirely; `captureScreens: false` below turns their
+  // version off so we don't double-track.
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const lastTrackedRoute = useRef<string | undefined>(undefined);
+  const trackScreen = useCallback(() => {
+    const routeName = navigationRef.getCurrentRoute()?.name;
+    if (routeName && routeName !== lastTrackedRoute.current) {
+      lastTrackedRoute.current = routeName;
+      posthog?.screen(routeName);
+    }
+  }, [navigationRef]);
+
   const navTheme = {
     dark: true,
+    fonts: DarkTheme.fonts,
     colors: {
       primary: colors.accent,
       background: colors.bgDeep,
@@ -73,11 +91,16 @@ export default Sentry.wrap(function App() {
         <HintWalletProvider>
           <View style={styles.appRoot}>
             <View style={styles.navigatorSlot}>
-              <NavigationContainer theme={navTheme}>
+              <NavigationContainer
+                ref={navigationRef}
+                theme={navTheme}
+                onReady={trackScreen}
+                onStateChange={trackScreen}
+              >
                 <StatusBar style="light" />
                 <ErrorBoundary>
                   {posthog ? (
-                    <PostHogProvider client={posthog}>
+                    <PostHogProvider client={posthog} autocapture={{ captureScreens: false }}>
                       <RootNavigator />
                     </PostHogProvider>
                   ) : (

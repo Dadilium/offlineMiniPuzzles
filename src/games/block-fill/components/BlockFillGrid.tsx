@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     overflow: 'hidden',
   },
-  fill: { ...StyleSheet.absoluteFillObject, borderRadius: 6 },
+  fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 6 },
   cellHinted: { borderColor: colors.gold, borderWidth: 2 },
   obstacle: { flex: 1, borderRadius: 6, backgroundColor: colors.bgDeep },
   startDot: {
