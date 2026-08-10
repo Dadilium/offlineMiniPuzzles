@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Svg, { ClipPath, Defs, G, Rect, Text as SvgText } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { paletteForWord } from '../palette';
 import type { Cell } from '../types';
 
 const BOARD_RADIUS = 10;
-const SELECTION_COLOR = { border: colors.accentBright, fill: `${colors.accentBright}40` };
 
 export interface MiniGridHighlight {
   cells: Cell[];
@@ -23,6 +22,8 @@ export interface MiniGridSpec {
 
 /** Small illustrative size x size board used by the Find Words tutorial steps -- same rotated-capsule-over-letters rendering as FindWordsGrid, just in SVG so it composes with the other games' *MiniGrid tutorial diagrams. */
 export function FindWordsMiniGrid({ spec, pixelSize }: { spec: MiniGridSpec; pixelSize: number }) {
+  const { colors } = useTheme();
+  const selectionColor = useMemo(() => ({ border: colors.accentBright, fill: `${colors.accentBright}40` }), [colors]);
   const { size, grid, highlights } = spec;
   const cell = pixelSize / size;
 
@@ -63,7 +64,7 @@ export function FindWordsMiniGrid({ spec, pixelSize }: { spec: MiniGridSpec; pix
     const length = Math.hypot(x2 - x1, y2 - y1) + cell;
     const height = cell * 0.72;
     const angleDeg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
-    const palette = h.dragging ? SELECTION_COLOR : paletteForWord(h.colorIndex);
+    const palette = h.dragging ? selectionColor : paletteForWord(h.colorIndex);
     return (
       <Rect
         key={`h-${i}`}

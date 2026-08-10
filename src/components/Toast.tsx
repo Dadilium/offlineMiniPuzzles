@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
-import { colors, fonts } from '../theme/colors';
+import { Animated, Text } from 'react-native';
+import { fonts } from '../theme/tokens';
+import { createThemedStyles } from '../theme/createThemedStyles';
 
 type ToastContextValue = {
   showToast: (message: string) => void;
@@ -15,6 +16,7 @@ export function useToast(): ToastContextValue {
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const styles = useStyles();
   const [message, setMessage] = useState('');
   const opacity = useRef(new Animated.Value(0)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -38,22 +40,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-const styles = StyleSheet.create({
+// This chip always uses a fixed dark background (rather than the active
+// theme's surface color) so its light text stays legible as a floating
+// snackbar regardless of whether the app is in light or dark mode.
+const useStyles = createThemedStyles(() => ({
   toast: {
     position: 'absolute',
     alignSelf: 'center',
     bottom: 56,
     backgroundColor: '#20242f',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#262c3a',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
     zIndex: 999,
   },
   text: {
-    color: colors.text,
+    color: '#eef0f6',
     fontFamily: fonts.body,
     fontSize: 12,
   },
-});
+}));

@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Polyline } from 'react-native-svg';
 import { BOARD_AREA_VERTICAL_PADDING } from '../../../components/GameScreenLayout';
-import { colors, fonts } from '../../../theme/colors';
+import { fonts } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
+import { useTheme } from '../../../theme/ThemeProvider';
 import type { Cell, GridValue } from '../types';
 
 const MAX_CELL = 46;
@@ -53,6 +55,7 @@ interface CellProps {
 }
 
 function MatchingNumbersCell({ value, size, selected, pulsing, clearing, rejected, appearDelayMs, onPress }: CellProps) {
+  const styles = useStyles();
   const scale = useRef(new Animated.Value(1)).current;
   const pulseScale = useRef(new Animated.Value(1)).current;
   const highlight = useRef(new Animated.Value(0)).current;
@@ -151,6 +154,7 @@ function MatchingNumbersCell({ value, size, selected, pulsing, clearing, rejecte
  * fills the available screen height, regardless of how few rows a given
  * difficulty actually needs. */
 function FillerCell({ size }: { size: number }) {
+  const styles = useStyles();
   return (
     <View style={[styles.cellOuter, { width: size, height: size }]}>
       <View style={styles.placeholderCell} />
@@ -209,6 +213,8 @@ export default function MatchingNumbersGrid({
   appearFromRow = null,
   collapsingRow = null,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const rows = board.length;
   const cols = board[0]?.length ?? 0;
   const size = cellSizeFor(cols);
@@ -375,7 +381,7 @@ export default function MatchingNumbersGrid({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { alignSelf: 'center' },
   row: { flexDirection: 'row' },
   cellOuter: { padding: 0.5 },
@@ -397,4 +403,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface2,
     opacity: 0.3,
   },
-});
+}));

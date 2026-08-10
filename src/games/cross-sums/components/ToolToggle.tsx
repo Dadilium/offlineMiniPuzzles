@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, radii } from '../../../theme/colors';
+import { radii } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
+import { useTheme } from '../../../theme/ThemeProvider';
 import type { Tool } from '../engine';
 
 interface ToolButtonProps {
@@ -12,6 +14,8 @@ interface ToolButtonProps {
 }
 
 function ToolButton({ icon, label, active, onPress }: ToolButtonProps) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const scale = useRef(new Animated.Value(active ? 1 : 0.94)).current;
 
   useEffect(() => {
@@ -37,6 +41,7 @@ interface Props {
 /** Pen/eraser mode switch shown above the Cross Sums board -- pen circles a
  * cell into the sum, eraser crosses it out. Exactly one is active at a time. */
 export default function ToolToggle({ tool, onChange, penLabel, eraserLabel }: Props) {
+  const styles = useStyles();
   return (
     <View style={styles.row}>
       <ToolButton icon="pencil-outline" label={penLabel} active={tool === 'pen'} onPress={() => onChange('pen')} />
@@ -45,7 +50,7 @@ export default function ToolToggle({ tool, onChange, penLabel, eraserLabel }: Pr
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   row: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   btn: {
     width: 52,
@@ -58,4 +63,4 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
   },
   btnActive: { borderColor: colors.accent, backgroundColor: colors.surface },
-});
+}));

@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, fonts, radii } from '../theme/colors';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { fonts, radii } from '../theme/tokens';
+import { createThemedStyles } from '../theme/createThemedStyles';
 
 export type LevelStatus = 'locked' | 'available' | 'complete' | 'skipped';
 
@@ -17,6 +18,7 @@ interface Props {
 /** Shared level-picker list used by every game's Levels screen: one row per
  * level with a status icon (locked / in-progress / complete). */
 export default function LevelList({ items, onPress }: Props) {
+  const styles = useStyles();
   return (
     <View style={styles.list}>
       {items.map((item, idx) => {
@@ -47,7 +49,7 @@ export default function LevelList({ items, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   list: { gap: 10 },
   row: {
     flexDirection: 'row',
@@ -65,4 +67,4 @@ const styles = StyleSheet.create({
   rowTitle: { flex: 1, fontFamily: fonts.display, fontWeight: '600', fontSize: 14, color: colors.text },
   rowSpacer: { flex: 1 },
   rowIcon: { width: 22, textAlign: 'center', fontSize: 15 },
-});
+}));

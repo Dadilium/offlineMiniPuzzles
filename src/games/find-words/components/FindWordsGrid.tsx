@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts } from '../../../theme/colors';
+import { fonts } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { lineFromDrag, placementCells } from '../engine';
 import { paletteForWord } from '../palette';
 import type { Cell, FindWordsLevel, Placement } from '../types';
@@ -22,8 +24,6 @@ function cellSizeFor(rows: number, cols: number): number {
 
 /** Diagonal-wave win celebration stagger -- same shape as Shikaku's grid. How long each bounce takes to settle is derived from the animation's own completion callback (see `onCelebrationSettled` below), not a guessed duration. */
 const WAVE_STAGGER_MS = 60;
-
-const SELECTION_PALETTE = { border: colors.accentBright, fill: `${colors.accentBright}40` };
 
 interface CapsuleGeometry {
   left: number;
@@ -63,6 +63,7 @@ interface FoundCapsuleProps {
 
 /** One found word's permanent capsule. Pop-in on first mount (a fresh mount = the word was just found), diagonal-wave bounce on win -- same animation shapes as Shikaku's PlacedRectView. */
 function FoundCapsule({ placement, size, palette, celebrateDelay, isLastToCelebrate, onCelebrationSettled }: FoundCapsuleProps) {
+  const styles = useStyles();
   const popScale = useRef(new Animated.Value(0)).current;
   const bounceScale = useRef(new Animated.Value(1)).current;
 
@@ -108,6 +109,9 @@ function FoundCapsule({ placement, size, palette, celebrateDelay, isLastToCelebr
 
 /** The in-progress drag's line, in a neutral color -- fades out on release if it didn't match anything (a found word gets its own permanent, distinctly-colored FoundCapsule instead, see above). */
 function SelectionCapsule({ cells, size, opacity }: { cells: Cell[]; size: number; opacity: Animated.Value }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const selectionPalette = useMemo(() => ({ border: colors.accentBright, fill: `${colors.accentBright}40` }), [colors]);
   const geo = capsuleGeometry(cells, size);
   return (
     <Animated.View
@@ -120,8 +124,8 @@ function SelectionCapsule({ cells, size, opacity }: { cells: Cell[]; size: numbe
           width: geo.width,
           height: geo.height,
           borderRadius: geo.height / 2,
-          backgroundColor: SELECTION_PALETTE.fill,
-          borderColor: SELECTION_PALETTE.border,
+          backgroundColor: selectionPalette.fill,
+          borderColor: selectionPalette.border,
           opacity,
           transform: [{ rotate: `${geo.angleDeg}deg` }],
         },
@@ -145,6 +149,7 @@ interface Props {
 }
 
 export default function FindWordsGrid({ level, foundIndices, celebrate, onCelebrationDone, onAttemptSelection }: Props) {
+  const styles = useStyles();
   const { rows, cols, grid, placements } = level;
   const size = cellSizeFor(rows, cols);
   const boardWidth = size * cols;
@@ -305,7 +310,7 @@ export default function FindWordsGrid({ level, foundIndices, celebrate, onCelebr
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { alignSelf: 'center' },
   row: { flexDirection: 'row' },
   cell: {
@@ -324,4 +329,4 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderWidth: 1.5,
   },
-});
+}));

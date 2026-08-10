@@ -1,13 +1,19 @@
 import React from 'react';
 import Svg, { Circle, ClipPath, Defs, G, Line, Rect, Text as SvgText } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
+import type { Palette } from '../../../theme/palettes';
 import type { CellMark } from '../engine';
 
 const BOARD_RADIUS = 10;
 
 // Shared accent palette used both for the tutorial diagrams and the win
-// confetti, so the two look like one consistent visual language.
-export const ACCENT_PALETTE = [colors.signalBlue, colors.success, colors.warn, colors.purple, colors.cyan, colors.pink, colors.gold];
+// confetti, so the two look like one consistent visual language. Exported as
+// a function of `colors` (rather than a static array) since it now depends
+// on the active theme -- callers outside this component's render (e.g.
+// GameScreen) get their own `colors` from useTheme() and pass it in.
+export function getAccentPalette(colors: Palette): string[] {
+  return [colors.signalBlue, colors.success, colors.warn, colors.purple, colors.cyan, colors.pink, colors.gold];
+}
 
 export interface MiniGridSpec {
   rows: number;
@@ -20,6 +26,7 @@ export interface MiniGridSpec {
 
 /** Small illustrative rows x cols board used by the Cross Sums tutorial steps -- circled ('selected') cells count toward the sum, crossed-out ('erased') ones don't, blank ('neutral') cells are still undecided. Targets shown along the edges. */
 export function CrossSumsMiniGrid({ spec, size }: { spec: MiniGridSpec; size: number }) {
+  const { colors } = useTheme();
   const { rows, cols, grid, marks, rowTargets, colTargets } = spec;
   const cw = size / (cols + 1);
   const ch = size / (rows + 1);

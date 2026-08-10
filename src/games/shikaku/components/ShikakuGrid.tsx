@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts } from '../../../theme/colors';
+import { fonts } from '../../../theme/tokens';
+import { useTheme } from '../../../theme/ThemeProvider';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { placeRect, rectFromCorners } from '../engine';
 import { paletteForClue } from '../palette';
 import type { PlacedRect, RectBounds, ShikakuLevel, ShikakuPlayerState } from '../types';
@@ -40,6 +42,8 @@ interface PlacedRectViewProps {
 
 /** One committed rectangle. Pop-in on first mount (a fresh mount = "first appearance of a rect for this clueIndex", since a deleted rect really unmounts), rising-edge shake on conflict, diagonal-wave bounce on win -- same animation shapes as Tents & Trees' TentCell. */
 function PlacedRectView({ rect, size, hasConflict, hinted, celebrateDelay, isLastToCelebrate, onCelebrationSettled }: PlacedRectViewProps) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const popScale = useRef(new Animated.Value(0)).current;
   const shakeX = useRef(new Animated.Value(0)).current;
   const prevConflict = useRef(hasConflict);
@@ -136,6 +140,8 @@ export default function ShikakuGrid({
   onCommitRect,
   onTapCell,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { rows, cols, clues } = level;
   const size = cellSizeFor(rows, cols);
   const boardWidth = size * cols;
@@ -381,6 +387,8 @@ function ClueLabel({
   hinted: boolean;
   celebrateDelay: number | null;
 }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const bounceScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -407,7 +415,7 @@ function ClueLabel({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { alignSelf: 'center' },
   row: { flexDirection: 'row' },
   cell: {
@@ -439,4 +447,4 @@ const styles = StyleSheet.create({
     fontFamily: fonts.mono,
     fontWeight: '700',
   },
-});
+}));

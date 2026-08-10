@@ -1,18 +1,20 @@
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import TopBar from '../components/TopBar';
 import { translateDynamic } from '../i18n/dynamicKey';
 import { games } from '../games/registry';
-import { colors, fonts, radii, spacing } from '../theme/colors';
+import { fonts, radii, spacing } from '../theme/tokens';
+import { createThemedStyles } from '../theme/createThemedStyles';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GameProgress'>;
 
 export default function GameProgressScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const styles = useStyles();
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -53,7 +55,7 @@ export default function GameProgressScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
   scrollContent: { padding: spacing.lg, gap: spacing.sm },
   row: {
@@ -66,4 +68,4 @@ const styles = StyleSheet.create({
   rowDisabled: { opacity: 0.5 },
   rowTitle: { fontFamily: fonts.display, fontWeight: '700', fontSize: 14.5, color: colors.text },
   rowSub: { fontSize: 12, color: colors.textDim, marginTop: 2 },
-});
+}));

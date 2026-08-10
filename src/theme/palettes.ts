@@ -1,0 +1,58 @@
+// Dark palette ported 1:1 from the relay-app-prototype_1.html CSS custom
+// properties, so any game built under src/games/** can share one consistent
+// look. Light palette mirrors the same semantic keys.
+export type Palette = typeof darkPalette;
+
+export const darkPalette = {
+  bg: '#0b0d12',
+  bgDeep: '#05060a',
+  surface: '#141822',
+  surface2: '#1b202c',
+  surface3: '#232a38',
+  border: '#262c3a',
+  borderSoft: '#1d2230',
+  text: '#eef0f6',
+  textDim: '#9aa3b5',
+  textFaint: '#5c6478',
+  accent: '#3563e9',
+  accentBright: '#5b82f5',
+  signalBlue: '#4da3ff',
+  signalRed: '#ff5c5c',
+  signalBlueMuted: '#a6d1ff',
+  signalRedMuted: '#ffadad',
+  success: '#27b877',
+  warn: '#ffb020',
+  gold: '#ffd35c',
+  purple: '#a855f7',
+  cyan: '#22d3ee',
+  pink: '#f472b6',
+  teal: '#14b8a6',
+  indigo: '#6366f1',
+};
+
+export const lightPalette: Palette = {
+  bg: '#f7f8fb',
+  bgDeep: '#dfe2ea',
+  surface: '#ffffff',
+  surface2: '#f0f2f7',
+  surface3: '#e4e7ee',
+  border: '#d8dce6',
+  borderSoft: '#e2e5ee',
+  text: '#12141c',
+  textDim: '#5c6478',
+  textFaint: '#9aa3b5',
+  accent: '#3563e9',
+  accentBright: '#5b82f5',
+  signalBlue: '#4da3ff',
+  signalRed: '#ff5c5c',
+  signalBlueMuted: '#a6d1ff',
+  signalRedMuted: '#ffadad',
+  success: '#27b877',
+  warn: '#ffb020',
+  gold: '#ffd35c',
+  purple: '#a855f7',
+  cyan: '#22d3ee',
+  pink: '#f472b6',
+  teal: '#14b8a6',
+  indigo: '#6366f1',
+};

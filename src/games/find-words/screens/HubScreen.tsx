@@ -2,7 +2,7 @@ import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import GameHubScreen from '../../../components/GameHubScreen';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { getResumeIndex } from '../../../utils/levelProgress';
 import FindWordsCardArt from '../CardArt';
 import type { FindWordsStackParamList } from '../navigation';
@@ -12,6 +12,7 @@ type Props = NativeStackScreenProps<FindWordsStackParamList, 'FindWordsHub'>;
 
 export default function HubScreen({ navigation }: Props) {
   const { levelsCompleted, levelsSkipped, tutorialsSeen } = useFindWordsProgress();
+  const { colors } = useTheme();
   const { t } = useTranslation('find-words');
   const { t: tc } = useTranslation('common');
 

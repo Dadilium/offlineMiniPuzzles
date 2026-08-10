@@ -17,6 +17,12 @@
   "settings": {
     "eyebrow": "Application",
     "title": "Réglages",
+    "themeLabel": "Apparence",
+    "theme": {
+      "system": "Système",
+      "light": "Clair",
+      "dark": "Sombre"
+    },
     "languageLabel": "Langue",
     "versionLabel": "Version",
     "gameProgressLabel": "Progression des jeux",

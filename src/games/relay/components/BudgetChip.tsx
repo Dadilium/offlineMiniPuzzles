@@ -1,10 +1,10 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { colors, fonts } from '../../../theme/colors';
+import { fonts } from '../../../theme/tokens';
+import { useTheme } from '../../../theme/ThemeProvider';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import type { SignalColor } from '../types';
-
-const SIGNAL_COLORS: Record<SignalColor, string> = { blue: colors.signalBlue, red: colors.signalRed };
 
 interface Props {
   color: SignalColor;
@@ -17,7 +17,10 @@ interface Props {
 
 export default function BudgetChip({ color, used, budget, active, selectable, onPress }: Props) {
   const { t } = useTranslation('relay');
-  const tint = SIGNAL_COLORS[color];
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const signalColors = useMemo(() => ({ blue: colors.signalBlue, red: colors.signalRed }) as Record<SignalColor, string>, [colors]);
+  const tint = signalColors[color];
   const label = t(`game.colorNames.${color}`);
   return (
     <TouchableOpacity
@@ -34,7 +37,7 @@ export default function BudgetChip({ color, used, budget, active, selectable, on
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -48,4 +51,4 @@ const styles = StyleSheet.create({
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
   label: { fontFamily: fonts.mono, fontSize: 11.5, fontWeight: '600', color: colors.textDim },
-});
+}));

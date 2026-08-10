@@ -1,10 +1,11 @@
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import GameHubScreen from '../../../components/GameHubScreen';
 import { useToast } from '../../../components/Toast';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { getResumeIndex } from '../../../utils/levelProgress';
 import RelayCardArt from '../CardArt';
 import { levels } from '../levels';
@@ -16,6 +17,8 @@ type Props = NativeStackScreenProps<RelayStackParamList, 'RelayHub'>;
 export default function HubScreen({ navigation }: Props) {
   const { levelsCompleted, levelsSkipped, tutorialsSeen, resetAllProgress } = useRelayProgress();
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { t } = useTranslation('relay');
   const { t: tc } = useTranslation('common');
 
@@ -84,8 +87,8 @@ export default function HubScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   devRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 4 },
   devResetBtn: { marginHorizontal: 4, paddingVertical: 4, alignItems: 'center' },
   devResetBtnText: { color: colors.textFaint, fontWeight: '600', fontSize: 11.5 },
-});
+}));

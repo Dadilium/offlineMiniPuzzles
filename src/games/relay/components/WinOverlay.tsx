@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, fonts, radii } from '../../../theme/colors';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { fonts, radii } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 
 interface Props {
   visible: boolean;
@@ -16,6 +17,7 @@ interface Props {
 // swaps the screen underneath it. The web prototype's win screen was just an
 // absolutely-positioned overlay div, not a real modal, so this matches that.
 export default function WinOverlay({ visible, title, subtitle, nextLabel, onNext }: Props) {
+  const styles = useStyles();
   if (!visible) return null;
   return (
     <View style={styles.backdrop} pointerEvents="box-none">
@@ -31,7 +33,7 @@ export default function WinOverlay({ visible, title, subtitle, nextLabel, onNext
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,6,10,0.72)', alignItems: 'center', justifyContent: 'center', zIndex: 50 },
   card: {
     backgroundColor: colors.surface,
@@ -48,4 +50,4 @@ const styles = StyleSheet.create({
   sub: { fontSize: 12.5, color: colors.textDim, marginBottom: 18, textAlign: 'center' },
   button: { backgroundColor: colors.accent, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 18, alignSelf: 'stretch', alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-});
+}));

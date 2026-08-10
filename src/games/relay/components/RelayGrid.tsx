@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { CARDINAL_DIRECTIONS, isFixed, isMirror, isWall, traceBounceTo, traceCardinalBeam } from '../engine';
 import { GRID_COLS, GRID_ROWS } from '../levels';
 import type { ConnectivityResult, PlacedRelay, Point, RelayLevel, SignalColor } from '../types';
@@ -9,9 +10,6 @@ import type { ConnectivityResult, PlacedRelay, Point, RelayLevel, SignalColor } 
 const MAX_CELL = 36;
 const screenWidth = Dimensions.get('window').width;
 const CELL = Math.min(MAX_CELL, Math.floor((screenWidth - 40) / GRID_COLS));
-
-const SIGNAL_COLORS: Record<SignalColor, string> = { blue: colors.signalBlue, red: colors.signalRed };
-const SIGNAL_COLORS_MUTED: Record<SignalColor, string> = { blue: colors.signalBlueMuted, red: colors.signalRedMuted };
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
@@ -146,6 +144,16 @@ interface Props {
 }
 
 export default function RelayGrid({ level, relays, jammed, results, onCellPress }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const SIGNAL_COLORS = useMemo(
+    () => ({ blue: colors.signalBlue, red: colors.signalRed }) as Record<SignalColor, string>,
+    [colors]
+  );
+  const SIGNAL_COLORS_MUTED = useMemo(
+    () => ({ blue: colors.signalBlueMuted, red: colors.signalRedMuted }) as Record<SignalColor, string>,
+    [colors]
+  );
   const W = GRID_COLS * CELL;
   const H = GRID_ROWS * CELL;
   const { getAnim, isGrowing } = useRelayGrowth(relays);
@@ -500,7 +508,7 @@ export default function RelayGrid({ level, relays, jammed, results, onCellPress 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { alignSelf: 'center', marginVertical: 8, borderRadius: 10, overflow: 'hidden' },
   cell: {
     position: 'absolute',
@@ -510,4 +518,4 @@ const styles = StyleSheet.create({
   },
   cellWall: { backgroundColor: '#040507' },
   cellMirror: { backgroundColor: colors.surface3 },
-});
+}));

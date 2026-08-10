@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, PanResponder, StyleSheet, View } from 'react-native';
 import Svg, { Polyline } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import type { BlockFillPalette } from '../palette';
 import type { Cell } from '../types';
 
@@ -34,6 +34,7 @@ interface FillCellProps {
 
 /** Simple scale-in when a cell joins the path -- the "add simple animations" nudge from CLAUDE.md, kept minimal. */
 function BlockFillCell({ size, filled, isStart, hinted, fillColor }: FillCellProps) {
+  const styles = useStyles();
   const scale = useRef(new Animated.Value(filled ? 1 : 0)).current;
 
   useEffect(() => {
@@ -61,6 +62,7 @@ interface Props {
 }
 
 export default function BlockFillGrid({ level, path, palette, onDragToCell, hintCell }: Props) {
+  const styles = useStyles();
   const { rows, cols, fillable, start } = level;
   const size = cellSizeFor(rows, cols);
   const W = size * cols;
@@ -200,7 +202,7 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { alignSelf: 'center' },
   row: { flexDirection: 'row' },
   cellOuter: { padding: 2 },
@@ -226,4 +228,4 @@ const styles = StyleSheet.create({
     marginLeft: -4,
     backgroundColor: colors.text,
   },
-});
+}));

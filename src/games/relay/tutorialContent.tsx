@@ -1,6 +1,6 @@
 import React from 'react';
 import { Circle, Text as SvgText } from 'react-native-svg';
-import { colors } from '../../theme/colors';
+import type { Palette } from '../../theme/palettes';
 import {
   BeamRelayDot,
   ConnLine,
@@ -19,7 +19,11 @@ import {
 // one so players only ever see it a single time.
 // Title/desc text lives in locales/{en,fr}.json under `tutorial.<group>[i]`,
 // keyed by this same group name + array index -- TutorialScreen resolves it.
-export const tutorialDiagrams: Record<string, Array<() => React.ReactElement>> = {
+// Not a component -- returns plain data (a lookup of diagram-step render
+// functions) built from the active palette, so callers must supply `colors`
+// from their own `useTheme()` rather than this reaching for it itself.
+export function getTutorialDiagrams(colors: Palette): Record<string, Array<() => React.ReactElement>> {
+  return {
   all: [
     () => (
       <DiagramFrame>
@@ -103,4 +107,5 @@ export const tutorialDiagrams: Record<string, Array<() => React.ReactElement>> =
       </DiagramFrame>
     ),
   ],
-};
+  };
+}

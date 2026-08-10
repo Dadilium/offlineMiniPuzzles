@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radii } from '../../../theme/colors';
+import { Animated, Text, View } from 'react-native';
+import { fonts, radii } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { paletteForWord } from '../palette';
 import type { Placement } from '../types';
 
@@ -12,6 +13,7 @@ interface ChipProps {
 
 /** One word's chip -- a quick "pop" the moment it flips to found, same idiom as every other game's found/placed animations. */
 function WordChip({ word, isFound, palette }: ChipProps) {
+  const styles = useStyles();
   const scale = useRef(new Animated.Value(1)).current;
   const wasFound = useRef(isFound);
 
@@ -46,6 +48,7 @@ interface Props {
 
 /** The word list at the bottom of the game screen -- each word crosses off the moment its capsule locks in on the grid above. */
 export default function WordList({ placements, foundIndices }: Props) {
+  const styles = useStyles();
   const found = new Set(foundIndices);
   return (
     <View style={styles.wrap}>
@@ -56,7 +59,7 @@ export default function WordList({ placements, foundIndices }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },
   chip: {
     backgroundColor: colors.surface2,
@@ -77,4 +80,4 @@ const styles = StyleSheet.create({
     color: colors.textFaint,
     textDecorationLine: 'line-through',
   },
-});
+}));

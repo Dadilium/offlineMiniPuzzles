@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,10 @@ import { useTranslation } from 'react-i18next';
 import TopBar from '../components/TopBar';
 import { SUPPORTED_LANGUAGES } from '../i18n';
 import { setStoredLanguage } from '../i18n/languagePreference';
-import { colors, fonts, radii, spacing } from '../theme/colors';
+import { fonts, radii, spacing } from '../theme/tokens';
+import { createThemedStyles } from '../theme/createThemedStyles';
+import { useTheme } from '../theme/ThemeProvider';
+import type { ThemeMode } from '../theme/themePreference';
 import { PRIVACY_POLICY_URL } from '../config/links';
 import appConfig from '../../app.json';
 import type { RootStackParamList } from '../navigation/types';
@@ -18,8 +21,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 // locale -- a French speaker still needs to recognize "English" to pick it.
 const LANGUAGE_NAMES: Record<string, string> = { en: 'English', fr: 'Français' };
 
+const THEME_MODES: ThemeMode[] = ['system', 'light', 'dark'];
+
 export default function SettingsScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
+  const { colors, mode, setMode } = useTheme();
+  const styles = useStyles();
 
   const selectLanguage = (language: string) => {
     if (language === i18n.language) return;
@@ -31,6 +38,27 @@ export default function SettingsScreen({ navigation }: Props) {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <TopBar onBack={() => navigation.goBack()} eyebrow={t('settings.eyebrow')} title={t('settings.title')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.card}>
+          <Text style={styles.label}>{t('settings.themeLabel')}</Text>
+          <View style={styles.languageRow}>
+            {THEME_MODES.map((themeMode) => {
+              const active = mode === themeMode;
+              return (
+                <TouchableOpacity
+                  key={themeMode}
+                  style={[styles.languagePill, active && styles.languagePillActive]}
+                  activeOpacity={0.75}
+                  onPress={() => setMode(themeMode)}
+                >
+                  <Text style={[styles.languagePillText, active && styles.languagePillTextActive]}>
+                    {t(`settings.theme.${themeMode}`)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.label}>{t('settings.languageLabel')}</Text>
           <View style={styles.languageRow}>
@@ -91,7 +119,7 @@ export default function SettingsScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
   scrollContent: { flexGrow: 1, padding: spacing.lg, gap: spacing.md },
   spacer: { flex: 1 },
@@ -126,4 +154,4 @@ const styles = StyleSheet.create({
   languagePillActive: { backgroundColor: colors.accent, borderColor: colors.accentBright },
   languagePillText: { fontFamily: fonts.body, fontSize: 13, fontWeight: '600', color: colors.textDim },
   languagePillTextActive: { color: colors.text },
-});
+}));

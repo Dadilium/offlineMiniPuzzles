@@ -1,6 +1,6 @@
 import React from 'react';
 import Svg, { Rect } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { colorForId } from '../palette';
 
 // Ties the confetti burst's colors to the gameplay palette instead of the
@@ -18,6 +18,7 @@ export interface MiniTubesSpec {
 
 /** Small illustrative row of tubes used by the Color Sort tutorial steps. */
 export function ColorSortMiniTubes({ spec, size }: { spec: MiniTubesSpec; size: number }) {
+  const { colors } = useTheme();
   const { tubes, capacity, highlight } = spec;
   const n = tubes.length;
   const gap = size * 0.05;

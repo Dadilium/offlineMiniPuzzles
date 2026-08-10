@@ -1,27 +1,34 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Svg, { Circle, ClipPath, Defs, G, Rect } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { KingCrownGlyph } from './KingCrown';
 
 const BOARD_RADIUS = 10;
 
 // The same region palette used in the real game grid (see KingsGrid.tsx) --
-// kept here too so tutorial diagrams look identical. Exactly 9 entries, one
-// per region up to the largest board (n=9), spaced around the hue wheel so
-// no two ever read as "the same color" once alpha-blended over the dark
-// board background -- `rid % REGION_PALETTE.length` then never wraps for a
-// real board, so no two regions can collide.
-export const REGION_PALETTE = [
-  colors.signalRed,
-  colors.warn,
-  colors.gold,
-  colors.success,
-  colors.teal,
-  colors.signalBlue,
-  colors.indigo,
-  colors.purple,
-  colors.pink,
-];
+// exposed as a hook (rather than a plain constant) since it depends on the
+// active theme. Kept here too so tutorial diagrams look identical. Exactly
+// 9 entries, one per region up to the largest board (n=9), spaced around
+// the hue wheel so no two ever read as "the same color" once alpha-blended
+// over the board background -- `rid % palette.length` then never wraps for
+// a real board, so no two regions can collide.
+export function useRegionPalette(): string[] {
+  const { colors } = useTheme();
+  return useMemo(
+    () => [
+      colors.signalRed,
+      colors.warn,
+      colors.gold,
+      colors.success,
+      colors.teal,
+      colors.signalBlue,
+      colors.indigo,
+      colors.purple,
+      colors.pink,
+    ],
+    [colors]
+  );
+}
 
 export interface MiniCell {
   r: number;
@@ -32,6 +39,8 @@ export interface MiniCell {
 
 /** Small illustrative n x n region grid used by the Kings tutorial steps. */
 export function KingsMiniGrid({ cells, n, size }: { cells: MiniCell[]; n: number; size: number }) {
+  const { colors } = useTheme();
+  const regionPalette = useRegionPalette();
   const cw = size / n;
   const regionByKey = new Map<string, number>();
   cells.forEach((cell) => regionByKey.set(`${cell.r},${cell.c}`, cell.region));
@@ -48,7 +57,7 @@ export function KingsMiniGrid({ cells, n, size }: { cells: MiniCell[]; n: number
           y={r * cw}
           width={cw}
           height={cw}
-          fill={REGION_PALETTE[region % REGION_PALETTE.length]}
+          fill={regionPalette[region % regionPalette.length]}
           fillOpacity={0.3}
           stroke={colors.bgDeep}
           strokeWidth={1.5}

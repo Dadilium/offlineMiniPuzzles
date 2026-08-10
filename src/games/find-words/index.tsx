@@ -1,4 +1,4 @@
-import { colors } from '../../theme/colors';
+import { darkPalette } from '../../theme/palettes';
 import type { GameModule } from '../types';
 import FindWordsCardArt from './CardArt';
 import HubScreen from './screens/HubScreen';
@@ -12,7 +12,10 @@ import { FindWordsProgressProvider, useFindWordsProgress } from './state/useFind
 export const findWordsGame: GameModule = {
   id: 'find-words',
   status: 'ready',
-  accentColor: colors.teal,
+  // A plain static object accessed outside React's render tree (e.g. from
+  // registry.ts) can't call useTheme() -- accent hues are identical across
+  // both palettes by design, so the dark value is theme-invariant here.
+  accentColor: darkPalette.teal,
   CardArt: FindWordsCardArt,
   Provider: FindWordsProgressProvider,
   screens: [

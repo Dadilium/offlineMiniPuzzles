@@ -1,9 +1,10 @@
 import React, { useRef } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { Animated, Easing, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { Animated, Easing, Text, TouchableWithoutFeedback, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { colors } from '../theme/colors';
+import { createThemedStyles } from '../theme/createThemedStyles';
+import { useTheme } from '../theme/ThemeProvider';
 import { darken } from '../theme/colorUtils';
 
 const SIZE = 56;
@@ -47,6 +48,8 @@ function GameActionButton({
   disabled,
   style,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const translateY = useRef(new Animated.Value(0)).current;
   const interactive = !hidden && !disabled;
   const baseColor = darken(accentColor, 0.55);
@@ -172,7 +175,7 @@ GameActionButtonExport.AddNumbers = AddNumbers;
 
 export default GameActionButtonExport;
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { alignItems: 'center', width: SIZE + 12 },
   hidden: { opacity: 0 },
   stage: { width: SIZE, height: SIZE + PRESS_DEPTH },
@@ -226,4 +229,4 @@ const styles = StyleSheet.create({
   },
   badgeAd: { backgroundColor: colors.gold },
   badgeText: { color: colors.text, fontWeight: '700', fontSize: 10 },
-});
+}));

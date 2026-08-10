@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { colors, fonts } from '../theme/colors';
+import { fonts } from '../theme/tokens';
+import { createThemedStyles } from '../theme/createThemedStyles';
 import IconButton from './IconButton';
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
  * (reset / replay-tutorial) on the right. */
 export default function TopBar({ onBack, backAccessibilityLabel, eyebrow, title, right }: Props) {
   const { t } = useTranslation();
+  const styles = useStyles();
   return (
     <View style={styles.topbar}>
       <IconButton name="chevron-back" onPress={onBack} accessibilityLabel={backAccessibilityLabel ?? t('topBar.back')} />
@@ -31,9 +33,9 @@ export default function TopBar({ onBack, backAccessibilityLabel, eyebrow, title,
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   topbar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingTop: 10 },
   titleWrap: { flex: 1, minWidth: 0 },
   eyebrow: { fontFamily: fonts.mono, fontSize: 10, color: colors.textFaint, letterSpacing: 1 },
   title: { fontFamily: fonts.display, fontWeight: '700', fontSize: 14.5, color: colors.text },
-});
+}));

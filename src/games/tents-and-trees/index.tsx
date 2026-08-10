@@ -1,4 +1,8 @@
-import { colors } from '../../theme/colors';
+// `accentColor` lives outside the React tree (this is a static module-scope
+// registry entry, not a component), so it can't call useTheme(). Sourced
+// straight from the palette instead -- pink is identical in both light and
+// dark, same as every other game's fixed accent.
+import { darkPalette } from '../../theme/palettes';
 import type { GameModule } from '../types';
 import TentsAndTreesCardArt from './CardArt';
 import HubScreen from './screens/HubScreen';
@@ -12,7 +16,7 @@ import { TentsAndTreesProgressProvider, useTentsAndTreesProgress } from './state
 export const tentsAndTreesGame: GameModule = {
   id: 'tents-and-trees',
   status: 'ready',
-  accentColor: colors.pink,
+  accentColor: darkPalette.pink,
   CardArt: TentsAndTreesCardArt,
   Provider: TentsAndTreesProgressProvider,
   screens: [

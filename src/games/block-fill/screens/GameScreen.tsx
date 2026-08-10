@@ -8,7 +8,7 @@ import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
@@ -22,13 +22,16 @@ import type { Cell } from '../types';
 
 type Props = NativeStackScreenProps<BlockFillStackParamList, 'BlockFillGame'>;
 
-const CONFETTI_PALETTE = [colors.purple, colors.gold, colors.cyan, colors.pink, colors.success, colors.signalBlue];
-
 export default function GameScreen({ route, navigation }: Props) {
+  const { colors } = useTheme();
   const { levelIndex } = route.params;
   const { levelFor, ensureLevel, pathsByLevel, extend, rewind, giveHint, resetLevel, markLevelComplete, markLevelSkipped, levelsCompleted } =
     useBlockFillProgress();
   const { showToast } = useToast();
+  const confettiPalette = useMemo(
+    () => [colors.purple, colors.gold, colors.cyan, colors.pink, colors.success, colors.signalBlue],
+    [colors]
+  );
   const { t } = useTranslation('block-fill');
   const { t: tc } = useTranslation('common');
 
@@ -167,7 +170,7 @@ export default function GameScreen({ route, navigation }: Props) {
           visible={win}
           badge="👑"
           showConfetti={showConfetti}
-          confettiPalette={CONFETTI_PALETTE}
+          confettiPalette={confettiPalette}
           title={t('game.winTitle')}
           subtitle={t('game.winSubtitle')}
           nextLabel={tc('actions.nextLevel')}

@@ -1,4 +1,4 @@
-import { colors } from '../../theme/colors';
+import { darkPalette } from '../../theme/palettes';
 import type { GameModule } from '../types';
 import KingsCardArt from './CardArt';
 import HubScreen from './screens/HubScreen';
@@ -12,7 +12,10 @@ import { KingsProgressProvider, useKingsProgress } from './state/useKingsProgres
 export const kingsGame: GameModule = {
   id: 'kings',
   status: 'ready',
-  accentColor: colors.warn,
+  // A plain static object accessed outside React's render tree (e.g. from
+  // registry.ts) can't call useTheme() -- accent hues are identical across
+  // both palettes by design, so the dark value is theme-invariant here.
+  accentColor: darkPalette.warn,
   CardArt: KingsCardArt,
   Provider: KingsProgressProvider,
   screens: [

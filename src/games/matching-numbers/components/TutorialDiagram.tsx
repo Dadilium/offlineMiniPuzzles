@@ -1,6 +1,6 @@
 import React from 'react';
 import Svg, { ClipPath, Defs, G, Polyline, Rect, Text as SvgText } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 
 const BOARD_RADIUS = 10;
 const CELL = 54;
@@ -26,6 +26,7 @@ interface Props {
 
 /** Small illustrative grid used by the Matching Numbers tutorial steps. */
 export function MatchingNumbersMiniGrid({ cells, connector, rows = 3, cols = 4 }: Props) {
+  const { colors } = useTheme();
   const width = cols * CELL;
   const height = rows * CELL;
   const cellByKey = new Map<string, MiniCellSpec>();

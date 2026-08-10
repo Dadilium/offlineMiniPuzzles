@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { colors, fonts, radii } from '../../../theme/colors';
+import { fonts, radii } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { translateDynamic } from '../../../i18n/dynamicKey';
 import { tutorialDiagrams } from '../tutorialContent';
 import type { CrossSumsStackParamList } from '../navigation';
@@ -16,6 +17,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
   const { markTutorialSeen } = useCrossSumsProgress();
   const { t } = useTranslation('cross-sums');
   const { t: tc } = useTranslation('common');
+  const styles = useStyles();
   const groupKey = tutorialDiagrams[tutorialKey] ? tutorialKey : 'all';
   const steps = tutorialDiagrams[groupKey];
   const [stepIndex, setStepIndex] = useState(0);
@@ -78,7 +80,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
   topbar: { alignItems: 'flex-end', paddingHorizontal: 18, paddingTop: 10 },
   skip: { fontFamily: fonts.mono, fontSize: 11.5, color: colors.textFaint, letterSpacing: 1 },
@@ -105,4 +107,4 @@ const styles = StyleSheet.create({
   btnGhost: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border },
   btnGhostText: { color: colors.text, fontWeight: '600', fontSize: 14 },
   hidden: { opacity: 0 },
-});
+}));

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, fonts } from '../../../theme/colors';
+import { Animated, Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import { fonts } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
+import { useTheme } from '../../../theme/ThemeProvider';
 import type { CellMark } from '../engine';
 import type { CrossSumsLevel } from '../types';
 
@@ -39,6 +41,8 @@ interface DigitCellProps {
 }
 
 function DigitCell({ value, mark, hinted, size, celebrateDelay, onPress }: DigitCellProps) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const selected = mark === 'selected';
   const erased = mark === 'erased';
   const ringScale = useRef(new Animated.Value(selected ? 1 : 0)).current;
@@ -102,6 +106,8 @@ function DigitCell({ value, mark, hinted, size, celebrateDelay, onPress }: Digit
 }
 
 function TargetCell({ current, target, size, axisSize }: { current: number; target: number; size: number; axisSize: number }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const matched = current === target;
   const over = current > target;
   const color = matched ? colors.success : over ? colors.signalRed : colors.textDim;
@@ -124,6 +130,7 @@ interface Props {
 }
 
 export default function CrossSumsGrid({ level, marks, hintedCells, rowSums, colSums, celebrate, onCellPress }: Props) {
+  const styles = useStyles();
   const { rows, cols, grid } = level;
   const size = cellSizeFor(rows, cols);
   const axisSize = size * 0.82;
@@ -167,7 +174,7 @@ export default function CrossSumsGrid({ level, marks, hintedCells, rowSums, colS
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { alignItems: 'center' },
   row: { flexDirection: 'row' },
   digitCell: {
@@ -189,4 +196,4 @@ const styles = StyleSheet.create({
   },
   targetCell: { alignItems: 'center', justifyContent: 'center' },
   targetText: { fontFamily: fonts.mono, fontWeight: '600' },
-});
+}));

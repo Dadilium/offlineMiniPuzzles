@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, fonts } from '../../../theme/colors';
+import { fonts } from '../../../theme/tokens';
+import { useTheme } from '../../../theme/ThemeProvider';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { cellsFromGrid, matchedTreeCells, wouldTouchExistingTent } from '../engine';
 import type { TentsAndTreesLevel } from '../types';
 
@@ -35,6 +37,8 @@ interface TreeCellProps {
 }
 
 function TreeCell({ size, celebrateDelay, matched }: TreeCellProps) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const bounceScale = useRef(new Animated.Value(1)).current;
   const matchProgress = useRef(new Animated.Value(matched ? 1 : 0)).current;
   const prevMatched = useRef(matched);
@@ -78,6 +82,8 @@ interface TentCellProps {
 }
 
 function TentCell({ isTent, hasConflict, hinted, size, celebrateDelay, onPress }: TentCellProps) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const popScale = useRef(new Animated.Value(isTent ? 1 : 0)).current;
   const prevIsTent = useRef(isTent);
   const shakeX = useRef(new Animated.Value(0)).current;
@@ -155,6 +161,8 @@ function TentCell({ isTent, hasConflict, hinted, size, celebrateDelay, onPress }
 }
 
 function TargetCell({ current, target, size, axisSize }: { current: number; target: number; size: number; axisSize: number }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const matched = current === target;
   const over = current > target;
   const color = matched ? colors.success : over ? colors.signalRed : colors.textDim;
@@ -177,6 +185,7 @@ interface Props {
 }
 
 export default function TentsAndTreesGrid({ level, tents, hintedCells, rowCounts, colCounts, celebrate, onCellPress }: Props) {
+  const styles = useStyles();
   const { rows, cols, trees } = level;
   const size = cellSizeFor(rows, cols);
   const axisSize = size * 0.82;
@@ -226,7 +235,7 @@ export default function TentsAndTreesGrid({ level, tents, hintedCells, rowCounts
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { alignItems: 'center' },
   row: { flexDirection: 'row' },
   cell: {
@@ -240,4 +249,4 @@ const styles = StyleSheet.create({
   glyph: { textAlign: 'center' },
   targetCell: { alignItems: 'center', justifyContent: 'center' },
   targetText: { fontFamily: fonts.mono, fontWeight: '600' },
-});
+}));

@@ -8,7 +8,7 @@ import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
@@ -25,10 +25,13 @@ const EMPTY_PLACED: ShikakuPlayerState = [];
 const EMPTY_HINTED = new Set<number>();
 const EMPTY_CONFLICTS = new Set<number>();
 
-const CONFETTI_PALETTE = [colors.success, colors.signalBlue, colors.warn, colors.purple, colors.cyan, colors.gold];
-
 export default function GameScreen({ route, navigation }: Props) {
   const { levelIndex } = route.params;
+  const { colors } = useTheme();
+  const confettiPalette = useMemo(
+    () => [colors.success, colors.signalBlue, colors.warn, colors.purple, colors.cyan, colors.gold],
+    [colors]
+  );
   const {
     levelFor,
     ensureLevel,
@@ -203,7 +206,7 @@ export default function GameScreen({ route, navigation }: Props) {
           visible={revealWin}
           badge="👑"
           showConfetti={showConfetti}
-          confettiPalette={CONFETTI_PALETTE}
+          confettiPalette={confettiPalette}
           title={t('game.winTitle')}
           subtitle={t('game.winSubtitle')}
           nextLabel={tc('actions.nextLevel')}

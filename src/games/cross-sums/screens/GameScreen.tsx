@@ -8,14 +8,14 @@ import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import CrossSumsGrid, { waveDurationMs } from '../components/CrossSumsGrid';
 import ToolToggle from '../components/ToolToggle';
-import { ACCENT_PALETTE } from '../components/TutorialDiagram';
+import { getAccentPalette } from '../components/TutorialDiagram';
 import { computeSums, computeWin, type Tool } from '../engine';
 import type { CrossSumsStackParamList } from '../navigation';
 import { useCrossSumsProgress } from '../state/useCrossSumsProgress';
@@ -42,7 +42,9 @@ export default function GameScreen({ route, navigation }: Props) {
   const { showToast } = useToast();
   const { t } = useTranslation('cross-sums');
   const { t: tc } = useTranslation('common');
+  const { colors } = useTheme();
   const [tool, setTool] = useState<Tool>('pen');
+  const accentPalette = useMemo(() => getAccentPalette(colors), [colors]);
 
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect, never during
@@ -195,7 +197,7 @@ export default function GameScreen({ route, navigation }: Props) {
           visible={revealWin}
           badge="👑"
           showConfetti={showConfetti}
-          confettiPalette={ACCENT_PALETTE}
+          confettiPalette={accentPalette}
           title={t('game.winTitle')}
           subtitle={t('game.winSubtitle')}
           nextLabel={tc('actions.nextLevel')}

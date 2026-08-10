@@ -1,7 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import type { ComponentType } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, fonts, radii } from '../theme/colors';
+import { Animated, Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import { fonts, radii } from '../theme/tokens';
+import { createThemedStyles } from '../theme/createThemedStyles';
+import { useTheme } from '../theme/ThemeProvider';
+import { darkPalette } from '../theme/palettes';
 
 const screenWidth = Dimensions.get('window').width;
 const GRID_GUTTER = 20;
@@ -20,7 +23,10 @@ interface Props {
 }
 
 /** Rectangular Library grid tile: tinted art zone on top, name + tag below. */
-export default function GameCard({ title, tag, color = colors.signalBlue, ArtComponent, onPress, index = 0, locked = false }: Props) {
+export default function GameCard({ title, tag, color, ArtComponent, onPress, index = 0, locked = false }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const resolvedColor = color ?? colors.signalBlue;
   const mount = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(1)).current;
 
@@ -52,8 +58,9 @@ export default function GameCard({ title, tag, color = colors.signalBlue, ArtCom
         onPressIn={() => !locked && animateTo(0.96)}
         onPressOut={() => !locked && animateTo(1)}
       >
-        <View style={[styles.art, { backgroundColor: locked ? colors.surface3 : `${color}1a` }]}>
-          {ArtComponent && !locked && <ArtComponent size={ART_HEIGHT * 0.52} color={color} />}
+        <View style={[styles.art, { backgroundColor: locked ? colors.surface3 : darkPalette.surface3 }]}>
+          {!locked && <View style={[styles.artTint, { backgroundColor: `${resolvedColor}59` }]} />}
+          {ArtComponent && !locked && <ArtComponent size={ART_HEIGHT * 0.52} color={resolvedColor} />}
         </View>
         <View style={styles.body}>
           <Text style={[styles.name, locked && styles.nameLocked]} numberOfLines={1}>
@@ -68,7 +75,7 @@ export default function GameCard({ title, tag, color = colors.signalBlue, ArtCom
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   card: {
     width: CARD_WIDTH,
     backgroundColor: colors.surface2,
@@ -87,9 +94,14 @@ const styles = StyleSheet.create({
     height: ART_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  // The tint blends against a fixed dark base (set on `art` above) rather
+  // than the active theme's surface color, so a game's accent tint reads
+  // the same in light mode as it always has in dark mode.
+  artTint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   body: { padding: 12 },
   name: { fontFamily: fonts.display, fontWeight: '700', fontSize: 15, color: colors.text },
   nameLocked: { color: colors.textDim },
   tag: { fontSize: 11.5, color: colors.textDim, marginTop: 2 },
-});
+}));

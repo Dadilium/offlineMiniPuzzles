@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, fonts, radii } from '../../../theme/colors';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { fonts, radii } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 
 interface Props {
   visible: boolean;
@@ -16,6 +17,7 @@ interface Props {
 // red/warn-tinted variant with no confetti, shown when the board has no
 // legal move left and Add Numbers is exhausted.
 export default function FailOverlay({ visible, title, subtitle, retryLabel, skipLabel, onRetry, onSkip }: Props) {
+  const styles = useStyles();
   if (!visible) return null;
   return (
     <View style={styles.backdrop} pointerEvents="box-none">
@@ -34,7 +36,7 @@ export default function FailOverlay({ visible, title, subtitle, retryLabel, skip
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,6,10,0.72)', alignItems: 'center', justifyContent: 'center', zIndex: 50 },
   card: {
     backgroundColor: colors.surface,
@@ -62,4 +64,4 @@ const styles = StyleSheet.create({
   retryButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   skipButton: { paddingVertical: 8, alignItems: 'center' },
   skipButtonText: { color: colors.textFaint, fontWeight: '600', fontSize: 12 },
-});
+}));

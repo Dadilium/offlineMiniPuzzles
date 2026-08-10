@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Svg from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
+import { useTheme } from '../../../theme/ThemeProvider';
 import type { CellState, KingsLevel } from '../types';
 import { KingCrownGlyph } from './KingCrown';
-import { REGION_PALETTE } from './TutorialDiagram';
+import { useRegionPalette } from './TutorialDiagram';
 
 function KingPiece({ size, fill }: { size: number; fill: string }) {
   return (
@@ -29,16 +30,11 @@ function cellSizeFor(n: number) {
   return Math.max(MIN_CELL, Math.min(MAX_CELL, widthBudget, heightBudget));
 }
 
-function hexToRgba(hex: string, alpha: number): string {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-const BORDER_STRONG = 'rgba(238,240,246,0.6)';
-const BORDER_SOFT = 'rgba(5,6,10,0.28)';
+// Dark, fairly opaque lines rather than a bright highlight -- reads clearly
+// against any of the (light-to-medium) region colors, so zone boundaries
+// stay just as crisp regardless of the board's own fill or the app theme.
+const BORDER_STRONG = 'rgba(10,12,18,0.55)';
+const BORDER_SOFT = 'rgba(10,12,18,0.22)';
 const BOARD_RADIUS = 12;
 
 interface CellProps {
@@ -74,6 +70,8 @@ function KingsCell({
   isBottomRight,
   onPress,
 }: CellProps) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const isKing = value === 2 || value === 3;
   const isHinted = value === 3;
   const kingScale = useRef(new Animated.Value(isKing ? 1 : 0)).current;
@@ -190,6 +188,8 @@ interface Props {
 }
 
 export default function KingsGrid({ level, board, autoUnavailable, conflictSet, onCellPress }: Props) {
+  const styles = useStyles();
+  const regionPalette = useRegionPalette();
   const n = level.n;
   const size = cellSizeFor(n);
   const W = size * n;
@@ -200,7 +200,10 @@ export default function KingsGrid({ level, board, autoUnavailable, conflictSet, 
     const cellsInRow: React.ReactNode[] = [];
     for (let c = 0; c < n; c++) {
       const rid = level.regions[r][c];
-      const regionColor = hexToRgba(REGION_PALETTE[rid % REGION_PALETTE.length], 0.3);
+      // Solid, not blended against the board background -- a fixed alpha
+      // would read differently on a near-black board vs. a near-white one,
+      // so region colors stay identical across both themes.
+      const regionColor = regionPalette[rid % regionPalette.length];
       const key = `${r},${c}`;
       cellsInRow.push(
         <KingsCell
@@ -236,11 +239,11 @@ export default function KingsGrid({ level, board, autoUnavailable, conflictSet, 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   wrap: { borderRadius: BOARD_RADIUS, overflow: 'hidden' },
   inner: { borderRadius: BOARD_RADIUS, overflow: 'hidden' },
   row: { flexDirection: 'row' },
   cell: { alignItems: 'center', justifyContent: 'center' },
   mark: {},
   conflictOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: colors.signalRed },
-});
+}));

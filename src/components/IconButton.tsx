@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
+import { createThemedStyles } from '../theme/createThemedStyles';
+import { useTheme } from '../theme/ThemeProvider';
 
 interface Props {
   /** Ionicons glyph name (e.g. 'chevron-back', 'refresh-outline'). */
@@ -17,6 +18,8 @@ interface Props {
  * inconsistently across platforms since they fall back to whatever the OS's
  * default/emoji font happens to support. */
 export default function IconButton({ name, onPress, accessibilityLabel, size = 40, iconSize = 19 }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -29,7 +32,7 @@ export default function IconButton({ name, onPress, accessibilityLabel, size = 4
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   btn: {
     backgroundColor: colors.surface2,
     borderWidth: 1,
@@ -37,4 +40,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

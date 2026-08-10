@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { colorForId } from '../palette';
 import type { Tube } from '../types';
 
@@ -97,6 +97,7 @@ interface TubeProps {
 }
 
 function TubeView({ index, tube, capacity, layout, selected, highlighted, shake, solved, tiltDir, isPourDest, onPress }: TubeProps) {
+  const { colors } = useTheme();
   const { tubeW, unitH } = layout;
   const tubeH = unitH * (capacity + 1.1);
   const lift = useRef(new Animated.Value(0)).current;

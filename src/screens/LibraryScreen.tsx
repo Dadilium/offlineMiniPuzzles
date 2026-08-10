@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -8,12 +8,14 @@ import IconButton from '../components/IconButton';
 import { translateDynamic } from '../i18n/dynamicKey';
 import { games, comingSoon } from '../games/registry';
 import { useHintWallet } from '../state/hintWallet';
-import { colors, fonts } from '../theme/colors';
+import { fonts } from '../theme/tokens';
+import { createThemedStyles } from '../theme/createThemedStyles';
 import type { RootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 
 export default function LibraryScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const styles = useStyles();
   const { pendingDailyClaim, acknowledgeDailyClaim } = useHintWallet();
 
   // Surfaces the daily free-hint claim exactly once per grant, whenever the
@@ -80,7 +82,7 @@ export default function LibraryScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
   scrollContent: { paddingBottom: 24 },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
@@ -105,4 +107,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 14,
   },
-});
+}));

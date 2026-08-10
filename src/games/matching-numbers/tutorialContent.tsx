@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { colors } from '../../theme/colors';
+import type { Palette } from '../../theme/palettes';
 import { MatchingNumbersMiniGrid } from './components/TutorialDiagram';
 
 // A single combined tutorial (all 5 steps), shown once before the player's
@@ -8,7 +8,11 @@ import { MatchingNumbersMiniGrid } from './components/TutorialDiagram';
 // (useMatchingNumbersProgress), checked by HubScreen/LevelListScreen/GameScreen.
 // Title/desc text lives in locales/{en,fr}.json under `tutorial.<group>[i]`,
 // keyed by this same group name + array index -- TutorialScreen resolves it.
-export const tutorialDiagrams: Record<string, Array<() => React.ReactElement>> = {
+// Each diagram is a plain function (not a component) called directly during
+// TutorialScreen's render, so it takes `colors` as a parameter instead of
+// calling useTheme() itself -- that would violate the rules of hooks, since
+// only one of these five is invoked per render depending on the step index.
+export const tutorialDiagrams: Record<string, Array<(colors: Palette) => React.ReactElement>> = {
   all: [
     () => (
       <MatchingNumbersMiniGrid
@@ -104,7 +108,7 @@ export const tutorialDiagrams: Record<string, Array<() => React.ReactElement>> =
         }}
       />
     ),
-    () => (
+    (colors) => (
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <View style={{ flex: 1 }}>
           <MatchingNumbersMiniGrid

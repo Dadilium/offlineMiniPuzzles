@@ -1,6 +1,6 @@
 import React from 'react';
 import Svg, { Circle, Polyline, Rect } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 
 const CELL = 46;
 
@@ -28,9 +28,15 @@ export function BlockFillMiniGrid({
   obstacles = [],
   path = [],
   highlight,
-  fillColor = colors.signalBlue,
-  strokeColor = colors.signalBlueMuted,
+  fillColor,
+  strokeColor,
 }: Props) {
+  const { colors } = useTheme();
+  // `fillColor`/`strokeColor` default to theme colors, but a hook-sourced
+  // value can't be used as a parameter default (evaluated before the
+  // component body runs), so the fallback happens here instead.
+  const resolvedFillColor = fillColor ?? colors.signalBlue;
+  const resolvedStrokeColor = strokeColor ?? colors.signalBlueMuted;
   const width = cols * CELL;
   const height = rows * CELL;
   const obstacleSet = new Set(obstacles.map((o) => `${o.r},${o.c}`));
@@ -48,7 +54,7 @@ export function BlockFillMiniGrid({
           y={r * CELL}
           width={CELL}
           height={CELL}
-          fill={isObstacle ? colors.bgDeep : pathSet.has(key) ? fillColor : colors.surface2}
+          fill={isObstacle ? colors.bgDeep : pathSet.has(key) ? resolvedFillColor : colors.surface2}
           stroke={colors.bgDeep}
           strokeWidth={1.5}
         />
@@ -62,7 +68,7 @@ export function BlockFillMiniGrid({
     <Svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%">
       <Rect x={0} y={0} width={width} height={height} rx={10} fill={colors.surface} stroke={colors.border} />
       {cells}
-      {path.length > 1 && <Polyline points={points} fill="none" stroke={strokeColor} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />}
+      {path.length > 1 && <Polyline points={points} fill="none" stroke={resolvedStrokeColor} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />}
       {highlight && (
         <Circle cx={highlight.c * CELL + CELL / 2} cy={highlight.r * CELL + CELL / 2} r={CELL * 0.22} fill="none" stroke={colors.gold} strokeWidth={3} />
       )}

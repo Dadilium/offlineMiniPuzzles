@@ -1,9 +1,10 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import TopBar from '../../../components/TopBar';
-import { colors, fonts, radii } from '../../../theme/colors';
+import { fonts, radii } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import draftBatches from '../../../../tools/level-creator/drafts/relay/index.generated';
 import type { RelayStackParamList } from '../navigation';
 
@@ -14,6 +15,7 @@ type Props = NativeStackScreenProps<RelayStackParamList, 'RelayDraftList'>;
 // batch can be play-tested and its output/*.md report deleted with
 // confidence instead of trusting the automated validator alone.
 export default function DraftListScreen({ navigation }: Props) {
+  const styles = useStyles();
   const entries = draftBatches.flatMap((batch) =>
     batch.levels.map((level, indexInFile) => ({ file: batch.file, level, indexInFile }))
   );
@@ -48,7 +50,7 @@ export default function DraftListScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
   scrollContent: { padding: 20, gap: 10 },
   hint: { fontSize: 12, color: colors.textDim, lineHeight: 17, marginBottom: 6 },
@@ -64,4 +66,4 @@ const styles = StyleSheet.create({
   },
   rowTitle: { color: colors.text, fontWeight: '600', fontSize: 14.5 },
   rowFile: { color: colors.textFaint, fontSize: 11, fontFamily: fonts.mono, marginTop: 3 },
-});
+}));

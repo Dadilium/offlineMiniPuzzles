@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
+import { createThemedStyles } from '../theme/createThemedStyles';
 import TopBar from './TopBar';
 
 /** Vertical padding applied inside the scrollable board area -- exported so a
@@ -43,6 +43,7 @@ export default function GameScreenLayout({
   controls,
   winOverlay,
 }: Props) {
+  const styles = useStyles();
   const handleBoardAreaLayout = onBoardAreaLayout ? (e: LayoutChangeEvent) => onBoardAreaLayout(e.nativeEvent.layout.height) : undefined;
 
   return (
@@ -66,7 +67,7 @@ export default function GameScreenLayout({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
   // Takes up all remaining vertical space between the header and the
   // bottom controls, so the board is always centered and Hint always sits
@@ -81,4 +82,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   controls: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 6, gap: 8 },
-});
+}));

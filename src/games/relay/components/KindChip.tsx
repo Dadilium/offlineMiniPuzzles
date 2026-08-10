@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { colors, fonts } from '../../../theme/colors';
+import { fonts } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import type { RelayKind } from '../types';
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
  * the board itself (a plain dot for circle, a small cross for beam). */
 export default function KindChip({ kind, active, onPress }: Props) {
   const { t } = useTranslation('relay');
+  const styles = useStyles();
   const label = kind === 'circle' ? t('game.kindCircle') : t('game.kindBeam');
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={[styles.chip, active && styles.chipActive]}>
@@ -34,7 +36,7 @@ export default function KindChip({ kind, active, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -53,4 +55,4 @@ const styles = StyleSheet.create({
   beamGlyphV: { position: 'absolute', width: 1.5, height: 10, backgroundColor: colors.textDim },
   label: { fontFamily: fonts.mono, fontSize: 11.5, fontWeight: '600', color: colors.textDim },
   labelActive: { color: colors.text },
-});
+}));

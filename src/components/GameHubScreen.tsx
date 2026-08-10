@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { ComponentType } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { colors, fonts, radii } from '../theme/colors';
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { fonts, radii } from '../theme/tokens';
+import { createThemedStyles } from '../theme/createThemedStyles';
+import { useTheme } from '../theme/ThemeProvider';
 import TopBar from './TopBar';
 
 // TopBar's own height (paddingTop + IconButton size) -- used so the banner
@@ -13,6 +15,41 @@ const BANNER_CONTENT_HEIGHT = 190;
 const ART_SIZE = 116;
 const ART_TOP = 16;
 const SCRIM_HEIGHT = 92;
+const DOT_SPACING = 16;
+const DOT_SIZE = 3;
+const DOT_ANGLE_DEG = 20;
+
+/** Points for a rotated dot grid, computed directly rather than via SVG's
+ * <Pattern patternTransform>, which react-native-svg doesn't reliably apply
+ * on iOS (Android renders it fine) -- plain rotated rects have no such
+ * platform-specific rendering path to break. Generated oversized in
+ * unrotated grid space so the rotated result still fully covers `width` x
+ * `height`; anything outside those bounds is clipped by the <Svg> itself. */
+function useRotatedDotGrid(width: number, height: number): Array<{ x: number; y: number }> {
+  return useMemo(() => {
+    const angle = (DOT_ANGLE_DEG * Math.PI) / 180;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const cx = width / 2;
+    const cy = height / 2;
+    const gridWidth = width * cos + height * sin;
+    const gridHeight = width * sin + height * cos;
+    const cols = Math.ceil(gridWidth / DOT_SPACING / 2) + 1;
+    const rows = Math.ceil(gridHeight / DOT_SPACING / 2) + 1;
+    const points: Array<{ x: number; y: number }> = [];
+    for (let r = -rows; r <= rows; r++) {
+      for (let c = -cols; c <= cols; c++) {
+        const localX = c * DOT_SPACING;
+        const localY = r * DOT_SPACING;
+        points.push({
+          x: cx + localX * cos - localY * sin,
+          y: cy + localX * sin + localY * cos,
+        });
+      }
+    }
+    return points;
+  }, [width, height]);
+}
 
 interface Props {
   onBack: () => void;
@@ -50,19 +87,19 @@ export default function GameHubScreen({
   onHowToPlay,
   aboveActions,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const headerSpace = insets.top + TOPBAR_HEIGHT;
   const bgHeight = headerSpace + BANNER_CONTENT_HEIGHT;
   const glowCyPercent = ((headerSpace + BANNER_CONTENT_HEIGHT * 0.36) / bgHeight) * 100;
+  const dotGrid = useRotatedDotGrid(width, bgHeight);
 
   return (
     <View style={styles.screen}>
       <Svg width={width} height={bgHeight} style={styles.bg}>
         <Defs>
-          <Pattern id="bannerDots" width={18} height={18} patternUnits="userSpaceOnUse" patternTransform="rotate(20)">
-            <Rect x={0} y={0} width={2.4} height={2.4} fill={accentColor} opacity={0.35} />
-          </Pattern>
           <RadialGradient id="bannerGlow" cx="50%" cy={`${glowCyPercent}%`} r="60%">
             <Stop offset="0%" stopColor={accentColor} stopOpacity={0.32} />
             <Stop offset="100%" stopColor={accentColor} stopOpacity={0} />
@@ -73,7 +110,9 @@ export default function GameHubScreen({
           </LinearGradient>
         </Defs>
         <Rect width={width} height={bgHeight} fill={`${accentColor}0D`} />
-        <Rect width={width} height={bgHeight} fill="url(#bannerDots)" />
+        {dotGrid.map((p, i) => (
+          <Rect key={i} x={p.x - DOT_SIZE / 2} y={p.y - DOT_SIZE / 2} width={DOT_SIZE} height={DOT_SIZE} fill={accentColor} opacity={0.55} />
+        ))}
         <Rect width={width} height={bgHeight} fill="url(#bannerGlow)" />
         <Rect y={bgHeight - SCRIM_HEIGHT} width={width} height={SCRIM_HEIGHT} fill="url(#bannerScrim)" />
       </Svg>
@@ -113,7 +152,7 @@ export default function GameHubScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
   bg: { position: 'absolute', top: 0, left: 0, right: 0 },
   scroll: { flex: 1 },
@@ -162,4 +201,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryBtnText: { color: colors.text, fontWeight: '600', fontSize: 14 },
-});
+}));

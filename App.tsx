@@ -1,15 +1,16 @@
 import './src/i18n';
 import React, { useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
+import * as SystemUI from 'expo-system-ui';
 import { StatusBar } from 'expo-status-bar';
-import { DarkTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/Toast';
 import AdBanner from './src/components/AdBanner';
 import { HintWalletProvider } from './src/state/hintWallet';
-import { colors } from './src/theme/colors';
+import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import * as Sentry from '@sentry/react-native';
 import { PostHogProvider } from 'posthog-react-native';
 import { posthog } from './src/config/posthog';
@@ -56,6 +57,22 @@ export default Sentry.wrap(function App() {
     checkForUpdates((error) => Sentry.captureException(error));
   }, []);
 
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <HintWalletProvider>
+            <AppContent />
+          </HintWalletProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+});
+
+function AppContent() {
+  const { colors, scheme } = useTheme();
+
   // PostHog's own screen-autocapture hook calls `useNavigationState` eagerly
   // during render, before the NavigationContainer's state is committed --
   // that throws once on every cold start. Tracking screens ourselves off the
@@ -72,9 +89,13 @@ export default Sentry.wrap(function App() {
     }
   }, [navigationRef]);
 
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(colors.bgDeep).catch(() => {});
+  }, [colors.bgDeep]);
+
   const navTheme = {
-    dark: true,
-    fonts: DarkTheme.fonts,
+    dark: scheme === 'dark',
+    fonts: (scheme === 'dark' ? DarkTheme : DefaultTheme).fonts,
     colors: {
       primary: colors.accent,
       background: colors.bgDeep,
@@ -86,41 +107,30 @@ export default Sentry.wrap(function App() {
   };
 
   return (
-    <SafeAreaProvider>
-      <ToastProvider>
-        <HintWalletProvider>
-          <View style={styles.appRoot}>
-            <View style={styles.navigatorSlot}>
-              <NavigationContainer
-                ref={navigationRef}
-                theme={navTheme}
-                onReady={trackScreen}
-                onStateChange={trackScreen}
-              >
-                <StatusBar style="light" />
-                <ErrorBoundary>
-                  {posthog ? (
-                    <PostHogProvider client={posthog} autocapture={{ captureScreens: false }}>
-                      <RootNavigator />
-                    </PostHogProvider>
-                  ) : (
-                    <RootNavigator />
-                  )}
-                </ErrorBoundary>
-              </NavigationContainer>
-            </View>
-            {/* Mounted once here rather than per-screen, so navigating between
-             * screens reuses this single native ad instance instead of
-             * requesting a new one on every push. */}
-            <AdBanner />
-          </View>
-        </HintWalletProvider>
-      </ToastProvider>
-    </SafeAreaProvider>
+    <View style={{ flex: 1, backgroundColor: colors.bgDeep }}>
+      <View style={{ flex: 1 }}>
+        <NavigationContainer
+          ref={navigationRef}
+          theme={navTheme}
+          onReady={trackScreen}
+          onStateChange={trackScreen}
+        >
+          <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+          <ErrorBoundary>
+            {posthog ? (
+              <PostHogProvider client={posthog} autocapture={{ captureScreens: false }}>
+                <RootNavigator />
+              </PostHogProvider>
+            ) : (
+              <RootNavigator />
+            )}
+          </ErrorBoundary>
+        </NavigationContainer>
+      </View>
+      {/* Mounted once here rather than per-screen, so navigating between
+       * screens reuses this single native ad instance instead of
+       * requesting a new one on every push. */}
+      <AdBanner />
+    </View>
   );
-});
-
-const styles = StyleSheet.create({
-  appRoot: { flex: 1, backgroundColor: colors.bgDeep },
-  navigatorSlot: { flex: 1 },
-});
+}

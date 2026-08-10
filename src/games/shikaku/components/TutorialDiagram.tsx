@@ -1,6 +1,6 @@
 import React from 'react';
 import Svg, { ClipPath, Defs, G, Rect, Text as SvgText } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { paletteForClue } from '../palette';
 
 const BOARD_RADIUS = 10;
@@ -30,6 +30,7 @@ export interface MiniGridSpec {
 
 /** Small illustrative rows x cols board used by the Shikaku tutorial steps -- placed rectangles as colored blocks, clue numbers on top so they stay legible through the fill. */
 export function ShikakuMiniGrid({ spec, size }: { spec: MiniGridSpec; size: number }) {
+  const { colors } = useTheme();
   const { rows, cols, clues, rects } = spec;
   const cw = size / cols;
   const ch = size / rows;

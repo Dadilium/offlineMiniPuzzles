@@ -8,7 +8,7 @@ import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
@@ -23,10 +23,13 @@ type Props = NativeStackScreenProps<FindWordsStackParamList, 'FindWordsGame'>;
 
 const EMPTY_FOUND: FindWordsPlayerState = [];
 
-const CONFETTI_PALETTE = [colors.teal, colors.signalBlue, colors.warn, colors.purple, colors.cyan, colors.gold];
-
 export default function GameScreen({ route, navigation }: Props) {
   const { levelIndex } = route.params;
+  const { colors } = useTheme();
+  const confettiPalette = useMemo(
+    () => [colors.teal, colors.signalBlue, colors.warn, colors.purple, colors.cyan, colors.gold],
+    [colors]
+  );
   const {
     levelFor,
     ensureLevel,
@@ -183,7 +186,7 @@ export default function GameScreen({ route, navigation }: Props) {
           visible={revealWin}
           badge="🔎"
           showConfetti={showConfetti}
-          confettiPalette={CONFETTI_PALETTE}
+          confettiPalette={confettiPalette}
           title={t('game.winTitle')}
           subtitle={t('game.winSubtitle')}
           nextLabel={tc('actions.nextLevel')}

@@ -1,4 +1,4 @@
-import { colors } from '../../theme/colors';
+import { darkPalette } from '../../theme/palettes';
 import type { GameModule } from '../types';
 import BlockFillCardArt from './CardArt';
 import HubScreen from './screens/HubScreen';
@@ -12,7 +12,11 @@ import { BlockFillProgressProvider, useBlockFillProgress } from './state/useBloc
 export const blockFillGame: GameModule = {
   id: 'block-fill',
   status: 'ready',
-  accentColor: colors.signalBlue,
+  // Registered at module scope outside any component (consumed directly by
+  // the Library screen's registry), so it can't reach useTheme(). Signal
+  // colors are identical across both palettes (see theme/palettes.ts), so
+  // pulling straight from one palette is safe here.
+  accentColor: darkPalette.signalBlue,
   CardArt: BlockFillCardArt,
   Provider: BlockFillProgressProvider,
   screens: [

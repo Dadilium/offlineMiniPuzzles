@@ -8,7 +8,7 @@ import GameScreenLayout from '../../../components/GameScreenLayout';
 import IconButton from '../../../components/IconButton';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnAction, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
@@ -23,7 +23,6 @@ import type { Cell } from '../types';
 
 type Props = NativeStackScreenProps<MatchingNumbersStackParamList, 'MatchingNumbersGame'>;
 
-const CONFETTI_PALETTE = [colors.purple, colors.gold, colors.cyan, colors.pink, colors.success, colors.signalBlue];
 /** A level that takes this long forces the level-completion interstitial due, regardless of the count-based schedule. */
 const SLOW_LEVEL_MS = 2 * 60 * 1000;
 
@@ -50,6 +49,11 @@ export default function GameScreen({ route, navigation }: Props) {
   const { showToast } = useToast();
   const { t } = useTranslation('matching-numbers');
   const { t: tc } = useTranslation('common');
+  const { colors } = useTheme();
+  const confettiPalette = useMemo(
+    () => [colors.purple, colors.gold, colors.cyan, colors.pink, colors.success, colors.signalBlue],
+    [colors]
+  );
 
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect. Prefetch the next
@@ -316,7 +320,7 @@ export default function GameScreen({ route, navigation }: Props) {
             visible={win}
             badge="👑"
             showConfetti={showConfetti}
-            confettiPalette={CONFETTI_PALETTE}
+            confettiPalette={confettiPalette}
             title={t('game.winTitle')}
             subtitle={t('game.winSubtitle')}
             nextLabel={tc('actions.nextLevel')}

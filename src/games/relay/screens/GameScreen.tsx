@@ -9,7 +9,7 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import BudgetChip from '../components/BudgetChip';
 import KindChip from '../components/KindChip';
 import RelayGrid, { RECEIVER_SETTLE_MS } from '../components/RelayGrid';
@@ -24,6 +24,7 @@ const RELAY_KINDS: RelayKind[] = ['circle', 'beam'];
 type Props = NativeStackScreenProps<RelayStackParamList, 'RelayGame'>;
 
 export default function GameScreen({ route, navigation }: Props) {
+  const { colors } = useTheme();
   const { levelIndex } = route.params;
   const level = levels[levelIndex];
   const { relaysByLevel, toggleRelay, giveHint, resetLevel, markLevelComplete, markLevelSkipped, levelsCompleted, tutorialsSeen } =

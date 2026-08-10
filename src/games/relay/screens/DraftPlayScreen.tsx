@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import IconButton from '../../../components/IconButton';
 import TopBar from '../../../components/TopBar';
 import { useToast } from '../../../components/Toast';
-import { colors, fonts, radii } from '../../../theme/colors';
+import { fonts, radii } from '../../../theme/tokens';
+import { useTheme } from '../../../theme/ThemeProvider';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
 import BudgetChip from '../components/BudgetChip';
 import KindChip from '../components/KindChip';
 import RelayGrid, { RECEIVER_SETTLE_MS } from '../components/RelayGrid';
@@ -16,7 +18,6 @@ import type { ConnectivityResult, PlacedRelay, RelayKind, SignalColor } from '..
 
 const RELAY_KINDS: RelayKind[] = ['circle', 'beam'];
 const WIN_OVERLAY_EXTRA_DELAY_MS = 300;
-const SIGNAL_COLORS: Record<SignalColor, string> = { blue: colors.signalBlue, red: colors.signalRed };
 
 type Props = NativeStackScreenProps<RelayStackParamList, 'RelayDraftPlay'>;
 
@@ -27,6 +28,12 @@ type Props = NativeStackScreenProps<RelayStackParamList, 'RelayDraftPlay'>;
 export default function DraftPlayScreen({ route, navigation }: Props) {
   const { level } = route.params;
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const SIGNAL_COLORS = useMemo(
+    () => ({ blue: colors.signalBlue, red: colors.signalRed }) as Record<SignalColor, string>,
+    [colors]
+  );
   const [relays, setRelays] = useState<PlacedRelay[]>([]);
 
   const colorList = Object.keys(level.budgets) as SignalColor[];
@@ -169,7 +176,7 @@ export default function DraftPlayScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
   instructions: { fontSize: 12, color: colors.textDim, paddingHorizontal: 20, paddingTop: 8, textAlign: 'center' },
   budgetsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', paddingHorizontal: 18, paddingTop: 10, justifyContent: 'center' },
@@ -180,4 +187,4 @@ const styles = StyleSheet.create({
   controls: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 6 },
   hintBtn: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingVertical: 13, alignItems: 'center' },
   hintBtnText: { color: colors.text, fontWeight: '600', fontSize: 14 },
-});
+}));

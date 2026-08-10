@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, InteractionManager, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import IconButton from '../../../components/IconButton';
@@ -7,13 +7,15 @@ import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
-import { colors, fonts } from '../../../theme/colors';
+import { fonts } from '../../../theme/tokens';
+import { createThemedStyles } from '../../../theme/createThemedStyles';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import KingsGrid from '../components/KingsGrid';
-import { REGION_PALETTE } from '../components/TutorialDiagram';
+import { useRegionPalette } from '../components/TutorialDiagram';
 import { computeAutoUnavailable, computeKingsState } from '../engine';
 import type { KingsStackParamList } from '../navigation';
 import { useKingsProgress } from '../state/useKingsProgress';
@@ -23,6 +25,9 @@ type Props = NativeStackScreenProps<KingsStackParamList, 'KingsGame'>;
 const EMPTY_STATE = { kings: [], conflictSet: new Set<string>(), win: false };
 
 export default function GameScreen({ route, navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const regionPalette = useRegionPalette();
   const { levelIndex } = route.params;
   const {
     levelFor,
@@ -168,7 +173,7 @@ export default function GameScreen({ route, navigation }: Props) {
           visible={state.win}
           badge="👑"
           showConfetti={showConfetti}
-          confettiPalette={REGION_PALETTE}
+          confettiPalette={regionPalette}
           title={t('game.winTitle')}
           subtitle={t('game.winSubtitle')}
           nextLabel={tc('actions.nextLevel')}
@@ -187,7 +192,7 @@ export default function GameScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => ({
   loading: { alignItems: 'center', gap: 12 },
   loadingText: { fontFamily: fonts.body, fontSize: 13, color: colors.textDim },
-});
+}));

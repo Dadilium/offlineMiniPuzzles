@@ -8,7 +8,7 @@ import GameActionButton from '../../../components/GameActionButton';
 import GameScreenLayout from '../../../components/GameScreenLayout';
 import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
@@ -28,6 +28,7 @@ const SHAKE_DURATION_MS = 260;
 const POUR_DURATION_MS = 380;
 
 export default function GameScreen({ route, navigation }: Props) {
+  const { colors } = useTheme();
   const { levelIndex } = route.params;
   const {
     levelFor,

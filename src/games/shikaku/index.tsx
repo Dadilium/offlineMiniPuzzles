@@ -1,4 +1,8 @@
-import { colors } from '../../theme/colors';
+// `accentColor` lives outside the React tree (this is a static module-scope
+// registry entry, not a component), so it can't call useTheme(). Sourced
+// straight from the palette instead -- signalRed is identical in both light
+// and dark, same as every other game's fixed accent.
+import { darkPalette } from '../../theme/palettes';
 import type { GameModule } from '../types';
 import ShikakuCardArt from './CardArt';
 import HubScreen from './screens/HubScreen';
@@ -12,7 +16,7 @@ import { ShikakuProgressProvider, useShikakuProgress } from './state/useShikakuP
 export const shikakuGame: GameModule = {
   id: 'shikaku',
   status: 'ready',
-  accentColor: colors.signalRed,
+  accentColor: darkPalette.signalRed,
   CardArt: ShikakuCardArt,
   Provider: ShikakuProgressProvider,
   screens: [

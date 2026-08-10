@@ -1,4 +1,8 @@
-import { colors } from '../../theme/colors';
+// Accent colors are identical across the light/dark palettes (see
+// theme/palettes.ts), so this static, module-scope registry entry -- built
+// once at import time, well outside any component -- can safely read from
+// one palette directly instead of needing useTheme().
+import { darkPalette } from '../../theme/palettes';
 import type { GameModule } from '../types';
 import CrossSumsCardArt from './CardArt';
 import HubScreen from './screens/HubScreen';
@@ -12,7 +16,7 @@ import { CrossSumsProgressProvider, useCrossSumsProgress } from './state/useCros
 export const crossSumsGame: GameModule = {
   id: 'cross-sums',
   status: 'ready',
-  accentColor: colors.success,
+  accentColor: darkPalette.success,
   CardArt: CrossSumsCardArt,
   Provider: CrossSumsProgressProvider,
   screens: [

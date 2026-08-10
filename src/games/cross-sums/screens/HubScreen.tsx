@@ -2,7 +2,7 @@ import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import GameHubScreen from '../../../components/GameHubScreen';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { getResumeIndex } from '../../../utils/levelProgress';
 import CrossSumsCardArt from '../CardArt';
 import type { CrossSumsStackParamList } from '../navigation';
@@ -14,6 +14,7 @@ export default function HubScreen({ navigation }: Props) {
   const { levelsCompleted, levelsSkipped, tutorialsSeen } = useCrossSumsProgress();
   const { t } = useTranslation('cross-sums');
   const { t: tc } = useTranslation('common');
+  const { colors } = useTheme();
 
   function enterLevel(idx: number) {
     if (!tutorialsSeen.has('all')) {

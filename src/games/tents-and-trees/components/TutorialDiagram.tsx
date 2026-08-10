@@ -1,6 +1,6 @@
 import React from 'react';
 import Svg, { ClipPath, Defs, G, Rect, Text as SvgText } from 'react-native-svg';
-import { colors } from '../../../theme/colors';
+import { useTheme } from '../../../theme/ThemeProvider';
 
 const BOARD_RADIUS = 10;
 
@@ -15,6 +15,7 @@ export interface MiniGridSpec {
 
 /** Small illustrative rows x cols board used by the Tents & Trees tutorial steps -- trees and tents shown as glyphs, targets along the edges. */
 export function TentsAndTreesMiniGrid({ spec, size }: { spec: MiniGridSpec; size: number }) {
+  const { colors } = useTheme();
   const { rows, cols, trees, tents, rowTargets, colTargets } = spec;
   const cw = size / (cols + 1);
   const ch = size / (rows + 1);

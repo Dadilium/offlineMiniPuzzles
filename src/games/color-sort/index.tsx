@@ -1,4 +1,8 @@
-import { colors } from '../../theme/colors';
+// `accentColor` lives outside the React tree (this is a static module-scope
+// registry entry, not a component), so it can't call useTheme(). Sourced
+// straight from the palette instead -- cyan is identical in both light and
+// dark, same as every other game's fixed accent.
+import { darkPalette } from '../../theme/palettes';
 import type { GameModule } from '../types';
 import ColorSortCardArt from './CardArt';
 import HubScreen from './screens/HubScreen';
@@ -12,7 +16,7 @@ import { ColorSortProgressProvider, useColorSortProgress } from './state/useColo
 export const colorSortGame: GameModule = {
   id: 'color-sort',
   status: 'ready',
-  accentColor: colors.cyan,
+  accentColor: darkPalette.cyan,
   CardArt: ColorSortCardArt,
   Provider: ColorSortProgressProvider,
   screens: [
