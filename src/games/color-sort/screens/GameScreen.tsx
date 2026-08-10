@@ -225,7 +225,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.navigate('ColorSortHub')}
+      onBack={() => navigation.popTo('ColorSortHub')}
       backAccessibilityLabel={tc('actions.backToHub')}
       title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
@@ -236,31 +236,11 @@ export default function GameScreen({ route, navigation }: Props) {
       }
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
-          <GameActionButton
-            icon="bulb"
-            caption={tc('actions.hint')}
-            accessibilityLabel={tc('actions.hintWithCount', { count: hintCount })}
-            onPress={onHintPress}
-            badge={hintCount > 0 ? hintCount : 'ad'}
-          />
+          <GameActionButton.Hint onPress={onHintPress} accentColor={colors.cyan} hintCount={hintCount} />
           {!celebrate && (
-            <GameActionButton
-              icon="arrow-undo"
-              caption={tc('actions.undo')}
-              accessibilityLabel={tc('actions.undoMove')}
-              onPress={onUndoPress}
-              disabled={history.length === 0}
-            />
+            <GameActionButton.Undo onPress={onUndoPress} accentColor={colors.cyan} disabled={history.length === 0} />
           )}
-          {!celebrate && (
-            <GameActionButton
-              icon="play-skip-forward"
-              caption={tc('actions.skip')}
-              accessibilityLabel={tc('actions.skipLevelAd')}
-              onPress={onSkipPress}
-              badge="ad"
-            />
-          )}
+          {!celebrate && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.cyan} />}
         </View>
       }
       winOverlay={

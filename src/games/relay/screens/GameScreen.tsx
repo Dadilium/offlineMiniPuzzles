@@ -9,6 +9,7 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
+import { colors } from '../../../theme/colors';
 import BudgetChip from '../components/BudgetChip';
 import KindChip from '../components/KindChip';
 import RelayGrid, { RECEIVER_SETTLE_MS } from '../components/RelayGrid';
@@ -114,7 +115,7 @@ export default function GameScreen({ route, navigation }: Props) {
     if (levelIndex < levels.length - 1) {
       enterLevel(navigation, levelIndex + 1, tutorialsSeen, 'replace');
     } else {
-      navigation.navigate('RelayHub');
+      navigation.popTo('RelayHub');
     }
   }
 
@@ -131,7 +132,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.navigate('RelayHub')}
+      onBack={() => navigation.popTo('RelayHub')}
       backAccessibilityLabel={tc('actions.backToHub')}
       eyebrow={t('game.levelEyebrow', { current: levelIndex + 1, total: levels.length })}
       title={level.title}
@@ -143,21 +144,8 @@ export default function GameScreen({ route, navigation }: Props) {
       }
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
-          <GameActionButton
-            icon="bulb"
-            caption={tc('actions.hint')}
-            accessibilityLabel={tc('actions.hintWithCount', { count: hintCount })}
-            onPress={onHintPress}
-            badge={hintCount > 0 ? hintCount : 'ad'}
-          />
-          <GameActionButton
-            icon="play-skip-forward"
-            caption={tc('actions.skip')}
-            accessibilityLabel={tc('actions.skipLevelAd')}
-            onPress={onSkipPress}
-            badge="ad"
-            hidden={allReached}
-          />
+          <GameActionButton.Hint onPress={onHintPress} accentColor={colors.signalBlue} hintCount={hintCount} />
+          <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.signalBlue} hidden={allReached} />
         </View>
       }
       winOverlay={

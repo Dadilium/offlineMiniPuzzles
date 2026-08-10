@@ -183,7 +183,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.navigate('ShikakuHub')}
+      onBack={() => navigation.popTo('ShikakuHub')}
       backAccessibilityLabel={tc('actions.backToHub')}
       title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
@@ -194,22 +194,8 @@ export default function GameScreen({ route, navigation }: Props) {
       }
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
-          <GameActionButton
-            icon="bulb"
-            caption={tc('actions.hint')}
-            accessibilityLabel={tc('actions.hintWithCount', { count: hintCount })}
-            onPress={onHintPress}
-            badge={hintCount > 0 ? hintCount : 'ad'}
-          />
-          {!revealWin && (
-            <GameActionButton
-              icon="play-skip-forward"
-              caption={tc('actions.skip')}
-              accessibilityLabel={tc('actions.skipLevelAd')}
-              onPress={onSkipPress}
-              badge="ad"
-            />
-          )}
+          <GameActionButton.Hint onPress={onHintPress} accentColor={colors.signalRed} hintCount={hintCount} />
+          {!revealWin && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.signalRed} />}
         </View>
       }
       winOverlay={

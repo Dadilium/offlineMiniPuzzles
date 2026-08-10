@@ -161,7 +161,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.navigate('FindWordsHub')}
+      onBack={() => navigation.popTo('FindWordsHub')}
       backAccessibilityLabel={tc('actions.backToHub')}
       title={t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
@@ -174,13 +174,7 @@ export default function GameScreen({ route, navigation }: Props) {
       controls={
         !revealWin && (
           <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-            <GameActionButton
-              icon="play-skip-forward"
-              caption={tc('actions.skip')}
-              accessibilityLabel={tc('actions.skipLevelAd')}
-              onPress={onSkipPress}
-              badge="ad"
-            />
+            <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.teal} />
           </View>
         )
       }

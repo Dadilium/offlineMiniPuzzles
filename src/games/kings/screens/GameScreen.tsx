@@ -134,7 +134,7 @@ export default function GameScreen({ route, navigation }: Props) {
   if (!level || !board) {
     return (
       <GameScreenLayout
-        onBack={() => navigation.navigate('KingsHub')}
+        onBack={() => navigation.popTo('KingsHub')}
         backAccessibilityLabel={tc('actions.backToHub')}
         title={t('game.levelTitle', { number: levelIndex + 1 })}
       >
@@ -148,7 +148,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.navigate('KingsHub')}
+      onBack={() => navigation.popTo('KingsHub')}
       backAccessibilityLabel={tc('actions.backToHub')}
       title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
@@ -159,22 +159,8 @@ export default function GameScreen({ route, navigation }: Props) {
       }
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
-          <GameActionButton
-            icon="bulb"
-            caption={tc('actions.hint')}
-            accessibilityLabel={tc('actions.hintWithCount', { count: hintCount })}
-            onPress={onHintPress}
-            badge={hintCount > 0 ? hintCount : 'ad'}
-          />
-          {!state.win && (
-            <GameActionButton
-              icon="play-skip-forward"
-              caption={tc('actions.skip')}
-              accessibilityLabel={tc('actions.skipLevelAd')}
-              onPress={onSkipPress}
-              badge="ad"
-            />
-          )}
+          <GameActionButton.Hint onPress={onHintPress} accentColor={colors.warn} hintCount={hintCount} />
+          {!state.win && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.warn} />}
         </View>
       }
       winOverlay={
