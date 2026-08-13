@@ -3,6 +3,11 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 
 const STORAGE_KEY = '@signal-arcade/hints/wallet/v1';
 
+// TEMP(testing): forces the daily-gift claim on every launch, ignoring
+// `lastClaimDate`, so the new DailyGiftModal can be eyeballed repeatedly.
+// Flip back to false before shipping.
+const FORCE_DAILY_CLAIM_FOR_TESTING = false;
+
 /** Hints granted to the wallet on the first app open of a new calendar day. */
 export const DAILY_HINT_REWARD = 2;
 
@@ -67,7 +72,7 @@ export function HintWalletProvider({ children }: { children: React.ReactNode }) 
         let sanitized = sanitizePersisted(parsed);
 
         const today = todayKey();
-        if (sanitized.lastClaimDate !== today) {
+        if (FORCE_DAILY_CLAIM_FOR_TESTING || sanitized.lastClaimDate !== today) {
           sanitized = { balance: sanitized.balance + DAILY_HINT_REWARD, lastClaimDate: today };
           setPendingDailyClaim(DAILY_HINT_REWARD);
         }

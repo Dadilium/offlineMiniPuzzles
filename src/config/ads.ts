@@ -114,11 +114,14 @@ export function nextInterstitialDecision(
 
 async function gatherConsent(): Promise<void> {
   const info = await AdsConsent.requestInfoUpdate();
+  console.log('[ads] consent info', JSON.stringify(info));
   const needsForm =
     info.isConsentFormAvailable &&
     (info.status === AdsConsentStatus.REQUIRED || info.status === AdsConsentStatus.UNKNOWN);
+  console.log('[ads] needsForm', needsForm);
   if (needsForm) {
     await AdsConsent.showForm();
+    console.log('[ads] showForm resolved');
   }
 }
 

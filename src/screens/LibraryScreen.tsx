@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import React from 'react';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import DailyGiftModal from '../components/DailyGiftModal';
 import GameCard from '../components/GameCard';
 import IconButton from '../components/IconButton';
 import { translateDynamic } from '../i18n/dynamicKey';
@@ -18,21 +19,20 @@ export default function LibraryScreen({ navigation }: Props) {
   const styles = useStyles();
   const { pendingDailyClaim, acknowledgeDailyClaim } = useHintWallet();
 
-  // Surfaces the daily free-hint claim exactly once per grant, whenever the
-  // player next lands on the Library -- not tied to app-launch timing, since
-  // the wallet may claim it before the Library is even the visible screen.
-  useEffect(() => {
-    if (pendingDailyClaim === null) return;
-    Alert.alert(
-      t('library.dailyHintTitle'),
-      t('library.dailyHintMessage', { count: pendingDailyClaim }),
-      [{ text: t('library.dailyHintOk'), onPress: acknowledgeDailyClaim }],
-      { onDismiss: acknowledgeDailyClaim }
-    );
-  }, [pendingDailyClaim, acknowledgeDailyClaim, t]);
-
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
+      {/* Surfaces the daily free-hint claim exactly once per grant, whenever
+       * the player next lands on the Library -- not tied to app-launch
+       * timing, since the wallet may claim it before the Library is even
+       * the visible screen. */}
+      <DailyGiftModal
+        visible={pendingDailyClaim !== null}
+        amount={pendingDailyClaim ?? 0}
+        title={t('library.dailyHintTitle')}
+        message={t('library.dailyHintMessage', { count: pendingDailyClaim ?? 0 })}
+        confirmLabel={t('library.dailyHintOk')}
+        onConfirm={acknowledgeDailyClaim}
+      />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
