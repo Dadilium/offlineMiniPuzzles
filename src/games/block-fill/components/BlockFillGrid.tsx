@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, PanResponder, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Svg, { Polyline } from 'react-native-svg';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import type { BlockFillPalette } from '../palette';
@@ -8,8 +9,8 @@ import type { Cell } from '../types';
 const MIN_CELL = 26;
 const MAX_CELL = 52;
 // Rough non-board chrome (top bar, status row, legend, controls, safe areas)
-// so a tall board sizes itself to actually fit the screen instead of relying
-// on the surrounding ScrollView to scroll for it.
+// so a tall board sizes its cells down to actually fit the fixed, non-
+// scrolling board area instead of overflowing it.
 const CHROME_ESTIMATE = 340;
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -32,13 +33,18 @@ interface FillCellProps {
   fillColor: string;
 }
 
-/** Simple scale-in when a cell joins the path -- the "add simple animations" nudge from CLAUDE.md, kept minimal. */
-function BlockFillCell({ size, filled, isStart, hinted, fillColor }: FillCellProps) {
+/** Simple scale-in when a cell joins the path -- the "add simple animations"
+ * nudge from CLAUDE.md, kept minimal. Memoized because the path prop above
+ * changes on every single cell dragged over -- without this, every one of
+ * those re-renders every cell in the grid (rows*cols, up to ~80+) instead of
+ * just the one or two whose `filled`/`hinted` prop actually flipped, which is
+ * what makes a fast drag feel like it's lagging behind the finger. */
+const BlockFillCell = React.memo(function BlockFillCell({ size, filled, isStart, hinted, fillColor }: FillCellProps) {
   const styles = useStyles();
   const scale = useRef(new Animated.Value(filled ? 1 : 0)).current;
 
   useEffect(() => {
-    Animated.spring(scale, { toValue: filled ? 1 : 0, friction: 6, tension: 200, useNativeDriver: true }).start();
+    Animated.spring(scale, { toValue: filled ? 1 : 0, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
   }, [filled, scale]);
 
   return (
@@ -49,7 +55,7 @@ function BlockFillCell({ size, filled, isStart, hinted, fillColor }: FillCellPro
       </View>
     </View>
   );
-}
+});
 
 interface Props {
   level: { rows: number; cols: number; fillable: boolean[][]; start: Cell };
@@ -70,18 +76,6 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
 
   const pathSet = new Set(path.map(cellKey));
   const lastCellRef = useRef<Cell | null>(null);
-  // `panResponder` below is created once inside a `useRef` initializer, so
-  // its handlers permanently close over whatever `onDragToCell` looked like
-  // on that very first render -- which itself closed over GameScreen's
-  // *first-render* `path`. Calling the prop directly would mean every
-  // press forever decides "is this cell already on the path?" against that
-  // frozen, ever-stale path, so a cell filled after mount always reads as
-  // new and gets routed to extend (which then legitimately no-ops since
-  // it's really already colored) -- rewind never visibly does anything.
-  // Reading it through a ref kept fresh every render (same trick
-  // ShikakuGrid uses for its onCommitRect/onTapCell props) fixes that.
-  const onDragToCellRef = useRef(onDragToCell);
-  onDragToCellRef.current = onDragToCell;
 
   function cellAt(locationX: number, locationY: number): Cell | null {
     const c = Math.floor(locationX / size);
@@ -111,35 +105,31 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
     const from = lastCellRef.current;
     if (from && from.r === cell.r && from.c === cell.c) return;
     lastCellRef.current = cell;
-    if (from) stepsBetween(from, cell).forEach((step) => onDragToCellRef.current(step));
-    else onDragToCellRef.current(cell);
+    if (from) stepsBetween(from, cell).forEach((step) => onDragToCell(step));
+    else onDragToCell(cell);
   }
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      // Capture-phase claims too -- the board sits inside a ScrollView (for
-      // centering; see GameScreen), and without these the ScrollView's own
-      // native pan gesture can win the touch before onPanResponderMove ever
-      // fires, which reads as "dragging does nothing".
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
-      // Once granted, never yield to the ScrollView mid-drag -- otherwise it
-      // can reclaim the gesture natively while dragging, which reads as the
-      // drag randomly stopping or jumping.
-      onPanResponderTerminationRequest: () => false,
-      onShouldBlockNativeResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        lastCellRef.current = null;
-        handleTouch(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
-      },
-      onPanResponderMove: (evt) => handleTouch(evt.nativeEvent.locationX, evt.nativeEvent.locationY),
-      onPanResponderRelease: () => {
-        lastCellRef.current = null;
-      },
+  // Recreated every render (cheap -- this is a config builder, not a
+  // stateful native object like PanResponder.create was), so its callbacks
+  // always close over the current render's `handleTouch`/`onDragToCell`
+  // directly -- no ref-freshening trick needed anymore.
+  // `minDistance(0)` matches the old PanResponder's behavior of tracking
+  // from the very first pixel of movement instead of RNGH's default ~10px
+  // pan-vs-tap disambiguation threshold. Swipe-back is disabled at the
+  // navigator level for this screen (see index.tsx), so there's no native
+  // edge gesture left to out-prioritize here.
+  const pan = Gesture.Pan()
+    .minDistance(0)
+    .maxPointers(1)
+    .shouldCancelWhenOutside(false)
+    .onBegin((e) => {
+      lastCellRef.current = null;
+      handleTouch(e.x, e.y);
     })
-  ).current;
+    .onUpdate((e) => handleTouch(e.x, e.y))
+    .onFinalize(() => {
+      lastCellRef.current = null;
+    });
 
   const pathPoints = path.map((cell) => `${cell.c * size + size / 2},${cell.r * size + size / 2}`).join(' ');
 
@@ -192,12 +182,14 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
         </View>
       )}
 
-      {/* Childless overlay carries the PanResponder, on top of and matching
-          the grid exactly. With nothing nested inside it to be hit-tested
-          instead, `locationX/Y` on every touch is guaranteed relative to
+      {/* Childless overlay carries the gesture, on top of and matching the
+          grid exactly. With nothing nested inside it to be hit-tested
+          instead, the event's x/y on every touch is guaranteed relative to
           this view's own bounds -- each cell View underneath no longer
           hijacks the coordinate space. */}
-      <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
+      <GestureDetector gesture={pan}>
+        <View style={StyleSheet.absoluteFill} />
+      </GestureDetector>
     </View>
   );
 }

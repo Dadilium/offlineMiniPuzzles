@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { fonts } from '../../../theme/tokens';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
@@ -177,22 +178,11 @@ export default function ShikakuGrid({
   const [rejecting, setRejecting] = useState(false);
   const shakeX = useRef(new Animated.Value(0)).current;
 
-  // PanResponder.create runs once, inside the useRef initializer below, so
-  // its handlers close over whatever `placed`/`previewRect` looked like on
-  // that first render -- `placed` changes on every commit, so the handlers
-  // must read it through a ref that's kept fresh every render (same trick
-  // useShikakuProgress uses for `stateRef`), not through the closed-over
-  // variable directly. `level` doesn't actually change within one mounted
-  // level, but it's mirrored too for safety/symmetry.
-  const levelRef = useRef(level);
-  levelRef.current = level;
-  const placedRef = useRef(placed);
-  placedRef.current = placed;
+  // `previewRectRef` mirrors `previewRect` synchronously -- onUpdate's most
+  // recent write may not have flushed through a re-render yet by the time
+  // onEnd reads it back, since both can fire within the same gesture's
+  // lifecycle faster than React re-renders.
   const previewRectRef = useRef<RectBounds | null>(null);
-  const onCommitRectRef = useRef(onCommitRect);
-  onCommitRectRef.current = onCommitRect;
-  const onTapCellRef = useRef(onTapCell);
-  onTapCellRef.current = onTapCell;
 
   function updatePreview(rect: RectBounds | null): void {
     previewRectRef.current = rect;
@@ -225,64 +215,55 @@ export default function ShikakuGrid({
     });
   }
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      // Capture-phase claims too, so an ancestor (e.g. the stack navigator's
-      // edge-swipe-back gesture) can't win the touch before
-      // onPanResponderMove ever fires -- that would read as "dragging does
-      // nothing".
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
-      // Once granted, never yield to an ancestor mid-gesture -- without
-      // this, dragging past the board's edge (where an ancestor is more
-      // likely to contest the touch) can hand the gesture off natively and
-      // the drag stops tracking or the preview resets, which reads as "the
-      // selection changes on its own". `onShouldBlockNativeResponder` is
-      // Android-only; iOS ignores it.
-      onPanResponderTerminationRequest: () => false,
-      onShouldBlockNativeResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        const cell = cellAt(locationX, locationY);
-        anchorRef.current = cell;
-        updatePreview(rectFromCorners(cell.r, cell.c, cell.r, cell.c));
-      },
-      onPanResponderMove: (evt) => {
-        const anchor = anchorRef.current;
-        if (!anchor) return;
-        const { locationX, locationY } = evt.nativeEvent;
-        const cell = cellAt(locationX, locationY);
-        updatePreview(rectFromCorners(anchor.r, anchor.c, cell.r, cell.c));
-      },
-      onPanResponderRelease: (_evt, gestureState) => {
-        const anchor = anchorRef.current;
-        anchorRef.current = null;
-        if (!anchor) return;
-
-        const moved = Math.abs(gestureState.dx) > tapThresholdFor(size) || Math.abs(gestureState.dy) > tapThresholdFor(size);
-        if (!moved) {
-          updatePreview(null);
-          onTapCellRef.current(anchor.r, anchor.c);
-          return;
-        }
-
-        const candidate = previewRectRef.current ?? rectFromCorners(anchor.r, anchor.c, anchor.r, anchor.c);
-        const result = placeRect(levelRef.current, placedRef.current, candidate);
-        if ('error' in result) {
-          playRejectShake();
-          return;
-        }
-        updatePreview(null);
-        onCommitRectRef.current(candidate);
-      },
-      onPanResponderTerminate: () => {
-        anchorRef.current = null;
-        updatePreview(null);
-      },
+  // Recreated every render -- a cheap config builder, not a stateful native
+  // object -- so its callbacks always close over the current render's
+  // `level`/`placed`/`onCommitRect`/`onTapCell` directly; no ref-freshening
+  // needed for those (unlike `previewRectRef` above, which solves a
+  // different, same-gesture-lifecycle timing issue).
+  // `minDistance(0)` tracks from the very first pixel of movement, matching
+  // the old PanResponder's immediate-grant behavior. Swipe-back is disabled
+  // at the navigator level for this screen (see index.tsx), so there's no
+  // native edge gesture left to out-prioritize here.
+  const pan = Gesture.Pan()
+    .minDistance(0)
+    .maxPointers(1)
+    .shouldCancelWhenOutside(false)
+    .onBegin((e) => {
+      const cell = cellAt(e.x, e.y);
+      anchorRef.current = cell;
+      updatePreview(rectFromCorners(cell.r, cell.c, cell.r, cell.c));
     })
-  ).current;
+    .onUpdate((e) => {
+      const anchor = anchorRef.current;
+      if (!anchor) return;
+      const cell = cellAt(e.x, e.y);
+      updatePreview(rectFromCorners(anchor.r, anchor.c, cell.r, cell.c));
+    })
+    .onEnd((e, success) => {
+      const anchor = anchorRef.current;
+      anchorRef.current = null;
+      if (!anchor) return;
+      if (!success) {
+        updatePreview(null);
+        return;
+      }
+
+      const moved = Math.abs(e.translationX) > tapThresholdFor(size) || Math.abs(e.translationY) > tapThresholdFor(size);
+      if (!moved) {
+        updatePreview(null);
+        onTapCell(anchor.r, anchor.c);
+        return;
+      }
+
+      const candidate = previewRectRef.current ?? rectFromCorners(anchor.r, anchor.c, anchor.r, anchor.c);
+      const result = placeRect(level, placed, candidate);
+      if ('error' in result) {
+        playRejectShake();
+        return;
+      }
+      updatePreview(null);
+      onCommitRect(candidate);
+    });
 
   const gridRows: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
@@ -362,12 +343,14 @@ export default function ShikakuGrid({
         />
       )}
 
-      {/* Childless overlay carries the PanResponder, on top of and matching
-          the grid exactly. With nothing nested inside it to be hit-tested
-          instead, `locationX/Y` on every touch is guaranteed relative to
+      {/* Childless overlay carries the gesture, on top of and matching the
+          grid exactly. With nothing nested inside it to be hit-tested
+          instead, the event's x/y on every touch is guaranteed relative to
           this view's own bounds on both platforms -- no window/page
           coordinate translation (and its Android-only drift) needed. */}
-      <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
+      <GestureDetector gesture={pan}>
+        <View style={StyleSheet.absoluteFill} />
+      </GestureDetector>
     </View>
   );
 }

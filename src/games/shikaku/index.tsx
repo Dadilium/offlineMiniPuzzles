@@ -23,7 +23,10 @@ export const shikakuGame: GameModule = {
     { name: 'ShikakuHub', component: HubScreen },
     { name: 'ShikakuLevels', component: LevelListScreen },
     { name: 'ShikakuTutorial', component: TutorialScreen },
-    { name: 'ShikakuGame', component: GameScreen },
+    // Swipe-back disabled: the whole board is a drag-to-draw surface, and
+    // starting a drag near the left edge would otherwise fight the native
+    // stack's edge-swipe gesture. Back is still reachable via TopBar's chevron.
+    { name: 'ShikakuGame', component: GameScreen, options: { gestureEnabled: false } },
   ],
   entryScreen: 'ShikakuHub',
   useProgress: () => {

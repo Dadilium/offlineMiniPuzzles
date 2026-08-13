@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { fonts } from '../../../theme/tokens';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { useTheme } from '../../../theme/ThemeProvider';
@@ -182,26 +183,18 @@ export default function FindWordsGrid({ level, foundIndices, celebrate, onCelebr
 
   const anchorRef = useRef<Cell | null>(null);
   const [currentLine, setCurrentLine] = useState<Cell[] | null>(null);
+  // Mirrors `currentLine` synchronously -- onUpdate's most recent write may
+  // not have flushed through a re-render yet by the time onEnd reads it
+  // back, since both can fire within the same gesture's lifecycle faster
+  // than React re-renders.
   const currentLineRef = useRef<Cell[] | null>(null);
   currentLineRef.current = currentLine;
   const selectionOpacity = useRef(new Animated.Value(1)).current;
-
-  // PanResponder.create runs once, inside the useRef initializer below, so
-  // its handlers close over whatever `onAttemptSelection` looked like on
-  // that first render -- kept fresh via a ref every render, same trick
-  // ShikakuGrid/BlockFillGrid use for their own callback props.
-  const onAttemptSelectionRef = useRef(onAttemptSelection);
-  onAttemptSelectionRef.current = onAttemptSelection;
 
   function cellAt(x: number, y: number): Cell {
     const c = Math.min(cols - 1, Math.max(0, Math.floor(x / size)));
     const r = Math.min(rows - 1, Math.max(0, Math.floor(y / size)));
     return { r, c };
-  }
-
-  function clearSelection(): void {
-    anchorRef.current = null;
-    setCurrentLine(null);
   }
 
   function playRejectFade(): void {
@@ -212,52 +205,51 @@ export default function FindWordsGrid({ level, foundIndices, celebrate, onCelebr
     });
   }
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      // Capture-phase claims too, so an ancestor (the board sits in a
-      // ScrollView, see GameScreen) can't win the touch before
-      // onPanResponderMove ever fires -- that would read as "dragging does
-      // nothing".
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
-      // Once granted, never yield to the ScrollView mid-drag -- otherwise it
-      // can reclaim the gesture natively, which reads as the drag randomly
-      // stopping or jumping.
-      onPanResponderTerminationRequest: () => false,
-      onShouldBlockNativeResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        const cell = cellAt(locationX, locationY);
-        anchorRef.current = cell;
-        selectionOpacity.setValue(1);
-        setCurrentLine([cell]);
-      },
-      onPanResponderMove: (evt) => {
-        const anchor = anchorRef.current;
-        if (!anchor) return;
-        const { locationX, locationY } = evt.nativeEvent;
-        const target = cellAt(locationX, locationY);
-        setCurrentLine(lineFromDrag(anchor, target, rows, cols));
-      },
-      onPanResponderRelease: () => {
-        anchorRef.current = null;
-        const line = currentLineRef.current;
-        if (!line || line.length < 2) {
-          setCurrentLine(null);
-          return;
-        }
-        const matched = onAttemptSelectionRef.current(line);
-        if (matched !== null) {
-          setCurrentLine(null);
-        } else {
-          playRejectFade();
-        }
-      },
-      onPanResponderTerminate: clearSelection,
+  // Recreated every render -- a cheap config builder, not a stateful native
+  // object -- so its callbacks always close over the current render's
+  // `onAttemptSelection` directly; no ref-freshening needed for that
+  // (unlike `currentLineRef` above, which solves a different, same-gesture-
+  // lifecycle timing issue).
+  // `minDistance(0)` tracks from the very first pixel of movement, matching
+  // the old PanResponder's immediate-grant behavior. The board still sits
+  // inside a ScrollView here (see GameScreen) -- gesture-handler's Pan
+  // cooperates with a plain RN ScrollView ancestor out of the box, unlike
+  // PanResponder, which needed the capture-phase/block-native-responder
+  // workaround this used to have.
+  const pan = Gesture.Pan()
+    .minDistance(0)
+    .maxPointers(1)
+    .shouldCancelWhenOutside(false)
+    .onBegin((e) => {
+      const cell = cellAt(e.x, e.y);
+      anchorRef.current = cell;
+      selectionOpacity.setValue(1);
+      setCurrentLine([cell]);
     })
-  ).current;
+    .onUpdate((e) => {
+      const anchor = anchorRef.current;
+      if (!anchor) return;
+      const target = cellAt(e.x, e.y);
+      setCurrentLine(lineFromDrag(anchor, target, rows, cols));
+    })
+    .onEnd((_e, success) => {
+      anchorRef.current = null;
+      if (!success) {
+        setCurrentLine(null);
+        return;
+      }
+      const line = currentLineRef.current;
+      if (!line || line.length < 2) {
+        setCurrentLine(null);
+        return;
+      }
+      const matched = onAttemptSelection(line);
+      if (matched !== null) {
+        setCurrentLine(null);
+      } else {
+        playRejectFade();
+      }
+    });
 
   const gridRows: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
@@ -303,9 +295,11 @@ export default function FindWordsGrid({ level, foundIndices, celebrate, onCelebr
         </View>
       )}
 
-      {/* Childless overlay carries the PanResponder, on top of and matching
-          the grid exactly -- see ShikakuGrid/BlockFillGrid for why. */}
-      <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
+      {/* Childless overlay carries the gesture, on top of and matching the
+          grid exactly -- see ShikakuGrid/BlockFillGrid for why. */}
+      <GestureDetector gesture={pan}>
+        <View style={StyleSheet.absoluteFill} />
+      </GestureDetector>
     </View>
   );
 }

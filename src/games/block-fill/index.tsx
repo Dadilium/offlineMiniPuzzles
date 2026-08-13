@@ -23,7 +23,10 @@ export const blockFillGame: GameModule = {
     { name: 'BlockFillHub', component: HubScreen },
     { name: 'BlockFillLevels', component: LevelListScreen },
     { name: 'BlockFillTutorial', component: TutorialScreen },
-    { name: 'BlockFillGame', component: GameScreen },
+    // Swipe-back disabled: the whole board is a drag-to-fill surface, and
+    // starting a drag near the left edge would otherwise fight the native
+    // stack's edge-swipe gesture. Back is still reachable via TopBar's chevron.
+    { name: 'BlockFillGame', component: GameScreen, options: { gestureEnabled: false } },
   ],
   entryScreen: 'BlockFillHub',
   useProgress: () => {

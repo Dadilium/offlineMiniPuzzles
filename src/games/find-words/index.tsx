@@ -22,7 +22,10 @@ export const findWordsGame: GameModule = {
     { name: 'FindWordsHub', component: HubScreen },
     { name: 'FindWordsLevels', component: LevelListScreen },
     { name: 'FindWordsTutorial', component: TutorialScreen },
-    { name: 'FindWordsGame', component: GameScreen },
+    // Swipe-back disabled: the whole board is a drag-to-select surface, and
+    // starting a drag near the left edge would otherwise fight the native
+    // stack's edge-swipe gesture. Back is still reachable via TopBar's chevron.
+    { name: 'FindWordsGame', component: GameScreen, options: { gestureEnabled: false } },
   ],
   entryScreen: 'FindWordsHub',
   useProgress: () => {

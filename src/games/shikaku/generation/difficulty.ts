@@ -42,24 +42,28 @@ export type DifficultyTierKey = 'starter' | 'growing' | 'skilled' | 'expert';
 interface Tier {
   key: DifficultyTierKey;
   minRating: number;
-  sizeRange: [number, number];
+  rowsRange: [number, number];
+  colsRange: [number, number];
   minRectArea: [number, number];
   maxRectArea: [number, number];
 }
 
 /**
  * Tuned against generation/__scripts__/sweep.ts -- do not hand-adjust these
- * without rerunning it. Board size stays square-ish and capped around 10x10
- * for solver speed; harder tiers grow both the board and the max leaf area
- * a clue can cover, since a bigger clue value has more factor pairs (more
- * candidate placements for the solver, and more visual ambiguity for the
- * player) than a small one.
+ * without rerunning it. Below the 'skilled' tier, boards stay square-ish and
+ * capped around 8x8 for solver speed. From 'skilled' (rating 60) up, boards
+ * grow taller than wide instead of just bigger both ways -- more rows read
+ * as a fuller board without the factor-pair/solver-time blowup that scaling
+ * both dimensions square-wise would cost. Harder tiers also grow the max
+ * leaf area a clue can cover, since a bigger clue value has more factor
+ * pairs (more candidate placements for the solver, and more visual ambiguity
+ * for the player) than a small one.
  */
 const TIERS: Tier[] = [
-  { key: 'expert', minRating: 80, sizeRange: [9, 10], minRectArea: [2, 3], maxRectArea: [12, 16] },
-  { key: 'skilled', minRating: 60, sizeRange: [8, 9], minRectArea: [2, 3], maxRectArea: [10, 13] },
-  { key: 'growing', minRating: 40, sizeRange: [7, 8], minRectArea: [2, 3], maxRectArea: [8, 11] },
-  { key: 'starter', minRating: 0, sizeRange: [5, 6], minRectArea: [2, 3], maxRectArea: [6, 9] },
+  { key: 'expert', minRating: 80, rowsRange: [12, 14], colsRange: [8, 9], minRectArea: [2, 3], maxRectArea: [12, 16] },
+  { key: 'skilled', minRating: 60, rowsRange: [10, 12], colsRange: [7, 8], minRectArea: [2, 3], maxRectArea: [10, 13] },
+  { key: 'growing', minRating: 40, rowsRange: [7, 8], colsRange: [7, 8], minRectArea: [2, 3], maxRectArea: [8, 11] },
+  { key: 'starter', minRating: 0, rowsRange: [5, 6], colsRange: [5, 6], minRectArea: [2, 3], maxRectArea: [6, 9] },
 ];
 
 function tierFor(rating: SkillRating): Tier {
@@ -73,8 +77,8 @@ export function tierKeyFor(rating: SkillRating): DifficultyTierKey {
 export function difficultyParams(rating: SkillRating): GenerationParams {
   const tier = tierFor(rating);
   return {
-    rowsRange: tier.sizeRange,
-    colsRange: tier.sizeRange,
+    rowsRange: tier.rowsRange,
+    colsRange: tier.colsRange,
     minRectArea: tier.minRectArea,
     maxRectArea: tier.maxRectArea,
   };
@@ -90,5 +94,6 @@ export function maxAttemptsFor(area: number): number {
   if (area <= 36) return 4000;
   if (area <= 64) return 9000;
   if (area <= 81) return 16000;
-  return 22000;
+  if (area <= 100) return 22000;
+  return 30000;
 }

@@ -1,8 +1,6 @@
 {
   "library": {
-    "eyebrow": "Offline Game Library",
     "title": "Puzzle Den",
-    "subtitle": "Pick up, play, no wifi required.",
     "readySection": "Ready to play",
     "comingSoonSection": "More puzzles incoming",
     "navSettings": "SETTINGS",
@@ -15,11 +13,9 @@
     "back": "Back"
   },
   "settings": {
-    "eyebrow": "App",
     "title": "Settings",
     "themeLabel": "Appearance",
     "theme": {
-      "system": "System",
       "light": "Light",
       "dark": "Dark"
     },

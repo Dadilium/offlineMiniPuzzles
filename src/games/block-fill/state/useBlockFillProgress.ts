@@ -131,9 +131,22 @@ export function BlockFillProgressProvider({ children }: { children: React.ReactN
     })();
   }, []);
 
+  // Debounced rather than immediate: `state` changes on every single cell
+  // crossed while dragging, and JSON.stringify-ing the whole persisted shape
+  // (every level ever generated, kept forever -- see PersistedShape above)
+  // on every one of those is real JS-thread work stacking up mid-gesture.
+  // Trailing-debouncing means the stringify+write only runs once the finger
+  // actually pauses or lifts, never while it's still moving.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!loadedOnce.current) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(stateRef.current)).catch(() => {});
+    }, 400);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
   }, [state]);
 
   const levelFor = useCallback((levelIndex: number): BlockFillLevel | undefined => state.generatedLevels[levelIndex], [state]);

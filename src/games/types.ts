@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
 // Every game the app ships lives in its own folder under src/games/<id> and
 // exports one of these. The root navigator merges each game's screens into a
@@ -15,8 +16,11 @@ export interface GameModule {
   CardArt?: ComponentType<{ size: number; color: string }>;
   /** Optional context provider for the game's own persisted state. */
   Provider?: ComponentType<{ children: React.ReactNode }>;
-  /** Screens this game contributes to the root stack navigator. */
-  screens: Array<{ name: string; component: ComponentType<any> }>;
+  /** Screens this game contributes to the root stack navigator. `options` is
+   * for the rare case a screen needs to override stack-level behavior, e.g.
+   * disabling the native swipe-back gesture on a screen with its own
+   * full-board drag gesture (see block-fill's GameScreen). */
+  screens: Array<{ name: string; component: ComponentType<any>; options?: NativeStackNavigationOptions }>;
   /** Screen name to open when the player taps this game's card in the Library. */
   entryScreen: string;
   /** Hook exposing this game's persisted-progress summary + a wipe action,

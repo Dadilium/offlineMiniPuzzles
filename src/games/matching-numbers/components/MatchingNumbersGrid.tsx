@@ -313,7 +313,11 @@ export default function MatchingNumbersGrid({
       const v = board[r][c];
       const k = `${r},${c}`;
       if (v === null) {
-        cellViews.push(<View key={k} style={{ width: size, height: size }} />);
+        // Same placeholder look as a trailing filler cell -- keeps an empty
+        // cell visually anchored (rather than invisible void) so the shift-up
+        // collapse animation reads as content sliding into the next slot
+        // instead of numbers appearing to land on top of nothing.
+        cellViews.push(<FillerCell key={k} size={size} />);
         continue;
       }
       const appearDelayMs = appearFromRow != null && r >= appearFromRow ? ((r - appearFromRow) * cols + c) * APPEAR_STAGGER_MS : null;

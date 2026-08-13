@@ -300,10 +300,10 @@ export default function GameScreen({ route, navigation }: Props) {
         </>
       }
       boardScrollable
+      boardAreaAlign="top"
       onBoardAreaLayout={setBoardAreaHeight}
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
-          <GameActionButton.Hint onPress={onHintPress} accentColor={colors.purple} hintCount={hintCount} />
           <GameActionButton.AddNumbers
             onPress={onAddNumbersPress}
             accentColor={colors.purple}
@@ -311,6 +311,7 @@ export default function GameScreen({ route, navigation }: Props) {
             caption={t('game.addNumbers')}
             accessibilityLabel={t('game.addNumbersActionWithCount', { count: addNumbersRemaining })}
           />
+          <GameActionButton.Hint onPress={onHintPress} accentColor={colors.purple} hintCount={hintCount} />
           {!win && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.purple} />}
         </View>
       }

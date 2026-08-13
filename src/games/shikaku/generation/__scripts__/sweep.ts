@@ -97,7 +97,7 @@ function main(): void {
     const avgSliverFraction = avg(sliverFractions);
 
     console.log(
-      `rating=${rating} (${params.rowsRange[0]}-${params.rowsRange[1]} sq, rectArea ${params.minRectArea[0]}-${params.minRectArea[1]}..${params.maxRectArea[0]}-${params.maxRectArea[1]}): ` +
+      `rating=${rating} (rows ${params.rowsRange[0]}-${params.rowsRange[1]} x cols ${params.colsRange[0]}-${params.colsRange[1]}, rectArea ${params.minRectArea[0]}-${params.minRectArea[1]}..${params.maxRectArea[0]}-${params.maxRectArea[1]}): ` +
         `${LEVELS_PER_RATING - failures}/${LEVELS_PER_RATING} ok, avgAttempts=${avgAttempts}, maxAttempts=${maxAttemptsSeen}, failures=${failures}`
     );
     console.log(

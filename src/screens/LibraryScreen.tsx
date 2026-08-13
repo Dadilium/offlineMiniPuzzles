@@ -36,11 +36,7 @@ export default function LibraryScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <View style={styles.headerText}>
-              <Text style={styles.eyebrow}>{t('library.eyebrow')}</Text>
-              <Text style={styles.title}>{t('library.title')}</Text>
-            </View>
-            
+            <Text style={styles.title}>{t('library.title')}</Text>
             <IconButton
               name="settings-outline"
               onPress={() => navigation.navigate('Settings')}
@@ -49,7 +45,6 @@ export default function LibraryScreen({ navigation }: Props) {
               iconSize={22}
             />
           </View>
-          <Text style={styles.sub}>{t('library.subtitle')}</Text>
         </View>
 
         <Text style={styles.sectionLabel}>{t('library.readySection')}</Text>
@@ -86,11 +81,8 @@ const useStyles = createThemedStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.bgDeep },
   scrollContent: { paddingBottom: 24 },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  headerText: { flex: 1, minWidth: 0 },
-  eyebrow: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 2, color: colors.textFaint, textTransform: 'uppercase' },
-  title: { fontFamily: fonts.display, fontSize: 23, fontWeight: '700', color: colors.text, marginTop: 2 },
-  sub: { fontSize: 12.5, color: colors.textDim, marginTop: 2, marginBottom: 6 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  title: { flex: 1, minWidth: 0, fontFamily: fonts.display, fontSize: 23, fontWeight: '700', color: colors.text },
   sectionLabel: {
     fontFamily: fonts.mono,
     fontSize: 10.5,

@@ -1,8 +1,6 @@
 {
   "library": {
-    "eyebrow": "Ludothèque hors ligne",
     "title": "Puzzle Den",
-    "subtitle": "Prenez en main et jouez, sans wifi.",
     "readySection": "Prêt à jouer",
     "comingSoonSection": "D'autres jeux arrivent",
     "navSettings": "RÉGLAGES",
@@ -15,11 +13,9 @@
     "back": "Retour"
   },
   "settings": {
-    "eyebrow": "Application",
     "title": "Réglages",
     "themeLabel": "Apparence",
     "theme": {
-      "system": "Système",
       "light": "Clair",
       "dark": "Sombre"
     },

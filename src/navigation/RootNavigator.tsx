@@ -29,7 +29,7 @@ export default function RootNavigator() {
         <Stack.Screen name="GameProgress" component={GameProgressScreen} />
         {games.flatMap((game) =>
           game.screens.map((screen) => (
-            <Stack.Screen key={screen.name} name={screen.name as any} component={screen.component} />
+            <Stack.Screen key={screen.name} name={screen.name as any} component={screen.component} options={screen.options} />
           ))
         )}
       </Stack.Navigator>
