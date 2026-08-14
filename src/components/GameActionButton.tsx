@@ -10,7 +10,7 @@ import { darken } from '../theme/colorUtils';
 const SIZE = 56;
 const PRESS_DEPTH = 6;
 const ICON_SIZE = 30;
-const BADGE_SIZE = 18;
+const BADGE_SIZE = 22;
 
 interface Props {
   icon: keyof typeof Ionicons.glyphMap;

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Svg, { Polyline } from 'react-native-svg';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import type { BlockFillPalette } from '../palette';
 import type { Cell } from '../types';
@@ -23,6 +22,42 @@ function cellSizeFor(rows: number, cols: number): number {
 
 function cellKey(cell: Cell): string {
   return `${cell.r},${cell.c}`;
+}
+
+interface TrailSegment {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** Straight, square-ended axis-aligned rectangle between each pair of
+ * consecutive (and therefore orthogonally adjacent) path cells -- plain
+ * Views instead of an SVG Polyline, which has to fully re-parse and redraw
+ * its whole `points` string on every single cell added. That's an O(path
+ * length) native redraw on every extend, and it's the one thing in this
+ * component that scales with how far into a level you are -- fine one cell
+ * at a time, but a fast swipe that adds several cells per frame was piling
+ * those redraws up. Square ends (not rounded) so two segments sharing a
+ * cell-center abut flush instead of each tapering to a rounded tip right at
+ * that point -- see the per-cell joint dots rendered alongside these for
+ * where the rounding actually comes from. */
+function trailSegments(path: Cell[], size: number, thickness: number): TrailSegment[] {
+  const segments: TrailSegment[] = [];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1];
+    const b = path[i];
+    const ax = a.c * size + size / 2;
+    const ay = a.r * size + size / 2;
+    const bx = b.c * size + size / 2;
+    const by = b.r * size + size / 2;
+    if (a.r === b.r) {
+      segments.push({ left: Math.min(ax, bx), top: ay - thickness / 2, width: Math.abs(bx - ax), height: thickness });
+    } else {
+      segments.push({ left: ax - thickness / 2, top: Math.min(ay, by), width: thickness, height: Math.abs(by - ay) });
+    }
+  }
+  return segments;
 }
 
 interface FillCellProps {
@@ -131,7 +166,7 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
       lastCellRef.current = null;
     });
 
-  const pathPoints = path.map((cell) => `${cell.c * size + size / 2},${cell.r * size + size / 2}`).join(' ');
+  const trailThickness = Math.max(2, size * 0.14);
 
   const rowViews: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
@@ -169,16 +204,34 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
       <View>{rowViews}</View>
       {path.length > 1 && (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-            <Polyline
-              points={pathPoints}
-              fill="none"
-              stroke={palette.stroke}
-              strokeWidth={Math.max(2, size * 0.14)}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {trailSegments(path, size, trailThickness).map((seg, i) => (
+            <View
+              key={i}
+              style={[styles.trailSegment, { left: seg.left, top: seg.top, width: seg.width, height: seg.height, backgroundColor: palette.stroke }]}
             />
-          </Svg>
+          ))}
+          {/* One small round dot per path cell, square-flush segments above.
+              Two independently end-capped segments meeting at a shared
+              cell-center pinch inward right at that point (both taper to a
+              rounded tip at the same spot) -- flat/square segments plus a
+              dot on top avoids that: it rounds the true start/end caps and
+              fills every turn's corner, with no join left to pinch. */}
+          {path.map((cell, i) => (
+            <View
+              key={`joint-${i}`}
+              style={[
+                styles.trailJoint,
+                {
+                  left: cell.c * size + size / 2 - trailThickness / 2,
+                  top: cell.r * size + size / 2 - trailThickness / 2,
+                  width: trailThickness,
+                  height: trailThickness,
+                  borderRadius: trailThickness / 2,
+                  backgroundColor: palette.stroke,
+                },
+              ]}
+            />
+          ))}
         </View>
       )}
 
@@ -207,6 +260,8 @@ const useStyles = createThemedStyles((colors) => ({
     overflow: 'hidden',
   },
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 6 },
+  trailSegment: { position: 'absolute' },
+  trailJoint: { position: 'absolute' },
   cellHinted: { borderColor: colors.gold, borderWidth: 2 },
   obstacle: { flex: 1, borderRadius: 6, backgroundColor: colors.bgDeep },
   startDot: {
