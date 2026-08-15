@@ -29,7 +29,7 @@ Then press `i` for iOS simulator, `a` for Android emulator, `w` for web, or scan
 - `npm run typecheck` — `tsc --noEmit` over `src/`.
 - `npm run typecheck:tools` — `tsc --noEmit` over `tools/`.
 - `npm run i18n:check` — verifies every namespace has matching keys across `en`/`fr`.
-- `npm run levels -- <kings|relay> <new|generate|validate|render|add|sync>` — the level-authoring CLI (see `tools/level-creator/`); other games generate levels procedurally at runtime instead of from an authored file.
+- `npm run levels -- relay <new|validate|render|add|sync>` — the level-authoring CLI (see `tools/level-creator/`); every other game (including Kings) generates levels procedurally at runtime instead of from an authored file.
 
 ## Structure
 

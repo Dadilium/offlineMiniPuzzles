@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect } from 'react';
 import { useInterstitialAd } from 'react-native-google-mobile-ads';
+import { posthog } from '../config/posthog';
 import {
   adUnitIds,
   DEFAULT_INTERSTITIAL_STATE,
@@ -40,7 +41,7 @@ function writeState(storageKey: string, state: InterstitialState): Promise<void>
  * retries immediately rather than waiting for the schedule to come back
  * around.
  */
-function useInterstitialCadence(storageKey: string, schedule: InterstitialSchedule) {
+function useInterstitialCadence(storageKey: string, schedule: InterstitialSchedule, analyticsContext: Record<string, string>) {
   const { isLoaded, isClosed, load, show } = useInterstitialAd(adUnitIds.interstitial);
 
   useEffect(() => {
@@ -70,10 +71,18 @@ function useInterstitialCadence(storageKey: string, schedule: InterstitialSchedu
         // actually loaded -- so a kill mid-ad or a no-fill both force a retry
         // on the next trigger instead of silently resuming the schedule.
         await writeState(storageKey, { sinceLastAd, everShownAd: state.everShownAd, pendingRetry: true });
-        if (isLoaded) show();
+        if (isLoaded) {
+          posthog?.capture('ad_interstitial_shown', analyticsContext);
+          show();
+        } else {
+          // Due per the schedule, but nothing was ready to show -- without
+          // this there's no way to tell "cadence never triggered" apart from
+          // "triggered but AdMob had no fill" from product data alone.
+          posthog?.capture('ad_interstitial_no_fill', analyticsContext);
+        }
       });
     },
-    [storageKey, schedule, isLoaded, show]
+    [storageKey, schedule, isLoaded, show, analyticsContext]
   );
 
   return { notify };
@@ -85,7 +94,10 @@ function useInterstitialCadence(storageKey: string, schedule: InterstitialSchedu
  * short-circuit straight to due regardless of the count-based schedule (e.g.
  * Matching Numbers uses this when a level took unusually long to solve). */
 export function useInterstitialOnComplete(gameId: GameId) {
-  const { notify } = useInterstitialCadence(STORAGE_KEY_PREFIX + gameId, interstitialScheduleFor(gameId));
+  const { notify } = useInterstitialCadence(STORAGE_KEY_PREFIX + gameId, interstitialScheduleFor(gameId), {
+    game_id: gameId,
+    trigger: 'level_complete',
+  });
   const notifyLevelCompleted = useCallback((opts?: { forceDue?: boolean }) => notify(opts), [notify]);
   return { notifyLevelCompleted };
 }
@@ -96,7 +108,10 @@ export function useInterstitialOnComplete(gameId: GameId) {
  * namespaces the counter so it never shares state with the level-completion
  * cadence or any other action on the same game. */
 export function useInterstitialOnAction(gameId: GameId, actionKey: string, schedule: InterstitialSchedule) {
-  const { notify } = useInterstitialCadence(`${STORAGE_KEY_PREFIX}${gameId}:${actionKey}`, schedule);
+  const { notify } = useInterstitialCadence(`${STORAGE_KEY_PREFIX}${gameId}:${actionKey}`, schedule, {
+    game_id: gameId,
+    trigger: actionKey,
+  });
   const notifyAction = useCallback(() => notify(), [notify]);
   return { notifyAction };
 }

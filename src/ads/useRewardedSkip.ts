@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useRewardedAd } from 'react-native-google-mobile-ads';
 import { adUnitIds } from '../config/ads';
+import { posthog } from '../config/posthog';
 
 interface UseRewardedSkipResult {
   /** Shows the rewarded ad if one is loaded; does nothing (caller should
@@ -24,6 +25,7 @@ export function useRewardedSkip(onSkipGranted: () => void): UseRewardedSkipResul
   useEffect(() => {
     if (isEarnedReward && !grantedRef.current) {
       grantedRef.current = true;
+      posthog?.capture('ad_rewarded_completed', { placement: 'skip' });
       onSkipGranted();
     }
   }, [isEarnedReward, onSkipGranted]);
@@ -36,7 +38,9 @@ export function useRewardedSkip(onSkipGranted: () => void): UseRewardedSkipResul
   }, [isClosed, load]);
 
   const requestSkip = useCallback(() => {
-    if (isLoaded) show();
+    if (!isLoaded) return;
+    posthog?.capture('ad_rewarded_shown', { placement: 'skip' });
+    show();
   }, [isLoaded, show]);
 
   return { requestSkip, isAdReady: isLoaded };
