@@ -15,6 +15,10 @@
   "topBar": {
     "back": "Back"
   },
+  "error": {
+    "title": "Something went wrong",
+    "message": "This puzzle hit a snag. Your progress on other levels is safe."
+  },
   "settings": {
     "title": "Settings",
     "themeLabel": "Appearance",

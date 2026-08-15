@@ -15,6 +15,10 @@
   "topBar": {
     "back": "Retour"
   },
+  "error": {
+    "title": "Un problème est survenu",
+    "message": "Ce puzzle a rencontré un pépin. Votre progression sur les autres niveaux est sauvegardée."
+  },
   "settings": {
     "title": "Réglages",
     "themeLabel": "Apparence",
