@@ -25,6 +25,12 @@ export default function IconButton({ name, onPress, accessibilityLabel, size = 4
       onPress={onPress}
       activeOpacity={0.7}
       accessibilityLabel={accessibilityLabel}
+      // At the default 40px this sits below Apple/Google's ~44-48pt minimum
+      // touch target. Generous top/bottom since nothing else sits directly
+      // above/below it in a topbar; tighter left/right since TopBar's `right`
+      // slot can hold two of these 10px apart (see TopBar.tsx) -- 4px here
+      // keeps their expanded hit areas from meeting in the middle.
+      hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
       style={[styles.btn, { width: size, height: size, borderRadius: size * 0.32 }]}
     >
       <Ionicons name={name} size={iconSize} color={colors.text} />

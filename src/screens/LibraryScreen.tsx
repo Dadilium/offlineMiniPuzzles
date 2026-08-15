@@ -17,7 +17,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 export default function LibraryScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const styles = useStyles();
-  const { pendingDailyClaim, acknowledgeDailyClaim } = useHintWallet();
+  const { pendingDailyClaim, pendingStreakDays, acknowledgeDailyClaim } = useHintWallet();
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -28,7 +28,11 @@ export default function LibraryScreen({ navigation }: Props) {
       <DailyGiftModal
         visible={pendingDailyClaim !== null}
         amount={pendingDailyClaim ?? 0}
-        title={t('library.dailyHintTitle')}
+        title={
+          pendingStreakDays && pendingStreakDays > 1
+            ? t('library.dailyHintStreakTitle', { count: pendingStreakDays })
+            : t('library.dailyHintTitle')
+        }
         message={t('library.dailyHintMessage', { count: pendingDailyClaim ?? 0 })}
         confirmLabel={t('library.dailyHintOk')}
         onConfirm={acknowledgeDailyClaim}

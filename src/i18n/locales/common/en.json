@@ -6,6 +6,8 @@
     "newBadge": "NEW",
     "navSettings": "SETTINGS",
     "dailyHintTitle": "Daily hint bonus!",
+    "dailyHintStreakTitle_one": "Day {{count}} streak!",
+    "dailyHintStreakTitle_other": "Day {{count}} streak!",
     "dailyHintMessage_one": "+{{count}} hint added to your wallet. Come back tomorrow for another.",
     "dailyHintMessage_other": "+{{count}} hints added to your wallet. Come back tomorrow for more.",
     "dailyHintOk": "Nice"

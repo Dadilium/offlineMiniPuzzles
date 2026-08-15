@@ -6,6 +6,8 @@
     "newBadge": "NOUVEAU",
     "navSettings": "RÉGLAGES",
     "dailyHintTitle": "Bonus d'indice quotidien !",
+    "dailyHintStreakTitle_one": "Série de {{count}} jour !",
+    "dailyHintStreakTitle_other": "Série de {{count}} jours !",
     "dailyHintMessage_one": "+{{count}} indice ajouté à votre réserve. Revenez demain pour un autre.",
     "dailyHintMessage_other": "+{{count}} indices ajoutés à votre réserve. Revenez demain pour d'autres.",
     "dailyHintOk": "Super"
