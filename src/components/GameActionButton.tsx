@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { Animated, Easing, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { Text, TouchableWithoutFeedback, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { createThemedStyles } from '../theme/createThemedStyles';
@@ -50,22 +51,19 @@ function GameActionButton({
 }: Props) {
   const { colors } = useTheme();
   const styles = useStyles();
-  const translateY = useRef(new Animated.Value(0)).current;
+  const translateY = useSharedValue(0);
   const interactive = !hidden && !disabled;
   const baseColor = darken(accentColor, 0.55);
 
   function press() {
-    Animated.timing(translateY, {
-      toValue: PRESS_DEPTH,
-      duration: 60,
-      easing: Easing.in(Easing.ease),
-      useNativeDriver: true,
-    }).start();
+    translateY.value = withTiming(PRESS_DEPTH, { duration: 60, easing: Easing.in(Easing.ease) });
   }
 
   function release() {
-    Animated.spring(translateY, { toValue: 0, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+    translateY.value = withSpring(0, { duration: 200, dampingRatio: 0.75 });
   }
+
+  const topAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
 
   return (
     <TouchableWithoutFeedback
@@ -78,7 +76,7 @@ function GameActionButton({
       <View style={[styles.wrap, hidden && styles.hidden, disabled && styles.disabled, style]}>
         <View style={styles.stage}>
           <View style={[styles.base, { backgroundColor: baseColor }]} />
-          <Animated.View style={[styles.top, { borderColor: accentColor, transform: [{ translateY }] }]}>
+          <Animated.View style={[styles.top, { borderColor: accentColor }, topAnimatedStyle]}>
             <Ionicons name={icon} size={ICON_SIZE} color={accentColor} />
             {badge !== undefined && (
               <View style={[styles.badge, badge === 'ad' && styles.badgeAd]}>

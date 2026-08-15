@@ -57,8 +57,14 @@ const EIGHT_DIRECTIONS: Array<{ dr: number; dc: number }> = [
  * placement ever uses) rather than restricting the gesture itself --
  * `matchPlacement` is what actually decides a selection is correct, so a
  * drag along an unused axis simply never matches anything.
+ *
+ * Marked as a worklet -- pure arithmetic only, so FindWordsGrid's live-drag
+ * gesture can call this directly on the UI thread (both mid-drag and inside
+ * the capsule's `useAnimatedStyle`) with zero bridge crossings. Still a
+ * perfectly normal function everywhere else (this smoke test included).
  */
 export function lineFromDrag(anchor: Cell, target: Cell, rows: number, cols: number): Cell[] {
+  'worklet';
   const dx = target.c - anchor.c;
   const dy = target.r - anchor.r;
   if (dx === 0 && dy === 0) return [anchor];

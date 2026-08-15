@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { fonts } from '../../../theme/tokens';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
@@ -30,6 +31,12 @@ function tapThresholdFor(size: number): number {
   return Math.max(10, size * 0.3);
 }
 
+/** Shared 4-beat reject shake, used by both a placed rect's conflict flash and the live preview's reject bounce. */
+function rejectShakeSequence() {
+  'worklet';
+  return withSequence(withTiming(6, { duration: 45 }), withTiming(-6, { duration: 45 }), withTiming(4, { duration: 45 }), withTiming(0, { duration: 45 }));
+}
+
 interface PlacedRectViewProps {
   rect: PlacedRect;
   size: number;
@@ -45,47 +52,50 @@ interface PlacedRectViewProps {
 function PlacedRectView({ rect, size, hasConflict, hinted, celebrateDelay, isLastToCelebrate, onCelebrationSettled }: PlacedRectViewProps) {
   const { colors } = useTheme();
   const styles = useStyles();
-  const popScale = useRef(new Animated.Value(0)).current;
-  const shakeX = useRef(new Animated.Value(0)).current;
+  const popScale = useSharedValue(0);
+  const shakeX = useSharedValue(0);
   const prevConflict = useRef(hasConflict);
-  const bounceScale = useRef(new Animated.Value(1)).current;
+  const bounceScale = useSharedValue(1);
 
   // Runs once per mount only -- intentionally empty deps, so a
   // resize-in-place (same clueIndex, new bounds, component stays mounted)
   // never re-triggers the pop-in, only a genuine first appearance does.
   useEffect(() => {
-    Animated.spring(popScale, { toValue: 1, friction: 6, tension: 210, useNativeDriver: true }).start();
-  }, [popScale]);
+    popScale.value = withSpring(1, { duration: 350, dampingRatio: 0.75 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (hasConflict && !prevConflict.current && !hinted) {
-      shakeX.setValue(0);
-      Animated.sequence([
-        Animated.timing(shakeX, { toValue: 6, duration: 45, useNativeDriver: true }),
-        Animated.timing(shakeX, { toValue: -6, duration: 45, useNativeDriver: true }),
-        Animated.timing(shakeX, { toValue: 4, duration: 45, useNativeDriver: true }),
-        Animated.timing(shakeX, { toValue: 0, duration: 45, useNativeDriver: true }),
-      ]).start();
+      shakeX.value = 0;
+      shakeX.value = rejectShakeSequence();
     }
     prevConflict.current = hasConflict;
   }, [hasConflict, hinted, shakeX]);
 
   useEffect(() => {
     if (celebrateDelay === null) return;
-    bounceScale.setValue(1);
+    bounceScale.value = 1;
     // The win overlay must wait for this animation to actually finish, not
-    // for a guessed duration -- `.start`'s callback fires only once the
-    // native driver reports the sequence truly settled, so gating on it
-    // (for whichever rect is last in the diagonal wave) can't show the
-    // overlay early no matter how the spring physics tune out in practice.
-    Animated.sequence([
-      Animated.delay(celebrateDelay),
-      Animated.spring(bounceScale, { toValue: 1.08, friction: 4, tension: 220, useNativeDriver: true }),
-      Animated.spring(bounceScale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-    ]).start(({ finished }) => {
-      if (finished && isLastToCelebrate) onCelebrationSettled?.();
-    });
+    // for a guessed duration -- the spring's own completion callback fires
+    // only once it's truly settled, so gating on it (for whichever rect is
+    // last in the diagonal wave) can't show the overlay early no matter how
+    // the spring physics tune out in practice.
+    bounceScale.value = withDelay(
+      celebrateDelay,
+      withSequence(
+        withSpring(1.08, { duration: 220, dampingRatio: 0.55 }),
+        withSpring(1, { duration: 220, dampingRatio: 0.7 }, (finished) => {
+          if (finished && isLastToCelebrate && onCelebrationSettled) runOnJS(onCelebrationSettled)();
+        })
+      )
+    );
   }, [celebrateDelay, bounceScale, isLastToCelebrate, onCelebrationSettled]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: popScale.value,
+    transform: [{ scale: popScale.value }, { translateX: shakeX.value }, { scale: bounceScale.value }],
+  }));
 
   const palette = paletteForClue(rect.clueIndex);
   const fill = hasConflict ? `${colors.signalRed}40` : palette.fill;
@@ -108,9 +118,8 @@ function PlacedRectView({ rect, size, hasConflict, hinted, celebrateDelay, isLas
           backgroundColor: fill,
           borderColor: border,
           borderWidth: hinted ? 2 : 1.5,
-          opacity: popScale,
-          transform: [{ scale: popScale }, { translateX: shakeX }, { scale: bounceScale }],
         },
+        animatedStyle,
       ]}
     >
       {hinted && <Text style={styles.lockBadge}>{'\u{1F512}'}</Text>}
@@ -173,53 +182,63 @@ export default function ShikakuGrid({
     if (celebrate && placed.length === 0) handleCelebrationSettled();
   }, [celebrate, placed.length]);
 
-  const anchorRef = useRef<{ r: number; c: number } | null>(null);
-  const [previewRect, setPreviewRect] = useState<RectBounds | null>(null);
-  const [rejecting, setRejecting] = useState(false);
-  const shakeX = useRef(new Animated.Value(0)).current;
-
-  // `previewRectRef` mirrors `previewRect` synchronously -- onUpdate's most
-  // recent write may not have flushed through a re-render yet by the time
-  // onEnd reads it back, since both can fire within the same gesture's
-  // lifecycle faster than React re-renders.
-  const previewRectRef = useRef<RectBounds | null>(null);
-
-  function updatePreview(rect: RectBounds | null): void {
-    previewRectRef.current = rect;
-    setPreviewRect(rect);
-  }
+  // The live drag preview lives entirely on the UI thread (shared values,
+  // updated directly from the gesture worklet below) so tracking a finger
+  // across the board never round-trips to JS -- only `previewCell` (its JS
+  // mirror, for the placeRect validity check that decides the preview's
+  // color) crosses the bridge, and only when the touch actually crosses into
+  // a new cell, not on every raw touch-move frame.
+  const anchorCell = useSharedValue<{ r: number; c: number } | null>(null);
+  const hasPreview = useSharedValue(false);
+  const previewR0 = useSharedValue(0);
+  const previewC0 = useSharedValue(0);
+  const previewR1 = useSharedValue(0);
+  const previewC1 = useSharedValue(0);
+  const shakeX = useSharedValue(0);
+  const [previewCell, setPreviewCell] = useState<RectBounds | null>(null);
 
   const previewValid = useMemo(() => {
-    if (!previewRect) return true;
-    const result = placeRect(level, placed, previewRect);
+    if (!previewCell) return true;
+    const result = placeRect(level, placed, previewCell);
     return !('error' in result);
-  }, [level, placed, previewRect]);
+  }, [level, placed, previewCell]);
 
-  function cellAt(x: number, y: number): { r: number; c: number } {
+  function cellAtWorklet(x: number, y: number): { r: number; c: number } {
+    'worklet';
     const c = Math.min(cols - 1, Math.max(0, Math.floor(x / size)));
     const r = Math.min(rows - 1, Math.max(0, Math.floor(y / size)));
     return { r, c };
   }
 
+  function setPreview(rect: RectBounds): void {
+    'worklet';
+    hasPreview.value = true;
+    previewR0.value = rect.r0;
+    previewC0.value = rect.c0;
+    previewR1.value = rect.r1;
+    previewC1.value = rect.c1;
+    runOnJS(setPreviewCell)(rect);
+  }
+
+  function clearPreview(): void {
+    'worklet';
+    hasPreview.value = false;
+    runOnJS(setPreviewCell)(null);
+  }
+
   function playRejectShake(): void {
-    setRejecting(true);
-    shakeX.setValue(0);
-    Animated.sequence([
-      Animated.timing(shakeX, { toValue: 6, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -6, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 4, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 0, duration: 45, useNativeDriver: true }),
-    ]).start(() => {
-      setRejecting(false);
-      updatePreview(null);
-    });
+    'worklet';
+    shakeX.value = 0;
+    shakeX.value = rejectShakeSequence();
+    clearPreview();
   }
 
   // Recreated every render -- a cheap config builder, not a stateful native
   // object -- so its callbacks always close over the current render's
   // `level`/`placed`/`onCommitRect`/`onTapCell` directly; no ref-freshening
-  // needed for those (unlike `previewRectRef` above, which solves a
-  // different, same-gesture-lifecycle timing issue).
+  // needed for those (unlike the shared values above, which solve a
+  // different, same-gesture-lifecycle timing issue -- staying valid across
+  // onUpdate calls that fire faster than a JS re-render could keep up).
   // `minDistance(0)` tracks from the very first pixel of movement, matching
   // the old PanResponder's immediate-grant behavior. Swipe-back is disabled
   // at the navigator level for this screen (see index.tsx), so there's no
@@ -229,41 +248,59 @@ export default function ShikakuGrid({
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
     .onBegin((e) => {
-      const cell = cellAt(e.x, e.y);
-      anchorRef.current = cell;
-      updatePreview(rectFromCorners(cell.r, cell.c, cell.r, cell.c));
+      const cell = cellAtWorklet(e.x, e.y);
+      anchorCell.value = cell;
+      setPreview(rectFromCorners(cell.r, cell.c, cell.r, cell.c));
     })
     .onUpdate((e) => {
-      const anchor = anchorRef.current;
+      const anchor = anchorCell.value;
       if (!anchor) return;
-      const cell = cellAt(e.x, e.y);
-      updatePreview(rectFromCorners(anchor.r, anchor.c, cell.r, cell.c));
+      const cell = cellAtWorklet(e.x, e.y);
+      const next = rectFromCorners(anchor.r, anchor.c, cell.r, cell.c);
+      // Only cross the bridge (for the validity check) when the computed
+      // cell bounds actually changed -- a raw touch-move within the same
+      // cell is common and shouldn't call into JS at all.
+      if (next.r0 === previewR0.value && next.c0 === previewC0.value && next.r1 === previewR1.value && next.c1 === previewC1.value) {
+        return;
+      }
+      setPreview(next);
     })
     .onEnd((e, success) => {
-      const anchor = anchorRef.current;
-      anchorRef.current = null;
+      const anchor = anchorCell.value;
+      anchorCell.value = null;
       if (!anchor) return;
       if (!success) {
-        updatePreview(null);
+        clearPreview();
         return;
       }
 
       const moved = Math.abs(e.translationX) > tapThresholdFor(size) || Math.abs(e.translationY) > tapThresholdFor(size);
       if (!moved) {
-        updatePreview(null);
-        onTapCell(anchor.r, anchor.c);
+        clearPreview();
+        runOnJS(onTapCell)(anchor.r, anchor.c);
         return;
       }
 
-      const candidate = previewRectRef.current ?? rectFromCorners(anchor.r, anchor.c, anchor.r, anchor.c);
+      const candidate = hasPreview.value
+        ? { r0: previewR0.value, c0: previewC0.value, r1: previewR1.value, c1: previewC1.value }
+        : rectFromCorners(anchor.r, anchor.c, anchor.r, anchor.c);
       const result = placeRect(level, placed, candidate);
       if ('error' in result) {
         playRejectShake();
         return;
       }
-      updatePreview(null);
-      onCommitRect(candidate);
+      clearPreview();
+      runOnJS(onCommitRect)(candidate);
     });
+
+  const previewStyle = useAnimatedStyle(() => ({
+    left: previewC0.value * size,
+    top: previewR0.value * size,
+    width: (previewC1.value - previewC0.value + 1) * size,
+    height: (previewR1.value - previewR0.value + 1) * size,
+    transform: [{ translateX: shakeX.value }],
+    opacity: hasPreview.value ? 1 : 0,
+  }));
 
   const gridRows: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
@@ -293,10 +330,6 @@ export default function ShikakuGrid({
     );
   });
 
-  const previewLeft = previewRect ? previewRect.c0 * size : 0;
-  const previewTop = previewRect ? previewRect.r0 * size : 0;
-  const previewWidth = previewRect ? (previewRect.c1 - previewRect.c0 + 1) * size : 0;
-  const previewHeight = previewRect ? (previewRect.r1 - previewRect.r0 + 1) * size : 0;
   const previewColor = previewValid ? colors.signalBlue : colors.signalRed;
 
   return (
@@ -325,23 +358,10 @@ export default function ShikakuGrid({
         {clueLabels}
       </View>
 
-      {previewRect && (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.previewRect,
-            {
-              left: previewLeft,
-              top: previewTop,
-              width: previewWidth,
-              height: previewHeight,
-              backgroundColor: `${previewColor}33`,
-              borderColor: previewColor,
-              transform: [{ translateX: rejecting ? shakeX : 0 }],
-            },
-          ]}
-        />
-      )}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.previewRect, { backgroundColor: `${previewColor}33`, borderColor: previewColor }, previewStyle]}
+      />
 
       {/* Childless overlay carries the gesture, on top of and matching the
           grid exactly. With nothing nested inside it to be hit-tested
@@ -372,26 +392,19 @@ function ClueLabel({
 }) {
   const { colors } = useTheme();
   const styles = useStyles();
-  const bounceScale = useRef(new Animated.Value(1)).current;
+  const bounceScale = useSharedValue(1);
 
   useEffect(() => {
     if (celebrateDelay === null) return;
-    bounceScale.setValue(1);
-    Animated.sequence([
-      Animated.delay(celebrateDelay),
-      Animated.spring(bounceScale, { toValue: 1.25, friction: 4, tension: 220, useNativeDriver: true }),
-      Animated.spring(bounceScale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-    ]).start();
+    bounceScale.value = 1;
+    bounceScale.value = withDelay(celebrateDelay, withSequence(withSpring(1.25, { duration: 220, dampingRatio: 0.55 }), withSpring(1, { duration: 220, dampingRatio: 0.7 })));
   }, [celebrateDelay, bounceScale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: bounceScale.value }] }));
 
   return (
     <View style={[styles.clueLabelWrap, { left: c * size, top: r * size, width: size, height: size }]}>
-      <Animated.Text
-        style={[
-          styles.clueText,
-          { fontSize: size * 0.42, color: hinted ? colors.gold : colors.text, transform: [{ scale: bounceScale }] },
-        ]}
-      >
+      <Animated.Text style={[styles.clueText, { fontSize: size * 0.42, color: hinted ? colors.gold : colors.text }, animatedStyle]}>
         {value}
       </Animated.Text>
     </View>

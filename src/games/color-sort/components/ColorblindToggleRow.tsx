@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import Animated, { interpolate, interpolateColor, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { fonts, radii } from '../../../theme/tokens';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { useTheme } from '../../../theme/ThemeProvider';
@@ -23,14 +24,18 @@ interface Props {
 export default function ColorblindToggleRow({ label, sub, value, onChange, accentColor }: Props) {
   const { colors } = useTheme();
   const styles = useStyles();
-  const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const anim = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
-    Animated.spring(anim, { toValue: value ? 1 : 0, useNativeDriver: false, speed: 20, bounciness: 6 }).start();
+    anim.value = withSpring(value ? 1 : 0, { duration: 200, dampingRatio: 0.8 });
   }, [value, anim]);
 
-  const knobLeft = anim.interpolate({ inputRange: [0, 1], outputRange: [KNOB_MARGIN, TRACK_WIDTH - KNOB_SIZE - KNOB_MARGIN] });
-  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: [colors.surface3, accentColor] });
+  const knobStyle = useAnimatedStyle(() => ({
+    left: interpolate(anim.value, [0, 1], [KNOB_MARGIN, TRACK_WIDTH - KNOB_SIZE - KNOB_MARGIN]),
+  }));
+  const trackStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(anim.value, [0, 1], [colors.surface3, accentColor]),
+  }));
 
   return (
     <TouchableOpacity
@@ -45,8 +50,8 @@ export default function ColorblindToggleRow({ label, sub, value, onChange, accen
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.sub}>{sub}</Text>
       </View>
-      <Animated.View style={[styles.track, { backgroundColor: trackColor }]}>
-        <Animated.View style={[styles.knob, { left: knobLeft }]} />
+      <Animated.View style={[styles.track, trackStyle]}>
+        <Animated.View style={[styles.knob, knobStyle]} />
       </Animated.View>
     </TouchableOpacity>
   );

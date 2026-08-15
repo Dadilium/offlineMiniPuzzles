@@ -1,5 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  interpolate,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { fonts } from '../../../theme/tokens';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
@@ -39,34 +49,42 @@ interface TreeCellProps {
 function TreeCell({ size, celebrateDelay, matched }: TreeCellProps) {
   const { colors } = useTheme();
   const styles = useStyles();
-  const bounceScale = useRef(new Animated.Value(1)).current;
-  const matchProgress = useRef(new Animated.Value(matched ? 1 : 0)).current;
+  const bounceScale = useSharedValue(1);
+  const matchProgress = useSharedValue(matched ? 1 : 0);
   const prevMatched = useRef(matched);
 
   useEffect(() => {
     if (celebrateDelay === null) return;
-    bounceScale.setValue(1);
-    Animated.sequence([
-      Animated.delay(celebrateDelay),
-      Animated.spring(bounceScale, { toValue: 1.22, friction: 4, tension: 220, useNativeDriver: true }),
-      Animated.spring(bounceScale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-    ]).start();
+    bounceScale.value = 1;
+    bounceScale.value = withDelay(
+      celebrateDelay,
+      withSequence(withSpring(1.22, { duration: 220, dampingRatio: 0.5 }), withSpring(1, { duration: 220, dampingRatio: 0.65 }))
+    );
   }, [celebrateDelay, bounceScale]);
 
   useEffect(() => {
     if (matched !== prevMatched.current) {
       prevMatched.current = matched;
-      Animated.timing(matchProgress, { toValue: matched ? 1 : 0, duration: 200, useNativeDriver: false }).start();
+      matchProgress.value = withTiming(matched ? 1 : 0, { duration: 200 });
     }
   }, [matched, matchProgress]);
 
-  const backgroundColor = matchProgress.interpolate({ inputRange: [0, 1], outputRange: [colors.surface3, `${colors.success}26`] });
-  const glyphOpacity = matchProgress.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
+  const cellAnimatedStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(matchProgress.value, [0, 1], [colors.surface3, `${colors.success}26`]),
+  }));
+
+  const bounceAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bounceScale.value }],
+  }));
+
+  const glyphAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(matchProgress.value, [0, 1], [0.5, 1]),
+  }));
 
   return (
-    <Animated.View style={[styles.cell, { width: size, height: size, backgroundColor }]}>
-      <Animated.View style={{ transform: [{ scale: bounceScale }] }}>
-        <Animated.Text style={[styles.glyph, { fontSize: size * 0.5, opacity: glyphOpacity }]}>🌲</Animated.Text>
+    <Animated.View style={[styles.cell, { width: size, height: size }, cellAnimatedStyle]}>
+      <Animated.View style={bounceAnimatedStyle}>
+        <Animated.Text style={[styles.glyph, { fontSize: size * 0.5 }, glyphAnimatedStyle]}>🌲</Animated.Text>
       </Animated.View>
     </Animated.View>
   );
@@ -84,16 +102,16 @@ interface TentCellProps {
 function TentCell({ isTent, hasConflict, hinted, size, celebrateDelay, onPress }: TentCellProps) {
   const { colors } = useTheme();
   const styles = useStyles();
-  const popScale = useRef(new Animated.Value(isTent ? 1 : 0)).current;
+  const popScale = useSharedValue(isTent ? 1 : 0);
   const prevIsTent = useRef(isTent);
-  const shakeX = useRef(new Animated.Value(0)).current;
+  const shakeX = useSharedValue(0);
   const prevConflict = useRef(hasConflict);
-  const bounceScale = useRef(new Animated.Value(1)).current;
-  const conflictProgress = useRef(new Animated.Value(hasConflict ? 1 : 0)).current;
+  const bounceScale = useSharedValue(1);
+  const conflictProgress = useSharedValue(hasConflict ? 1 : 0);
 
   useEffect(() => {
     if (isTent !== prevIsTent.current) {
-      Animated.spring(popScale, { toValue: isTent ? 1 : 0, friction: 6, tension: 220, useNativeDriver: true }).start();
+      popScale.value = withSpring(isTent ? 1 : 0, { duration: 250, dampingRatio: 0.75 });
       prevIsTent.current = isTent;
     }
   }, [isTent, popScale]);
@@ -105,30 +123,40 @@ function TentCell({ isTent, hasConflict, hinted, size, celebrateDelay, onPress }
   // counts to notice it.
   useEffect(() => {
     if (hasConflict && !prevConflict.current) {
-      shakeX.setValue(0);
-      Animated.sequence([
-        Animated.timing(shakeX, { toValue: 6, duration: 45, useNativeDriver: true }),
-        Animated.timing(shakeX, { toValue: -6, duration: 45, useNativeDriver: true }),
-        Animated.timing(shakeX, { toValue: 4, duration: 45, useNativeDriver: true }),
-        Animated.timing(shakeX, { toValue: 0, duration: 45, useNativeDriver: true }),
-      ]).start();
+      shakeX.value = 0;
+      shakeX.value = withSequence(
+        withTiming(6, { duration: 45 }),
+        withTiming(-6, { duration: 45 }),
+        withTiming(4, { duration: 45 }),
+        withTiming(0, { duration: 45 })
+      );
     }
     prevConflict.current = hasConflict;
-    Animated.timing(conflictProgress, { toValue: hasConflict ? 1 : 0, duration: 150, useNativeDriver: false }).start();
+    conflictProgress.value = withTiming(hasConflict ? 1 : 0, { duration: 150 });
   }, [hasConflict, shakeX, conflictProgress]);
 
   useEffect(() => {
     if (celebrateDelay === null) return;
-    bounceScale.setValue(1);
-    Animated.sequence([
-      Animated.delay(celebrateDelay),
-      Animated.spring(bounceScale, { toValue: 1.22, friction: 4, tension: 220, useNativeDriver: true }),
-      Animated.spring(bounceScale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-    ]).start();
+    bounceScale.value = 1;
+    bounceScale.value = withDelay(
+      celebrateDelay,
+      withSequence(withSpring(1.22, { duration: 220, dampingRatio: 0.5 }), withSpring(1, { duration: 220, dampingRatio: 0.65 }))
+    );
   }, [celebrateDelay, bounceScale]);
 
-  const conflictBorderColor = conflictProgress.interpolate({ inputRange: [0, 1], outputRange: ['transparent', colors.signalRed] });
-  const conflictBorderWidth = conflictProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 2] });
+  const conflictBorderAnimatedStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(conflictProgress.value, [0, 1], ['transparent', colors.signalRed]),
+    borderWidth: interpolate(conflictProgress.value, [0, 1], [0, 2]),
+  }));
+
+  const glyphAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shakeX.value }, { scale: bounceScale.value }],
+  }));
+
+  const popAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: popScale.value,
+    transform: [{ scale: popScale.value }],
+  }));
 
   return (
     <TouchableOpacity
@@ -137,20 +165,16 @@ function TentCell({ isTent, hasConflict, hinted, size, celebrateDelay, onPress }
       disabled={hinted}
       style={[styles.cell, { width: size, height: size }, hinted && styles.cellHinted]}
     >
-      <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { borderColor: conflictBorderColor, borderWidth: conflictBorderWidth }]}
-      />
-      <Animated.View style={{ transform: [{ translateX: shakeX }, { scale: bounceScale }] }}>
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, conflictBorderAnimatedStyle]} />
+      <Animated.View style={glyphAnimatedStyle}>
         <Animated.Text
           style={[
             styles.glyph,
             {
               fontSize: size * 0.5,
-              opacity: popScale,
-              transform: [{ scale: popScale }],
               color: hasConflict ? colors.signalRed : hinted ? colors.gold : colors.text,
             },
+            popAnimatedStyle,
           ]}
         >
           ⛺

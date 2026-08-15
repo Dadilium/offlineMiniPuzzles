@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import type { BlockFillPalette } from '../palette';
 import type { Cell } from '../types';
@@ -76,16 +77,17 @@ interface FillCellProps {
  * what makes a fast drag feel like it's lagging behind the finger. */
 const BlockFillCell = React.memo(function BlockFillCell({ size, filled, isStart, hinted, fillColor }: FillCellProps) {
   const styles = useStyles();
-  const scale = useRef(new Animated.Value(filled ? 1 : 0)).current;
+  const scale = useSharedValue(filled ? 1 : 0);
+  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   useEffect(() => {
-    Animated.spring(scale, { toValue: filled ? 1 : 0, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
+    scale.value = withSpring(filled ? 1 : 0, { duration: 180, dampingRatio: 0.7 });
   }, [filled, scale]);
 
   return (
     <View style={[styles.cellOuter, { width: size, height: size }]}>
       <View style={[styles.cellBase, hinted && styles.cellHinted]}>
-        <Animated.View pointerEvents="none" style={[styles.fill, { backgroundColor: fillColor, transform: [{ scale }] }]} />
+        <Animated.View pointerEvents="none" style={[styles.fill, { backgroundColor: fillColor }, scaleStyle]} />
         {isStart && <View style={styles.startDot} />}
       </View>
     </View>

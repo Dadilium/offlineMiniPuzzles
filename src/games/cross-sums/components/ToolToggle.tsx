@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { TouchableOpacity, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { radii } from '../../../theme/tokens';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
@@ -16,15 +17,17 @@ interface ToolButtonProps {
 function ToolButton({ icon, label, active, onPress }: ToolButtonProps) {
   const { colors } = useTheme();
   const styles = useStyles();
-  const scale = useRef(new Animated.Value(active ? 1 : 0.94)).current;
+  const scale = useSharedValue(active ? 1 : 0.94);
 
   useEffect(() => {
-    Animated.spring(scale, { toValue: active ? 1 : 0.94, friction: 6, tension: 220, useNativeDriver: true }).start();
+    scale.value = withSpring(active ? 1 : 0.94, { duration: 200, dampingRatio: 0.8 });
   }, [active, scale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.75} accessibilityLabel={label} accessibilityState={{ selected: active }}>
-      <Animated.View style={[styles.btn, active && styles.btnActive, { transform: [{ scale }] }]}>
+      <Animated.View style={[styles.btn, active && styles.btnActive, animatedStyle]}>
         <MaterialCommunityIcons name={icon} size={26} color={active ? colors.accent : colors.textDim} />
       </Animated.View>
     </TouchableOpacity>

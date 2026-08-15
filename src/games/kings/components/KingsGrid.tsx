@@ -1,5 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg from 'react-native-svg';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { useTheme } from '../../../theme/ThemeProvider';
@@ -74,23 +84,23 @@ function KingsCell({
   const styles = useStyles();
   const isKing = value === 2 || value === 3;
   const isHinted = value === 3;
-  const kingScale = useRef(new Animated.Value(isKing ? 1 : 0)).current;
-  const markOpacity = useRef(new Animated.Value(value === 1 || isAuto ? 1 : 0)).current;
-  const conflictPulse = useRef(new Animated.Value(0)).current;
+  const kingScale = useSharedValue(isKing ? 1 : 0);
+  const markOpacity = useSharedValue(value === 1 || isAuto ? 1 : 0);
+  const conflictPulse = useSharedValue(0);
   const prevWasKing = useRef(isKing);
   const prevWasMarked = useRef(value === 1 || isAuto);
 
   useEffect(() => {
     if (isKing && !prevWasKing.current) {
-      kingScale.setValue(0);
-      Animated.sequence([
-        Animated.spring(kingScale, { toValue: 1.22, friction: 4, tension: 180, useNativeDriver: true }),
-        Animated.spring(kingScale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-      ]).start();
+      kingScale.value = 0;
+      kingScale.value = withSequence(
+        withSpring(1.22, { duration: 220, dampingRatio: 0.55 }),
+        withSpring(1, { duration: 200, dampingRatio: 0.75 })
+      );
     } else if (isKing) {
-      kingScale.setValue(1);
+      kingScale.value = 1;
     } else {
-      kingScale.setValue(0);
+      kingScale.value = 0;
     }
     prevWasKing.current = isKing;
   }, [isKing, kingScale]);
@@ -98,29 +108,30 @@ function KingsCell({
   useEffect(() => {
     const marked = value === 1 || isAuto;
     if (marked && !prevWasMarked.current) {
-      markOpacity.setValue(0);
-      Animated.timing(markOpacity, { toValue: 1, duration: 160, useNativeDriver: true }).start();
+      markOpacity.value = 0;
+      markOpacity.value = withTiming(1, { duration: 160 });
     } else {
-      markOpacity.setValue(marked ? 1 : 0);
+      markOpacity.value = marked ? 1 : 0;
     }
     prevWasMarked.current = marked;
   }, [value, isAuto, markOpacity]);
 
   useEffect(() => {
-    let loop: Animated.CompositeAnimation | null = null;
     if (isConflict) {
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(conflictPulse, { toValue: 1, duration: 550, useNativeDriver: true }),
-          Animated.timing(conflictPulse, { toValue: 0, duration: 550, useNativeDriver: true }),
-        ])
-      );
-      loop.start();
+      conflictPulse.value = withRepeat(withSequence(withTiming(1, { duration: 550 }), withTiming(0, { duration: 550 })), -1);
     } else {
-      conflictPulse.setValue(0);
+      conflictPulse.value = 0;
     }
-    return () => loop?.stop();
+    return () => {
+      cancelAnimation(conflictPulse);
+    };
   }, [isConflict, conflictPulse]);
+
+  const kingAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: kingScale.value }] }));
+  const markAnimatedStyle = useAnimatedStyle(() => ({ opacity: markOpacity.value }));
+  const conflictAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(conflictPulse.value, [0, 1], [0.35, 0.9]),
+  }));
 
   return (
     <View
@@ -147,16 +158,10 @@ function KingsCell({
     >
       <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={0.6} onPress={onPress} />
       {isConflict && (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.conflictOverlay,
-            { opacity: conflictPulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.9] }) },
-          ]}
-        />
+        <Animated.View pointerEvents="none" style={[styles.conflictOverlay, conflictAnimatedStyle]} />
       )}
       {isKing && (
-        <Animated.View pointerEvents="none" style={{ transform: [{ scale: kingScale }] }}>
+        <Animated.View pointerEvents="none" style={kingAnimatedStyle}>
           <KingPiece size={size * 0.6} fill={isHinted ? colors.gold : '#fffaf0'} />
         </Animated.View>
       )}
@@ -169,9 +174,9 @@ function KingsCell({
               width: size * 0.22,
               height: size * 0.22,
               borderRadius: (size * 0.22) / 2,
-              opacity: markOpacity,
               backgroundColor: value === 1 ? 'rgba(238,240,246,0.55)' : 'rgba(238,240,246,0.32)',
             },
+            markAnimatedStyle,
           ]}
         />
       )}

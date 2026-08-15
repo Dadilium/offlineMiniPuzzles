@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { colorForId, iconForId } from '../palette';
@@ -56,13 +57,15 @@ interface UnitProps {
  * curved "meniscus" top, so a run of same-color slots reads as one
  * continuous column of liquid rather than stacked bricks. */
 function Unit({ colorId, width, height, isBottom, isTop, showIcon }: UnitProps) {
-  const grow = useRef(new Animated.Value(0)).current;
+  const grow = useSharedValue(0);
 
   useEffect(() => {
-    Animated.spring(grow, { toValue: height, friction: 7, tension: 260, useNativeDriver: false }).start();
+    grow.value = withSpring(height, { duration: 300, dampingRatio: 0.75 });
     // Mount-only: this slot's target height never changes after it lands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const growStyle = useAnimatedStyle(() => ({ height: grow.value }));
 
   return (
     <Animated.View
@@ -70,13 +73,13 @@ function Unit({ colorId, width, height, isBottom, isTop, showIcon }: UnitProps) 
         styles.unit,
         {
           width,
-          height: grow,
           backgroundColor: colorForId(colorId),
           borderBottomLeftRadius: isBottom ? width * BOTTOM_RADIUS_FACTOR : 0,
           borderBottomRightRadius: isBottom ? width * BOTTOM_RADIUS_FACTOR : 0,
           borderTopLeftRadius: isTop ? height * 0.55 : 0,
           borderTopRightRadius: isTop ? height * 0.55 : 0,
         },
+        growStyle,
       ]}
     >
       {isTop && <View style={styles.unitSheen} />}
@@ -110,23 +113,23 @@ function TubeView({ index, tube, capacity, layout, selected, highlighted, shake,
   const { colors } = useTheme();
   const { tubeW, unitH } = layout;
   const tubeH = unitH * (capacity + 1.1);
-  const lift = useRef(new Animated.Value(0)).current;
-  const shakeX = useRef(new Animated.Value(0)).current;
-  const tilt = useRef(new Animated.Value(0)).current;
-  const squash = useRef(new Animated.Value(1)).current;
+  const lift = useSharedValue(0);
+  const shakeX = useSharedValue(0);
+  const tilt = useSharedValue(0);
+  const squash = useSharedValue(1);
 
   useEffect(() => {
-    Animated.spring(lift, { toValue: selected ? 1 : 0, friction: 6, tension: 220, useNativeDriver: true }).start();
+    lift.value = withSpring(selected ? 1 : 0, { duration: 220, dampingRatio: 0.6 });
   }, [selected, lift]);
 
   useEffect(() => {
     if (!shake) return;
-    Animated.sequence([
-      Animated.timing(shakeX, { toValue: 1, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -1, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 1, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 0, duration: 45, useNativeDriver: true }),
-    ]).start();
+    shakeX.value = withSequence(
+      withTiming(1, { duration: 45 }),
+      withTiming(-1, { duration: 45 }),
+      withTiming(1, { duration: 45 }),
+      withTiming(0, { duration: 45 })
+    );
   }, [shake, shakeX]);
 
   // The "pouring" gesture cue: the source tube tips toward the destination
@@ -134,40 +137,34 @@ function TubeView({ index, tube, capacity, layout, selected, highlighted, shake,
   // little compression bounce as the liquid arrives.
   useEffect(() => {
     if (tiltDir === 0) {
-      tilt.setValue(0);
+      tilt.value = 0;
       return;
     }
-    Animated.sequence([
-      Animated.timing(tilt, { toValue: tiltDir, duration: 140, useNativeDriver: true }),
-      Animated.timing(tilt, { toValue: 0, duration: 220, useNativeDriver: true }),
-    ]).start();
+    tilt.value = withSequence(withTiming(tiltDir, { duration: 140 }), withTiming(0, { duration: 220 }));
   }, [tiltDir, tilt]);
 
   useEffect(() => {
     if (!isPourDest) return;
-    squash.setValue(0.92);
-    Animated.spring(squash, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }).start();
+    squash.value = 0.92;
+    squash.value = withSpring(1, { duration: 200, dampingRatio: 0.6 });
   }, [isPourDest, squash]);
 
   const ringColor = highlighted ? colors.gold : selected ? colors.accentBright : solved ? colors.success : colors.borderSoft;
   const ringWidth = selected || highlighted ? 2.2 : solved ? 1.8 : 1.3;
   const unitWidth = tubeW - tubeW * 0.22;
 
+  const bottleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: interpolate(lift.value, [0, 1], [0, -8]) },
+      { translateX: interpolate(shakeX.value, [-1, 0, 1], [-5, 0, 5]) },
+      { rotate: `${interpolate(tilt.value, [-1, 0, 1], [-10, 0, 10])}deg` },
+      { scaleY: squash.value },
+    ],
+  }));
+
   return (
     <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={{ width: tubeW + 10 }}>
-      <Animated.View
-        style={[
-          styles.bottleWrap,
-          {
-            transform: [
-              { translateY: lift.interpolate({ inputRange: [0, 1], outputRange: [0, -8] }) },
-              { translateX: shakeX.interpolate({ inputRange: [-1, 0, 1], outputRange: [-5, 0, 5] }) },
-              { rotate: tilt.interpolate({ inputRange: [-1, 0, 1], outputRange: ['-10deg', '0deg', '10deg'] }) },
-              { scaleY: squash },
-            ],
-          },
-        ]}
-      >
+      <Animated.View style={[styles.bottleWrap, bottleAnimatedStyle]}>
         <View style={[styles.rim, { width: tubeW * 0.86, backgroundColor: ringColor }]} />
         <View
           style={[

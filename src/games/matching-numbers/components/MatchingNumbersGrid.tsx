@@ -1,5 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  interpolate,
+  runOnJS,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Polyline } from 'react-native-svg';
 import { BOARD_AREA_VERTICAL_PADDING } from '../../../components/GameScreenLayout';
 import { fonts } from '../../../theme/tokens';
@@ -56,22 +66,20 @@ interface CellProps {
 
 function MatchingNumbersCell({ value, size, selected, pulsing, clearing, rejected, appearDelayMs, onPress }: CellProps) {
   const styles = useStyles();
-  const scale = useRef(new Animated.Value(1)).current;
-  const pulseScale = useRef(new Animated.Value(1)).current;
-  const highlight = useRef(new Animated.Value(0)).current;
-  const shakeX = useRef(new Animated.Value(0)).current;
-  const rejectBlink = useRef(new Animated.Value(0)).current;
-  const fade = useRef(new Animated.Value(1)).current;
-  const appearScale = useRef(new Animated.Value(appearDelayMs == null ? 1 : 0)).current;
-  const appearOpacity = useRef(new Animated.Value(appearDelayMs == null ? 1 : 0)).current;
+  const scale = useSharedValue(1);
+  const pulseScale = useSharedValue(1);
+  const highlight = useSharedValue(0);
+  const shakeX = useSharedValue(0);
+  const rejectBlink = useSharedValue(0);
+  const fade = useSharedValue(1);
+  const appearScale = useSharedValue(appearDelayMs == null ? 1 : 0);
+  const appearOpacity = useSharedValue(appearDelayMs == null ? 1 : 0);
 
   useEffect(() => {
     if (appearDelayMs == null) return;
     const t = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(appearOpacity, { toValue: 1, duration: APPEAR_MS, useNativeDriver: true }),
-        Animated.spring(appearScale, { toValue: 1, friction: 5, tension: 200, useNativeDriver: true }),
-      ]).start();
+      appearOpacity.value = withTiming(1, { duration: APPEAR_MS });
+      appearScale.value = withSpring(1, { duration: 260, dampingRatio: 0.75 });
     }, appearDelayMs);
     return () => clearTimeout(t);
     // Runs once per cell instance, at mount -- appearDelayMs is fixed for
@@ -81,68 +89,70 @@ function MatchingNumbersCell({ value, size, selected, pulsing, clearing, rejecte
 
   useEffect(() => {
     if (selected) {
-      Animated.sequence([
-        Animated.spring(scale, { toValue: 1.15, friction: 4, tension: 200, useNativeDriver: true }),
-        Animated.spring(scale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-      ]).start();
-      Animated.timing(highlight, { toValue: 1, duration: 140, useNativeDriver: true }).start();
+      scale.value = withSequence(
+        withSpring(1.15, { duration: 180, dampingRatio: 0.6 }),
+        withSpring(1, { duration: 160, dampingRatio: 0.9 })
+      );
+      highlight.value = withTiming(1, { duration: 140 });
     } else {
-      Animated.timing(highlight, { toValue: 0, duration: 140, useNativeDriver: true }).start();
+      highlight.value = withTiming(0, { duration: 140 });
     }
   }, [selected, scale, highlight]);
 
   useEffect(() => {
     if (!rejected) {
-      shakeX.setValue(0);
-      rejectBlink.setValue(0);
+      shakeX.value = 0;
+      rejectBlink.value = 0;
       return;
     }
-    Animated.sequence([
-      Animated.timing(shakeX, { toValue: 1, duration: 40, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -1, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 1, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 0, duration: 50, useNativeDriver: true }),
-    ]).start();
-    Animated.sequence([
-      Animated.timing(rejectBlink, { toValue: 1, duration: 90, useNativeDriver: true }),
-      Animated.timing(rejectBlink, { toValue: 0, duration: 220, useNativeDriver: true }),
-    ]).start();
+    shakeX.value = withSequence(
+      withTiming(1, { duration: 40 }),
+      withTiming(-1, { duration: 60 }),
+      withTiming(1, { duration: 60 }),
+      withTiming(0, { duration: 50 })
+    );
+    rejectBlink.value = withSequence(
+      withTiming(1, { duration: 90 }),
+      withTiming(0, { duration: 220 })
+    );
   }, [rejected, shakeX, rejectBlink]);
 
   useEffect(() => {
     if (!pulsing) {
-      pulseScale.setValue(1);
+      pulseScale.value = 1;
       return;
     }
-    Animated.sequence([
-      Animated.timing(pulseScale, { toValue: 1.3, duration: PULSE_MS / 2, useNativeDriver: true }),
-      Animated.timing(pulseScale, { toValue: 1, duration: PULSE_MS / 2, useNativeDriver: true }),
-    ]).start();
+    pulseScale.value = withSequence(
+      withTiming(1.3, { duration: PULSE_MS / 2 }),
+      withTiming(1, { duration: PULSE_MS / 2 })
+    );
   }, [pulsing, pulseScale]);
 
   useEffect(() => {
     if (clearing) {
-      Animated.parallel([
-        Animated.timing(fade, { toValue: 0, duration: FADE_MS, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 0.6, duration: FADE_MS, useNativeDriver: true }),
-      ]).start();
+      fade.value = withTiming(0, { duration: FADE_MS });
+      scale.value = withTiming(0.6, { duration: FADE_MS });
     } else {
-      fade.setValue(1);
-      scale.setValue(1);
+      fade.value = 1;
+      scale.value = 1;
     }
   }, [clearing, fade, scale]);
 
-  const translateX = shakeX.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] });
-  const combinedScale = Animated.multiply(Animated.multiply(scale, pulseScale), appearScale);
-  const combinedOpacity = Animated.multiply(fade, appearOpacity);
+  const cellAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: fade.value * appearOpacity.value,
+    transform: [
+      { scale: scale.value * pulseScale.value * appearScale.value },
+      { translateX: interpolate(shakeX.value, [-1, 1], [-6, 6]) },
+    ],
+  }));
+  const highlightStyle = useAnimatedStyle(() => ({ opacity: highlight.value }));
+  const rejectOverlayStyle = useAnimatedStyle(() => ({ opacity: rejectBlink.value }));
 
   return (
-    <Animated.View
-      style={[styles.cellOuter, { width: size, height: size, opacity: combinedOpacity, transform: [{ scale: combinedScale }, { translateX }] }]}
-    >
+    <Animated.View style={[styles.cellOuter, { width: size, height: size }, cellAnimatedStyle]}>
       <View style={styles.cellBase}>
-        <Animated.View pointerEvents="none" style={[styles.highlight, { opacity: highlight }]} />
-        <Animated.View pointerEvents="none" style={[styles.rejectOverlay, { opacity: rejectBlink }]} />
+        <Animated.View pointerEvents="none" style={[styles.highlight, highlightStyle]} />
+        <Animated.View pointerEvents="none" style={[styles.rejectOverlay, rejectOverlayStyle]} />
         <Text style={[styles.digit, { fontSize: size * 0.58 }]}>{value}</Text>
       </View>
       <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={0.7} onPress={onPress} />
@@ -232,20 +242,22 @@ export default function MatchingNumbersGrid({
   const renderedFillerRows = collapsingRow != null ? fillerRows + 1 : fillerRows;
   const H = size * (rows + renderedFillerRows);
 
-  const lineProgress = useRef(new Animated.Value(0)).current;
-  const lineOpacity = useRef(new Animated.Value(1)).current;
+  const lineProgress = useSharedValue(0);
+  const lineOpacity = useSharedValue(1);
   const prevPendingKey = useRef<string | null>(null);
-  const collapseShift = useRef(new Animated.Value(0)).current;
+  const collapseShift = useSharedValue(0);
 
   useEffect(() => {
     if (collapsingRow == null) {
-      collapseShift.setValue(0);
+      collapseShift.value = 0;
       return;
     }
-    collapseShift.setValue(0);
-    Animated.timing(collapseShift, { toValue: 1, duration: ROW_COLLAPSE_MS, useNativeDriver: true }).start();
+    collapseShift.value = 0;
+    collapseShift.value = withTiming(1, { duration: ROW_COLLAPSE_MS });
   }, [collapsingRow, collapseShift]);
-  const collapseTranslateY = collapseShift.interpolate({ inputRange: [0, 1], outputRange: [0, -size] });
+  const collapseAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(collapseShift.value, [0, 1], [0, -size]) }],
+  }));
   // Drives the 3-beat match animation: draw the connecting line, pulse the
   // pair once it's reached, then fade everything (line + cells) out together.
   const [matchStage, setMatchStage] = useState<'line' | 'pulse' | 'clear'>('line');
@@ -258,20 +270,28 @@ export default function MatchingNumbersGrid({
     const k = `${cellKey(pendingMatch.a)}-${cellKey(pendingMatch.b)}`;
     if (prevPendingKey.current === k) return;
     prevPendingKey.current = k;
-    lineProgress.setValue(0);
-    lineOpacity.setValue(1);
+    lineProgress.value = 0;
+    lineOpacity.value = 1;
     setMatchStage('line');
 
     let pulseTimer: ReturnType<typeof setTimeout> | undefined;
     let clearTimer: ReturnType<typeof setTimeout> | undefined;
 
-    Animated.timing(lineProgress, { toValue: 1, duration: LINE_GROW_MS, useNativeDriver: false }).start(() => {
+    // Runs on the JS thread once the line-grow animation's completion
+    // callback (UI thread) hands control back via runOnJS -- it touches
+    // React state and schedules the follow-up JS timers, so it can't run
+    // directly on the UI thread.
+    const startPulsePhase = () => {
       setMatchStage('pulse');
       pulseTimer = setTimeout(() => {
         setMatchStage('clear');
-        Animated.timing(lineOpacity, { toValue: 0, duration: FADE_MS, useNativeDriver: true }).start();
+        lineOpacity.value = withTiming(0, { duration: FADE_MS });
         clearTimer = setTimeout(() => onMatchAnimationDone(), FADE_MS);
       }, PULSE_MS);
+    };
+
+    lineProgress.value = withTiming(1, { duration: LINE_GROW_MS }, () => {
+      runOnJS(startPulsePhase)();
     });
 
     return () => {
@@ -337,10 +357,7 @@ export default function MatchingNumbersGrid({
     }
     const isBelowCollapsingRow = collapsingRow != null && r > collapsingRow;
     rowViews.push(
-      <Animated.View
-        key={r}
-        style={[styles.row, isBelowCollapsingRow ? { transform: [{ translateY: collapseTranslateY }] } : null]}
-      >
+      <Animated.View key={r} style={[styles.row, isBelowCollapsingRow ? collapseAnimatedStyle : null]}>
         {cellViews}
       </Animated.View>
     );
@@ -351,10 +368,7 @@ export default function MatchingNumbersGrid({
       cellViews.push(<FillerCell key={`filler-${r}-${c}`} size={size} />);
     }
     rowViews.push(
-      <Animated.View
-        key={`filler-row-${r}`}
-        style={[styles.row, collapsingRow != null ? { transform: [{ translateY: collapseTranslateY }] } : null]}
-      >
+      <Animated.View key={`filler-row-${r}`} style={[styles.row, collapsingRow != null ? collapseAnimatedStyle : null]}>
         {cellViews}
       </Animated.View>
     );
@@ -362,12 +376,16 @@ export default function MatchingNumbersGrid({
 
   const pathPoints = pendingMatch ? pendingMatch.path.map((cell) => `${cell.c * size + size / 2},${cell.r * size + size / 2}`).join(' ') : '';
   const totalLen = pendingMatch ? pathPixelLength(pendingMatch.path, size) : 0;
+  const lineOpacityStyle = useAnimatedStyle(() => ({ opacity: lineOpacity.value }));
+  const lineAnimatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: interpolate(lineProgress.value, [0, 1], [totalLen, 0]),
+  }));
 
   return (
     <View style={[styles.wrap, { width: W, height: H }]}>
       <View>{rowViews}</View>
       {pendingMatch && (
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: lineOpacity }]} pointerEvents="none">
+        <Animated.View style={[StyleSheet.absoluteFill, lineOpacityStyle]} pointerEvents="none">
           <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
             <AnimatedPolyline
               points={pathPoints}
@@ -376,7 +394,7 @@ export default function MatchingNumbersGrid({
               strokeWidth={3}
               strokeLinecap="round"
               strokeDasharray={`${totalLen} ${totalLen}`}
-              strokeDashoffset={lineProgress.interpolate({ inputRange: [0, 1], outputRange: [totalLen, 0] })}
+              animatedProps={lineAnimatedProps}
             />
           </Svg>
         </Animated.View>

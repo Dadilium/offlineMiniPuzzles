@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { fonts } from '../../../theme/tokens';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { useTheme } from '../../../theme/ThemeProvider';
@@ -45,30 +46,33 @@ function DigitCell({ value, mark, hinted, size, celebrateDelay, onPress }: Digit
   const styles = useStyles();
   const selected = mark === 'selected';
   const erased = mark === 'erased';
-  const ringScale = useRef(new Animated.Value(selected ? 1 : 0)).current;
-  const strikeOpacity = useRef(new Animated.Value(erased ? 1 : 0)).current;
+  const ringScale = useSharedValue(selected ? 1 : 0);
+  const strikeOpacity = useSharedValue(erased ? 1 : 0);
   const prevMark = useRef(mark);
-  const bounceScale = useRef(new Animated.Value(1)).current;
+  const bounceScale = useSharedValue(1);
 
   useEffect(() => {
     if (mark !== prevMark.current) {
-      Animated.spring(ringScale, { toValue: selected ? 1 : 0, friction: 6, tension: 200, useNativeDriver: true }).start();
-      Animated.timing(strikeOpacity, { toValue: erased ? 1 : 0, duration: 140, useNativeDriver: true }).start();
+      ringScale.value = withSpring(selected ? 1 : 0, { duration: 250, dampingRatio: 0.75 });
+      strikeOpacity.value = withTiming(erased ? 1 : 0, { duration: 140 });
       prevMark.current = mark;
     }
   }, [mark, selected, erased, ringScale, strikeOpacity]);
 
   // Diagonal win-wave: a little bounce that sweeps across the board by
-  // (row + col) group, staggered via Animated.delay per cell.
+  // (row + col) group, staggered via withDelay per cell.
   useEffect(() => {
     if (celebrateDelay === null) return;
-    bounceScale.setValue(1);
-    Animated.sequence([
-      Animated.delay(celebrateDelay),
-      Animated.spring(bounceScale, { toValue: 1.22, friction: 4, tension: 220, useNativeDriver: true }),
-      Animated.spring(bounceScale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-    ]).start();
+    bounceScale.value = 1;
+    bounceScale.value = withDelay(
+      celebrateDelay,
+      withSequence(withSpring(1.22, { duration: 220, dampingRatio: 0.5 }), withSpring(1, { duration: 220, dampingRatio: 0.6 }))
+    );
   }, [celebrateDelay, bounceScale]);
+
+  const bounceStyle = useAnimatedStyle(() => ({ transform: [{ scale: bounceScale.value }] }));
+  const ringStyle = useAnimatedStyle(() => ({ transform: [{ scale: ringScale.value }] }));
+  const strikeStyle = useAnimatedStyle(() => ({ opacity: strikeOpacity.value }));
 
   // TouchableOpacity is the root (not a same-level sibling behind the Text)
   // so a tap lands on it no matter which child -- ring, digit, or strike --
@@ -82,7 +86,7 @@ function DigitCell({ value, mark, hinted, size, celebrateDelay, onPress }: Digit
       disabled={hinted}
       style={[styles.digitCell, { width: size, height: size }, hinted && styles.digitCellHinted]}
     >
-      <Animated.View style={[styles.cellInner, { transform: [{ scale: bounceScale }] }]}>
+      <Animated.View style={[styles.cellInner, bounceStyle]}>
         <Animated.View
           pointerEvents="none"
           style={[
@@ -92,14 +96,14 @@ function DigitCell({ value, mark, hinted, size, celebrateDelay, onPress }: Digit
               height: size * 0.68,
               borderRadius: (size * 0.68) / 2,
               borderColor: hinted ? colors.gold : colors.success,
-              transform: [{ scale: ringScale }],
             },
+            ringStyle,
           ]}
         />
         <Text style={[styles.digitText, { fontSize: size * 0.4, color: erased ? colors.textFaint : colors.text, pointerEvents: 'none' }]}>
           {value}
         </Text>
-        <Animated.View pointerEvents="none" style={[styles.strike, { width: size * 0.6, opacity: strikeOpacity }]} />
+        <Animated.View pointerEvents="none" style={[styles.strike, { width: size * 0.6 }, strikeStyle]} />
       </Animated.View>
     </TouchableOpacity>
   );

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 import { fonts, radii } from '../../../theme/tokens';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { paletteForWord } from '../palette';
@@ -14,26 +15,28 @@ interface ChipProps {
 /** One word's chip -- a quick "pop" the moment it flips to found, same idiom as every other game's found/placed animations. */
 function WordChip({ word, isFound, palette }: ChipProps) {
   const styles = useStyles();
-  const scale = useRef(new Animated.Value(1)).current;
+  const scale = useSharedValue(1);
   const wasFound = useRef(isFound);
 
   useEffect(() => {
     if (isFound && !wasFound.current) {
-      scale.setValue(1);
-      Animated.sequence([
-        Animated.spring(scale, { toValue: 1.12, friction: 4, tension: 220, useNativeDriver: true }),
-        Animated.spring(scale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-      ]).start();
+      scale.value = 1;
+      scale.value = withSequence(
+        withSpring(1.12, { duration: 200, dampingRatio: 0.5 }),
+        withSpring(1, { duration: 200, dampingRatio: 0.65 })
+      );
     }
     wasFound.current = isFound;
   }, [isFound, scale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
     <Animated.View
       style={[
         styles.chip,
         isFound && { backgroundColor: palette.fill, borderColor: palette.border },
-        { transform: [{ scale }] },
+        animatedStyle,
       ]}
     >
       <Text style={[styles.word, isFound && styles.wordFound]}>{word}</Text>

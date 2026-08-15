@@ -1,5 +1,7 @@
-// Must be the very first import in the app's entry file -- gesture-handler
-// patches native touch delivery at import time.
+// Both of these patch native behavior at import time and must stay the very
+// first imports in the app's entry file, in this order (Reanimated's own
+// setup docs list it before gesture-handler).
+import 'react-native-reanimated';
 import 'react-native-gesture-handler';
 import './src/i18n';
 import React, { useCallback, useEffect, useRef } from 'react';

@@ -1,6 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import type { ComponentType } from 'react';
-import { Animated, Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { fonts, radii } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
@@ -39,42 +50,36 @@ export default function GameCard({
   const { colors } = useTheme();
   const styles = useStyles();
   const resolvedColor = color ?? colors.signalBlue;
-  const mount = useRef(new Animated.Value(0)).current;
-  const press = useRef(new Animated.Value(1)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
+  const mount = useSharedValue(0);
+  const press = useSharedValue(1);
+  const pulse = useSharedValue(0);
 
   useEffect(() => {
-    Animated.timing(mount, {
-      toValue: 1,
-      duration: 320,
-      delay: index * 40,
-      useNativeDriver: true,
-    }).start();
+    mount.value = withDelay(index * 40, withTiming(1, { duration: 320 }));
   }, [mount, index]);
 
   useEffect(() => {
     if (!isNew || locked) return undefined;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 900, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
+    pulse.value = withRepeat(withSequence(withTiming(1, { duration: 900 }), withTiming(0, { duration: 900 })), -1, false);
+    return () => cancelAnimation(pulse);
   }, [isNew, locked, pulse]);
 
   const animateTo = (toValue: number) => {
-    Animated.spring(press, { toValue, useNativeDriver: true, speed: 24, bounciness: 6 }).start();
+    press.value = withSpring(toValue, { duration: 200, dampingRatio: 0.8 });
   };
 
+  const cardMountStyle = useAnimatedStyle(() => ({
+    opacity: mount.value,
+    transform: [{ translateY: interpolate(mount.value, [0, 1], [12, 0]) }, { scale: press.value }],
+  }));
+
+  const badgeStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: '32deg' }, { scale: interpolate(pulse.value, [0, 1], [1, 1.08]) }],
+    shadowOpacity: interpolate(pulse.value, [0, 1], [0.35, 0.85]),
+  }));
+
   return (
-    <Animated.View
-      style={{
-        opacity: mount,
-        transform: [{ translateY: mount.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }, { scale: press }],
-      }}
-    >
+    <Animated.View style={cardMountStyle}>
       <TouchableOpacity
         style={[styles.card, locked && styles.cardLocked]}
         activeOpacity={0.9}
@@ -97,12 +102,8 @@ export default function GameCard({
               {
                 backgroundColor: colors.gold,
                 shadowColor: colors.gold,
-                transform: [
-                  { rotate: '32deg' },
-                  { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) },
-                ],
-                shadowOpacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.85] }),
               },
+              badgeStyle,
             ]}
           >
             <Text style={styles.newBadgeText}>{t('library.newBadge')}</Text>

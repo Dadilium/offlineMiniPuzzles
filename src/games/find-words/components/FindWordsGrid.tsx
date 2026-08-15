@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { fonts } from '../../../theme/tokens';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { useTheme } from '../../../theme/ThemeProvider';
@@ -34,8 +36,9 @@ interface CapsuleGeometry {
   angleDeg: number;
 }
 
-/** Positions a pill spanning `cells`' first-to-last centers, extended half a cell past each end so its rounded caps fully cover the end letters -- rotated to match the line's own angle rather than constrained to horizontal/vertical. */
+/** Positions a pill spanning `cells`' first-to-last centers, extended half a cell past each end so its rounded caps fully cover the end letters -- rotated to match the line's own angle rather than constrained to horizontal/vertical. Marked as a worklet -- pure arithmetic only -- so the live-drag capsule can compute its geometry directly inside `useAnimatedStyle`, on the UI thread. */
 function capsuleGeometry(cells: Cell[], size: number): CapsuleGeometry {
+  'worklet';
   const first = cells[0];
   const last = cells[cells.length - 1];
   const cx = (cell: Cell) => cell.c * size + size / 2;
@@ -65,28 +68,34 @@ interface FoundCapsuleProps {
 /** One found word's permanent capsule. Pop-in on first mount (a fresh mount = the word was just found), diagonal-wave bounce on win -- same animation shapes as Shikaku's PlacedRectView. */
 function FoundCapsule({ placement, size, palette, celebrateDelay, isLastToCelebrate, onCelebrationSettled }: FoundCapsuleProps) {
   const styles = useStyles();
-  const popScale = useRef(new Animated.Value(0)).current;
-  const bounceScale = useRef(new Animated.Value(1)).current;
+  const popScale = useSharedValue(0);
+  const bounceScale = useSharedValue(1);
 
   useEffect(() => {
-    Animated.spring(popScale, { toValue: 1, friction: 6, tension: 210, useNativeDriver: true }).start();
+    popScale.value = withSpring(1, { duration: 350, dampingRatio: 0.75 });
   }, [popScale]);
 
   useEffect(() => {
     if (celebrateDelay === null) return;
-    bounceScale.setValue(1);
+    bounceScale.value = 1;
     // The win overlay must wait for this animation to actually finish, not a
     // guessed duration -- see ShikakuGrid's identical reasoning.
-    Animated.sequence([
-      Animated.delay(celebrateDelay),
-      Animated.spring(bounceScale, { toValue: 1.14, friction: 4, tension: 220, useNativeDriver: true }),
-      Animated.spring(bounceScale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-    ]).start(({ finished }) => {
-      if (finished && isLastToCelebrate) onCelebrationSettled?.();
-    });
+    bounceScale.value = withDelay(
+      celebrateDelay,
+      withSequence(
+        withSpring(1.14, { duration: 220, dampingRatio: 0.55 }),
+        withSpring(1, { duration: 220, dampingRatio: 0.7 }, (finished) => {
+          if (finished && isLastToCelebrate && onCelebrationSettled) runOnJS(onCelebrationSettled)();
+        })
+      )
+    );
   }, [celebrateDelay, bounceScale, isLastToCelebrate, onCelebrationSettled]);
 
   const geo = capsuleGeometry(placementCells(placement), size);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${geo.angleDeg}deg` }, { scale: popScale.value * bounceScale.value }],
+  }));
 
   return (
     <Animated.View
@@ -101,35 +110,72 @@ function FoundCapsule({ placement, size, palette, celebrateDelay, isLastToCelebr
           borderRadius: geo.height / 2,
           backgroundColor: palette.fill,
           borderColor: palette.border,
-          transform: [{ rotate: `${geo.angleDeg}deg` }, { scale: Animated.multiply(popScale, bounceScale) }],
         },
+        animatedStyle,
       ]}
     />
   );
 }
 
-/** The in-progress drag's line, in a neutral color -- fades out on release if it didn't match anything (a found word gets its own permanent, distinctly-colored FoundCapsule instead, see above). */
-function SelectionCapsule({ cells, size, opacity }: { cells: Cell[]; size: number; opacity: Animated.Value }) {
+/**
+ * The in-progress drag's line, in a neutral color -- fades out on release if
+ * it didn't match anything (a found word gets its own permanent,
+ * distinctly-colored FoundCapsule instead, see above).
+ *
+ * Always mounted (never conditionally rendered on a shared value, which
+ * isn't possible from a worklet) -- `hasLine` gates visibility via opacity
+ * instead. The geometry itself is computed entirely inside
+ * `useAnimatedStyle` from `anchorCell`/`targetCell`, on the UI thread, so
+ * the whole live-drag capsule updates with zero bridge crossings.
+ */
+function SelectionCapsule({
+  anchorCell,
+  targetCell,
+  hasLine,
+  rows,
+  cols,
+  size,
+  opacity,
+}: {
+  anchorCell: SharedValue<Cell | null>;
+  targetCell: SharedValue<Cell | null>;
+  hasLine: SharedValue<boolean>;
+  rows: number;
+  cols: number;
+  size: number;
+  opacity: SharedValue<number>;
+}) {
   const { colors } = useTheme();
   const styles = useStyles();
   const selectionPalette = useMemo(() => ({ border: colors.accentBright, fill: `${colors.accentBright}40` }), [colors]);
-  const geo = capsuleGeometry(cells, size);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const anchor = anchorCell.value;
+    const target = targetCell.value;
+    if (!anchor || !target) return { opacity: 0 };
+    const line = lineFromDrag(anchor, target, rows, cols);
+    const geo = capsuleGeometry(line, size);
+    return {
+      left: geo.left,
+      top: geo.top,
+      width: geo.width,
+      height: geo.height,
+      borderRadius: geo.height / 2,
+      transform: [{ rotate: `${geo.angleDeg}deg` }],
+      opacity: hasLine.value ? opacity.value : 0,
+    };
+  });
+
   return (
     <Animated.View
       pointerEvents="none"
       style={[
         styles.capsule,
         {
-          left: geo.left,
-          top: geo.top,
-          width: geo.width,
-          height: geo.height,
-          borderRadius: geo.height / 2,
           backgroundColor: selectionPalette.fill,
           borderColor: selectionPalette.border,
-          opacity,
-          transform: [{ rotate: `${geo.angleDeg}deg` }],
         },
+        animatedStyle,
       ]}
     />
   );
@@ -181,35 +227,64 @@ export default function FindWordsGrid({ level, foundIndices, celebrate, onCelebr
     if (celebrate && foundIndices.length === 0) handleCelebrationSettled();
   }, [celebrate, foundIndices.length]);
 
-  const anchorRef = useRef<Cell | null>(null);
-  const [currentLine, setCurrentLine] = useState<Cell[] | null>(null);
-  // Mirrors `currentLine` synchronously -- onUpdate's most recent write may
-  // not have flushed through a re-render yet by the time onEnd reads it
-  // back, since both can fire within the same gesture's lifecycle faster
-  // than React re-renders.
-  const currentLineRef = useRef<Cell[] | null>(null);
-  currentLineRef.current = currentLine;
-  const selectionOpacity = useRef(new Animated.Value(1)).current;
+  // The live drag preview lives entirely on the UI thread (shared values,
+  // updated directly from the gesture worklet below) so tracking a finger
+  // across the board never round-trips to JS -- unlike Shikaku's rect
+  // preview, there's no per-frame validity check needed here at all (the
+  // capsule's geometry is pure arithmetic over cell coordinates), so nothing
+  // here crosses the bridge until the gesture actually ends.
+  const anchorCell = useSharedValue<Cell | null>(null);
+  const targetCell = useSharedValue<Cell | null>(null);
+  // Gates the capsule's visibility (a shared value can't conditionally
+  // mount/unmount a component) -- true whenever anchor/target currently
+  // resolve to a line of 2+ cells, so it also correctly hides the capsule
+  // again if a drag is pulled back down to a single cell.
+  const hasLine = useSharedValue(false);
+  const selectionOpacity = useSharedValue(1);
 
-  function cellAt(x: number, y: number): Cell {
+  function cellAtWorklet(x: number, y: number): Cell {
+    'worklet';
     const c = Math.min(cols - 1, Math.max(0, Math.floor(x / size)));
     const r = Math.min(rows - 1, Math.max(0, Math.floor(y / size)));
     return { r, c };
   }
 
+  // Only touches shared values -- runs on the JS thread (called via
+  // runOnJS below) but doesn't need to be a worklet itself. Keeps
+  // anchor/target frozen at their final drag position while the fade plays,
+  // so the capsule fades out in place rather than disappearing instantly;
+  // only once the fade truly finishes does it clear the line.
   function playRejectFade(): void {
-    selectionOpacity.setValue(1);
-    Animated.timing(selectionOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
-      selectionOpacity.setValue(1);
-      setCurrentLine(null);
+    selectionOpacity.value = 1;
+    selectionOpacity.value = withTiming(0, { duration: 150 }, (finished) => {
+      if (finished) {
+        selectionOpacity.value = 1;
+        anchorCell.value = null;
+        targetCell.value = null;
+        hasLine.value = false;
+      }
     });
+  }
+
+  // JS-side wrapper -- only JS can call `onAttemptSelection`, so this is
+  // what onEnd hands off to via runOnJS once it has a real 2+ cell line.
+  function handleAttemptSelection(line: Cell[]): void {
+    const matched = onAttemptSelection(line);
+    if (matched !== null) {
+      anchorCell.value = null;
+      targetCell.value = null;
+      hasLine.value = false;
+    } else {
+      playRejectFade();
+    }
   }
 
   // Recreated every render -- a cheap config builder, not a stateful native
   // object -- so its callbacks always close over the current render's
   // `onAttemptSelection` directly; no ref-freshening needed for that
-  // (unlike `currentLineRef` above, which solves a different, same-gesture-
-  // lifecycle timing issue).
+  // (unlike the shared values above, which solve a different, same-gesture-
+  // lifecycle timing issue -- staying valid across onUpdate calls that fire
+  // faster than a JS re-render could keep up).
   // `minDistance(0)` tracks from the very first pixel of movement, matching
   // the old PanResponder's immediate-grant behavior. The board still sits
   // inside a ScrollView here (see GameScreen) -- gesture-handler's Pan
@@ -221,34 +296,37 @@ export default function FindWordsGrid({ level, foundIndices, celebrate, onCelebr
     .maxPointers(1)
     .shouldCancelWhenOutside(false)
     .onBegin((e) => {
-      const cell = cellAt(e.x, e.y);
-      anchorRef.current = cell;
-      selectionOpacity.setValue(1);
-      setCurrentLine([cell]);
+      const cell = cellAtWorklet(e.x, e.y);
+      anchorCell.value = cell;
+      targetCell.value = cell;
+      hasLine.value = false;
+      selectionOpacity.value = 1;
     })
     .onUpdate((e) => {
-      const anchor = anchorRef.current;
+      const anchor = anchorCell.value;
       if (!anchor) return;
-      const target = cellAt(e.x, e.y);
-      setCurrentLine(lineFromDrag(anchor, target, rows, cols));
+      const target = cellAtWorklet(e.x, e.y);
+      targetCell.value = target;
+      const line = lineFromDrag(anchor, target, rows, cols);
+      hasLine.value = line.length >= 2;
     })
     .onEnd((_e, success) => {
-      anchorRef.current = null;
-      if (!success) {
-        setCurrentLine(null);
+      const anchor = anchorCell.value;
+      const target = targetCell.value;
+      if (!success || !anchor || !target) {
+        anchorCell.value = null;
+        targetCell.value = null;
+        hasLine.value = false;
         return;
       }
-      const line = currentLineRef.current;
-      if (!line || line.length < 2) {
-        setCurrentLine(null);
+      const line = lineFromDrag(anchor, target, rows, cols);
+      if (line.length < 2) {
+        anchorCell.value = null;
+        targetCell.value = null;
+        hasLine.value = false;
         return;
       }
-      const matched = onAttemptSelection(line);
-      if (matched !== null) {
-        setCurrentLine(null);
-      } else {
-        playRejectFade();
-      }
+      runOnJS(handleAttemptSelection)(line);
     });
 
   const gridRows: React.ReactNode[] = [];
@@ -289,11 +367,17 @@ export default function FindWordsGrid({ level, foundIndices, celebrate, onCelebr
         })}
       </View>
 
-      {currentLine && currentLine.length >= 2 && (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <SelectionCapsule cells={currentLine} size={size} opacity={selectionOpacity} />
-        </View>
-      )}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <SelectionCapsule
+          anchorCell={anchorCell}
+          targetCell={targetCell}
+          hasLine={hasLine}
+          rows={rows}
+          cols={cols}
+          size={size}
+          opacity={selectionOpacity}
+        />
+      </View>
 
       {/* Childless overlay carries the gesture, on top of and matching the
           grid exactly -- see ShikakuGrid/BlockFillGrid for why. */}

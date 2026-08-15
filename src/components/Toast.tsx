@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { Animated, Text } from 'react-native';
+import { Text } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { fonts } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
 
@@ -18,22 +19,24 @@ export function useToast(): ToastContextValue {
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const styles = useStyles();
   const [message, setMessage] = useState('');
-  const opacity = useRef(new Animated.Value(0)).current;
+  const opacity = useSharedValue(0);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setMessage(msg);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    Animated.timing(opacity, { toValue: 1, duration: 160, useNativeDriver: true }).start();
+    opacity.value = withTiming(1, { duration: 160 });
     hideTimer.current = setTimeout(() => {
-      Animated.timing(opacity, { toValue: 0, duration: 220, useNativeDriver: true }).start();
+      opacity.value = withTiming(0, { duration: 220 });
     }, 1800);
   }, [opacity]);
+
+  const toastStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <Animated.View pointerEvents="none" style={[styles.toast, { opacity }]}>
+      <Animated.View pointerEvents="none" style={[styles.toast, toastStyle]}>
         <Text style={styles.text}>{message}</Text>
       </Animated.View>
     </ToastContext.Provider>

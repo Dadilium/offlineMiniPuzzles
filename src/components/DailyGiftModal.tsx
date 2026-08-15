@@ -1,5 +1,15 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, radii } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
@@ -23,31 +33,39 @@ interface Props {
 export default function DailyGiftModal({ visible, amount, title, message, confirmLabel, onConfirm }: Props) {
   const { colors } = useTheme();
   const styles = useStyles();
-  const pop = useRef(new Animated.Value(0)).current;
-  const wobble = useRef(new Animated.Value(0)).current;
+  const pop = useSharedValue(0);
+  const wobble = useSharedValue(0);
 
   useEffect(() => {
     if (!visible) return;
-    pop.setValue(0);
-    wobble.setValue(0);
-    Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 10 }).start();
-    Animated.sequence([
-      Animated.delay(150),
-      Animated.timing(wobble, { toValue: 1, duration: 200, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-      Animated.spring(wobble, { toValue: 0, useNativeDriver: true, speed: 10, bounciness: 14 }),
-    ]).start();
+    pop.value = 0;
+    wobble.value = 0;
+    pop.value = withSpring(1, { duration: 350, dampingRatio: 0.7 });
+    wobble.value = withDelay(
+      150,
+      withSequence(
+        withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) }),
+        withSpring(0, { duration: 300, dampingRatio: 0.55 })
+      )
+    );
   }, [visible, pop, wobble]);
+
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: pop.value,
+    transform: [{ scale: interpolate(pop.value, [0, 1], [0.7, 1]) }],
+  }));
+
+  const bulbStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${interpolate(wobble.value, [0, 1], [0, -10])}deg` }],
+  }));
 
   if (!visible) return null;
 
-  const scale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] });
-  const tilt = wobble.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-10deg'] });
-
   return (
     <View style={styles.backdrop} pointerEvents="box-none">
-      <Animated.View style={[styles.card, { opacity: pop, transform: [{ scale }] }]}>
+      <Animated.View style={[styles.card, cardStyle]}>
         <View style={styles.bulbStage}>
-          <Animated.View style={[styles.bulbCircle, { transform: [{ rotate: tilt }] }]}>
+          <Animated.View style={[styles.bulbCircle, bulbStyle]}>
             <Ionicons name="bulb" size={48} color={colors.gold} />
           </Animated.View>
           <View style={styles.badge}>
