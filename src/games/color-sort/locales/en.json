@@ -4,7 +4,9 @@
     "tag": "Pour & sort puzzle"
   },
   "hub": {
-    "tagline": "Pour colors between tubes until every color lands in one tube of its own."
+    "tagline": "Pour colors between tubes until every color lands in one tube of its own.",
+    "colorblindToggleLabel": "Colorblind-friendly icons",
+    "colorblindToggleSub": "Adds a distinct shape to every color"
   },
   "tutorial": {
     "all": [

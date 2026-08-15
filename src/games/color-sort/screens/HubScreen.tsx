@@ -5,6 +5,7 @@ import GameHubScreen from '../../../components/GameHubScreen';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { getResumeIndex } from '../../../utils/levelProgress';
 import ColorSortCardArt from '../CardArt';
+import ColorblindToggleRow from '../components/ColorblindToggleRow';
 import type { ColorSortStackParamList } from '../navigation';
 import { useColorSortProgress } from '../state/useColorSortProgress';
 
@@ -12,7 +13,7 @@ type Props = NativeStackScreenProps<ColorSortStackParamList, 'ColorSortHub'>;
 
 export default function HubScreen({ navigation }: Props) {
   const { colors } = useTheme();
-  const { levelsCompleted, levelsSkipped, tutorialsSeen } = useColorSortProgress();
+  const { levelsCompleted, levelsSkipped, tutorialsSeen, showColorblindIcons, setShowColorblindIcons } = useColorSortProgress();
   const { t } = useTranslation('color-sort');
   const { t: tc } = useTranslation('common');
 
@@ -40,6 +41,15 @@ export default function HubScreen({ navigation }: Props) {
       onLevels={() => navigation.navigate('ColorSortLevels')}
       howToPlayLabel={tc('actions.howToPlay')}
       onHowToPlay={() => navigation.navigate('ColorSortTutorial', { tutorialKey: 'all', pendingLevelIndex: null })}
+      aboveActions={
+        <ColorblindToggleRow
+          label={t('hub.colorblindToggleLabel')}
+          sub={t('hub.colorblindToggleSub')}
+          value={showColorblindIcons}
+          onChange={setShowColorblindIcons}
+          accentColor={colors.cyan}
+        />
+      }
     />
   );
 }

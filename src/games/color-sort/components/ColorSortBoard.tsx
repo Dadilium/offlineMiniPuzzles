@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeProvider';
-import { colorForId } from '../palette';
+import { colorForId, iconForId } from '../palette';
 import type { Tube } from '../types';
 
 const MIN_TUBE_W = 40;
@@ -45,6 +46,7 @@ interface UnitProps {
   height: number;
   isBottom: boolean;
   isTop: boolean;
+  showIcon: boolean;
 }
 
 /** One color's liquid slot inside a tube -- rises into place with a
@@ -53,7 +55,7 @@ interface UnitProps {
  * gets the glass's rounded-bottom radius and only the top-most slot gets a
  * curved "meniscus" top, so a run of same-color slots reads as one
  * continuous column of liquid rather than stacked bricks. */
-function Unit({ colorId, width, height, isBottom, isTop }: UnitProps) {
+function Unit({ colorId, width, height, isBottom, isTop, showIcon }: UnitProps) {
   const grow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -78,6 +80,13 @@ function Unit({ colorId, width, height, isBottom, isTop }: UnitProps) {
       ]}
     >
       {isTop && <View style={styles.unitSheen} />}
+      {showIcon && (
+        // White + dark shadow reads on every hue in the palette (light gold
+        // as much as dark indigo) without needing a per-color text-color
+        // decision -- see palette.ts's colorblind-mode comment for why the
+        // shape itself is never color-coded.
+        <Ionicons name={iconForId(colorId)} size={Math.min(width, height) * 0.62} color="#fff" style={styles.unitIcon} />
+      )}
     </Animated.View>
   );
 }
@@ -93,10 +102,11 @@ interface TubeProps {
   solved: boolean;
   tiltDir: 1 | -1 | 0;
   isPourDest: boolean;
+  showIcons: boolean;
   onPress: () => void;
 }
 
-function TubeView({ index, tube, capacity, layout, selected, highlighted, shake, solved, tiltDir, isPourDest, onPress }: TubeProps) {
+function TubeView({ index, tube, capacity, layout, selected, highlighted, shake, solved, tiltDir, isPourDest, showIcons, onPress }: TubeProps) {
   const { colors } = useTheme();
   const { tubeW, unitH } = layout;
   const tubeH = unitH * (capacity + 1.1);
@@ -177,7 +187,15 @@ function TubeView({ index, tube, capacity, layout, selected, highlighted, shake,
           <View pointerEvents="none" style={[styles.glassShine, { left: tubeW * 0.14 }]} />
           <View style={styles.tubeInner}>
             {tube.map((colorId, u) => (
-              <Unit key={`${index}-${u}`} colorId={colorId} width={unitWidth} height={unitH} isBottom={u === 0} isTop={u === tube.length - 1} />
+              <Unit
+                key={`${index}-${u}`}
+                colorId={colorId}
+                width={unitWidth}
+                height={unitH}
+                isBottom={u === 0}
+                isTop={u === tube.length - 1}
+                showIcon={showIcons}
+              />
             ))}
           </View>
         </View>
@@ -197,10 +215,13 @@ interface Props {
   hint: { from: number; to: number } | null;
   shakeTube: number | null;
   pouring: { from: number; to: number } | null;
+  /** Colorblind-friendly mode: overlays a shape icon on every unit so tubes
+   * can be matched without relying on hue at all -- see palette.ts. */
+  showIcons: boolean;
   onTubePress: (index: number) => void;
 }
 
-export default function ColorSortBoard({ tubes, capacity, selected, hint, shakeTube, pouring, onTubePress }: Props) {
+export default function ColorSortBoard({ tubes, capacity, selected, hint, shakeTube, pouring, showIcons, onTubePress }: Props) {
   const layout = layoutFor(tubes.length, capacity);
   const rowSize = layout.perRow;
 
@@ -231,6 +252,7 @@ export default function ColorSortBoard({ tubes, capacity, selected, hint, shakeT
                 solved={isSolvedTube(tube, capacity)}
                 tiltDir={tiltDirFor(index)}
                 isPourDest={!!pouring && pouring.to === index}
+                showIcons={showIcons}
                 onPress={() => onTubePress(index)}
               />
             );
@@ -252,7 +274,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tubeInner: { flexDirection: 'column-reverse', alignItems: 'center', paddingBottom: 3 },
-  unit: {},
+  unit: { alignItems: 'center', justifyContent: 'center' },
   unitSheen: {
     position: 'absolute',
     top: 2,
@@ -261,6 +283,11 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 1,
     backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  unitIcon: {
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   glassShine: {
     position: 'absolute',

@@ -1,3 +1,5 @@
+import type { Ionicons } from '@expo/vector-icons';
+
 // Fixed hue per color id, cycled through the full spectrum so every id up
 // to the hardest tier's 11 colors is still clearly distinguishable on the
 // dark theme background. Colors don't vary by level (unlike Block Fill's
@@ -23,3 +25,28 @@ export function colorForId(colorId: number): string {
 }
 
 export const MAX_TUBE_COLORS = TUBE_COLORS.length;
+
+/** One shape per color id, index-aligned with `TUBE_COLORS` -- the
+ * colorblind-friendly mode's whole job is letting a player match tubes by
+ * SHAPE alone, so these must read as distinct silhouettes even at the small
+ * size a tube segment renders at, not just distinct as icons in isolation.
+ * Deliberately not color-coded here (red isn't tied to "star", etc.) since
+ * that would just be reintroducing a color dependency through the back door. */
+const COLOR_ICONS: Array<keyof typeof Ionicons.glyphMap> = [
+  'star',
+  'heart',
+  'square',
+  'triangle',
+  'ellipse',
+  'diamond',
+  'flower',
+  'leaf',
+  'flash',
+  'moon',
+  'sunny',
+  'snow',
+];
+
+export function iconForId(colorId: number): keyof typeof Ionicons.glyphMap {
+  return COLOR_ICONS[colorId % COLOR_ICONS.length];
+}

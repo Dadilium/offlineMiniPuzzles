@@ -13,6 +13,8 @@ interface ColorSortCustom {
   /** The live in-progress arrangement -- separate from generatedLevels[idx].tubes so play can resume mid-solve. */
   tubesByLevel: Record<number, Tube[]>;
   moveCountByLevel: Record<number, number>;
+  /** Colorblind-friendly mode toggle (per-player preference, not per-level) -- see ColorSortBoard/palette.ts. Off by default. */
+  showColorblindIcons: boolean;
 }
 
 function isValidLevel(level: unknown): level is ColorSortLevel {
@@ -37,7 +39,7 @@ const store = createProgressStore<ColorSortLevel, ColorSortCustom>({
   generate: (levelIndex, skillRating, recentFingerprints) =>
     createLevelForIndexRobust(levelIndex, skillRating as SkillRating, recentFingerprints),
   fingerprint: (level) => fingerprintColorSort(level.tubes, level.capacity),
-  defaultCustom: () => ({ tubesByLevel: {}, moveCountByLevel: {} }),
+  defaultCustom: () => ({ tubesByLevel: {}, moveCountByLevel: {}, showColorblindIcons: false }),
   sanitizeCustom: (raw, generatedLevels) => {
     const parsed = (raw ?? {}) as Partial<ColorSortCustom>;
     const rawTubes = (parsed.tubesByLevel ?? {}) as Record<string, unknown>;
@@ -49,13 +51,15 @@ const store = createProgressStore<ColorSortLevel, ColorSortCustom>({
       tubesByLevel[idx] = sanitizeTubes(rawTubes[key], level);
       moveCountByLevel[idx] = typeof rawMoveCount[key] === 'number' ? (rawMoveCount[key] as number) : 0;
     }
-    return { tubesByLevel, moveCountByLevel };
+    return { tubesByLevel, moveCountByLevel, showColorblindIcons: parsed.showColorblindIcons === true };
   },
   onLevelGenerated: (custom, level, levelIndex) => ({
+    ...custom,
     tubesByLevel: { ...custom.tubesByLevel, [levelIndex]: level.tubes.map((t) => t.slice()) },
     moveCountByLevel: { ...custom.moveCountByLevel, [levelIndex]: 0 },
   }),
   resetLevelCustom: (custom, level, levelIndex) => ({
+    ...custom,
     tubesByLevel: { ...custom.tubesByLevel, [levelIndex]: level.tubes.map((t) => t.slice()) },
     moveCountByLevel: { ...custom.moveCountByLevel, [levelIndex]: 0 },
   }),
@@ -89,6 +93,9 @@ interface ColorSortProgressContextValue {
   markTutorialSeen: (key: string) => void;
   /** Wipes all generated levels, tubes, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
   resetAllProgress: () => void;
+  /** Colorblind-friendly mode: overlays a shape icon on every tube unit. Off by default -- see ColorSortBoard/palette.ts. */
+  showColorblindIcons: boolean;
+  setShowColorblindIcons: (value: boolean) => void;
 }
 
 export const ColorSortProgressProvider = store.Provider;
@@ -109,6 +116,7 @@ export function useColorSortProgress(): ColorSortProgressContextValue {
       commit({
         ...current,
         custom: {
+          ...current.custom,
           tubesByLevel: { ...current.custom.tubesByLevel, [levelIndex]: result.tubes },
           moveCountByLevel: { ...current.custom.moveCountByLevel, [levelIndex]: (current.custom.moveCountByLevel[levelIndex] ?? 0) + 1 },
         },
@@ -140,6 +148,7 @@ export function useColorSortProgress(): ColorSortProgressContextValue {
       commit({
         ...current,
         custom: {
+          ...current.custom,
           tubesByLevel: { ...current.custom.tubesByLevel, [levelIndex]: tubes },
           moveCountByLevel: {
             ...current.custom.moveCountByLevel,
@@ -147,6 +156,14 @@ export function useColorSortProgress(): ColorSortProgressContextValue {
           },
         },
       });
+    },
+    [getCurrent, commit]
+  );
+
+  const setShowColorblindIcons = useCallback(
+    (value: boolean) => {
+      const current = getCurrent();
+      commit({ ...current, custom: { ...current.custom, showColorblindIcons: value } });
     },
     [getCurrent, commit]
   );
@@ -169,5 +186,7 @@ export function useColorSortProgress(): ColorSortProgressContextValue {
     markLevelSkipped: s.markLevelSkipped,
     markTutorialSeen: s.markTutorialSeen,
     resetAllProgress: s.resetAllProgress,
+    showColorblindIcons: s.custom.showColorblindIcons,
+    setShowColorblindIcons,
   };
 }

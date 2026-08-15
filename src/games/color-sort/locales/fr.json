@@ -4,7 +4,9 @@
     "tag": "Puzzle à verser et trier"
   },
   "hub": {
-    "tagline": "Versez les couleurs entre les tubes jusqu'à ce que chaque couleur ait son propre tube."
+    "tagline": "Versez les couleurs entre les tubes jusqu'à ce que chaque couleur ait son propre tube.",
+    "colorblindToggleLabel": "Icônes daltonisme",
+    "colorblindToggleSub": "Ajoute une forme distincte à chaque couleur"
   },
   "tutorial": {
     "all": [

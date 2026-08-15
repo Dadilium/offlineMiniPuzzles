@@ -42,6 +42,7 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelComplete,
     markLevelSkipped,
     levelsCompleted,
+    showColorblindIcons,
   } = useColorSortProgress();
   const { showToast } = useToast();
   const { t } = useTranslation('color-sort');
@@ -264,6 +265,7 @@ export default function GameScreen({ route, navigation }: Props) {
         hint={hint}
         shakeTube={shakeTube}
         pouring={pouring}
+        showIcons={showColorblindIcons}
         onTubePress={onTubePress}
       />
     </GameScreenLayout>
