@@ -3,6 +3,7 @@
     "title": "Puzzle Den",
     "readySection": "Ready to play",
     "comingSoonSection": "More puzzles incoming",
+    "newBadge": "NEW",
     "navSettings": "SETTINGS",
     "dailyHintTitle": "Daily hint bonus!",
     "dailyHintMessage_one": "+{{count}} hint added to your wallet. Come back tomorrow for another.",

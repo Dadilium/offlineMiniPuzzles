@@ -3,6 +3,7 @@
     "title": "Puzzle Den",
     "readySection": "Prêt à jouer",
     "comingSoonSection": "D'autres jeux arrivent",
+    "newBadge": "NOUVEAU",
     "navSettings": "RÉGLAGES",
     "dailyHintTitle": "Bonus d'indice quotidien !",
     "dailyHintMessage_one": "+{{count}} indice ajouté à votre réserve. Revenez demain pour un autre.",

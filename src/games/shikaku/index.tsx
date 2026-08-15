@@ -17,6 +17,7 @@ export const shikakuGame: GameModule = {
   id: 'shikaku',
   status: 'ready',
   accentColor: darkPalette.signalRed,
+  isNew: true,
   CardArt: ShikakuCardArt,
   Provider: ShikakuProgressProvider,
   screens: [

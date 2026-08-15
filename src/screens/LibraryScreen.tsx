@@ -57,6 +57,7 @@ export default function LibraryScreen({ navigation }: Props) {
               tag={translateDynamic(t, `${game.id}:meta.tag`)}
               color={game.accentColor}
               ArtComponent={game.CardArt}
+              isNew={game.isNew}
               onPress={() => navigation.navigate(game.entryScreen as any)}
             />
           ))}

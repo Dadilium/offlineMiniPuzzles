@@ -16,14 +16,14 @@ import type { ComingSoonEntry, GameModule } from './types';
 //   import { newGame } from './new-game';
 //   export const games: GameModule[] = [relayGame, kingsGame, newGame];
 export const games: GameModule[] = [
-  kingsGame,
-  matchingNumbersGame,
-  blockFillGame,
-  crossSumsGame,
-  colorSortGame,
-  tentsAndTreesGame,
   shikakuGame,
   findWordsGame,
+  kingsGame,
+  crossSumsGame,
+  colorSortGame,
+  matchingNumbersGame,
+  tentsAndTreesGame,
+  blockFillGame,
 ];
 
 export const comingSoon: ComingSoonEntry[] = [];

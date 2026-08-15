@@ -12,6 +12,9 @@ export interface GameModule {
   status: 'ready' | 'locked';
   /** Tint for this game's Library/hub pulse icon. Defaults to signal blue. */
   accentColor?: string;
+  /** Shows a pulsing "new" badge on this game's Library card. Set by hand,
+   * unset once a game stops being newsworthy -- no auto-expiry. */
+  isNew?: boolean;
   /** Small vector motif representing this game on its Library grid card. */
   CardArt?: ComponentType<{ size: number; color: string }>;
   /** Optional context provider for the game's own persisted state. */

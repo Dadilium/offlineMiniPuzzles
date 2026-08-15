@@ -16,6 +16,7 @@ export const findWordsGame: GameModule = {
   // registry.ts) can't call useTheme() -- accent hues are identical across
   // both palettes by design, so the dark value is theme-invariant here.
   accentColor: darkPalette.teal,
+  isNew: true,
   CardArt: FindWordsCardArt,
   Provider: FindWordsProgressProvider,
   screens: [
