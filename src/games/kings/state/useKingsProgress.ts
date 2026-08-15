@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback } from 'react';
+import { createProgressStore } from '../../../state/createProgressStore';
 import { applyHint, cycleCellState, makeEmptyBoard } from '../engine';
 import {
   BACKGROUND_DEADLINES,
@@ -12,36 +12,13 @@ import {
 } from '../generation';
 import type { CellState, KingsLevel } from '../types';
 
-const STORAGE_KEY = '@signal-arcade/kings/progress/v2';
-/** Bounds the shape-dedup history so it can't grow unbounded over 1000+ levels. */
-const MAX_RECENT_FINGERPRINTS = 50;
+// v3: internal shape changed when progress moved onto the shared
+// createProgressStore -- old entries just get a clean slate (see that
+// file's storageKey doc).
+const STORAGE_KEY = '@signal-arcade/kings/progress/v3';
 
-interface PersistedShape {
-  /** Every level a player has reached is generated once and kept forever --
-   * replaying an old level must show the same puzzle even after skill rating
-   * has moved on. Keyed by level index; footprint is trivial (a level is
-   * ~200-350 bytes as JSON), so there's no need to evict old entries. */
-  generatedLevels: Record<number, KingsLevel>;
+interface KingsCustom {
   boardsByLevel: Record<number, CellState[][]>;
-  levelsCompleted: number[];
-  levelsSkipped: number[];
-  tutorialsSeen: string[];
-  skillRating: SkillRating;
-  recentFingerprints: string[];
-  hintsUsedByLevel: Record<number, number>;
-}
-
-function defaultState(): PersistedShape {
-  return {
-    generatedLevels: {},
-    boardsByLevel: {},
-    levelsCompleted: [],
-    levelsSkipped: [],
-    tutorialsSeen: [],
-    skillRating: INITIAL_SKILL_RATING,
-    recentFingerprints: [],
-    hintsUsedByLevel: {},
-  };
 }
 
 function isValidLevel(level: unknown): level is KingsLevel {
@@ -58,32 +35,42 @@ function sanitizeBoard(board: unknown, n: number): CellState[][] {
   return board as CellState[][];
 }
 
-function sanitizePersisted(parsed: Partial<PersistedShape> | null): PersistedShape {
-  if (!parsed) return defaultState();
-
-  const generatedLevels: Record<number, KingsLevel> = {};
-  const boardsByLevel: Record<number, CellState[][]> = {};
-  const rawBoards = (parsed.boardsByLevel ?? {}) as Record<string, unknown>;
-
-  for (const [key, level] of Object.entries(parsed.generatedLevels ?? {})) {
-    if (!isValidLevel(level)) continue;
-    const idx = Number(key);
-    generatedLevels[idx] = level;
-    boardsByLevel[idx] = sanitizeBoard(rawBoards[key], level.n);
-  }
-
-  return {
-    generatedLevels,
-    boardsByLevel,
-    levelsCompleted: Array.isArray(parsed.levelsCompleted) ? parsed.levelsCompleted : [],
-    levelsSkipped: Array.isArray(parsed.levelsSkipped) ? parsed.levelsSkipped : [],
-    tutorialsSeen: Array.isArray(parsed.tutorialsSeen) ? parsed.tutorialsSeen : [],
-    skillRating: typeof parsed.skillRating === 'number' ? parsed.skillRating : INITIAL_SKILL_RATING,
-    recentFingerprints: Array.isArray(parsed.recentFingerprints) ? parsed.recentFingerprints.slice(-MAX_RECENT_FINGERPRINTS) : [],
-    hintsUsedByLevel:
-      parsed.hintsUsedByLevel && typeof parsed.hintsUsedByLevel === 'object' ? (parsed.hintsUsedByLevel as Record<number, number>) : {},
-  };
-}
+const store = createProgressStore<KingsLevel, KingsCustom>({
+  storageKey: STORAGE_KEY,
+  initialSkillRating: INITIAL_SKILL_RATING,
+  nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
+  isValidLevel,
+  // Pass `urgent: true` only when a player is actively waiting on this
+  // specific level (the loading state is on screen) -- it trades a lower
+  // chance of the exact skill-matched board for a hard cap on wait time.
+  // Background prefetch calls should omit it.
+  generate: (levelIndex, skillRating, recentFingerprints, _custom, opts) =>
+    createLevelForIndexRobust(levelIndex, skillRating as SkillRating, recentFingerprints, opts?.urgent ? URGENT_DEADLINES : BACKGROUND_DEADLINES),
+  fingerprint: (level) => fingerprintRegions(level.regions),
+  defaultCustom: () => ({ boardsByLevel: {} }),
+  sanitizeCustom: (raw, generatedLevels) => {
+    const parsed = (raw ?? {}) as Partial<KingsCustom>;
+    const rawBoards = (parsed.boardsByLevel ?? {}) as Record<string, unknown>;
+    const boardsByLevel: Record<number, CellState[][]> = {};
+    for (const [key, level] of Object.entries(generatedLevels)) {
+      boardsByLevel[Number(key)] = sanitizeBoard(rawBoards[key], level.n);
+    }
+    return { boardsByLevel };
+  },
+  onLevelGenerated: (custom, level, levelIndex) => ({
+    boardsByLevel: { ...custom.boardsByLevel, [levelIndex]: makeEmptyBoard(level.n) },
+  }),
+  resetLevelCustom: (custom, level, levelIndex) => ({
+    boardsByLevel: { ...custom.boardsByLevel, [levelIndex]: makeEmptyBoard(level.n) },
+  }),
+  // GameScreen extends this same idea by prefetching the *next* level the
+  // moment the current one is opened, so the whole play session (not just
+  // the win/confetti moment) is the background-generation window --
+  // important for n=8-9 boards, which can occasionally take several seconds
+  // to find. Only the very first level (this bootstrap call) needs urgent
+  // deadlines; prefetch calls elsewhere omit it.
+  initialEnsureOpts: { urgent: true },
+});
 
 interface KingsProgressContextValue {
   ready: boolean;
@@ -113,197 +100,59 @@ interface KingsProgressContextValue {
   resetAllProgress: () => void;
 }
 
-const KingsProgressContext = createContext<KingsProgressContextValue | null>(null);
-
-export function KingsProgressProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<PersistedShape>(defaultState);
-  const [ready, setReady] = useState(false);
-  const loadedOnce = useRef(false);
-  // Mirrors `state` but updated synchronously (ahead of React's re-render),
-  // so back-to-back calls in the same tick -- e.g. generating the current
-  // level, then immediately prefetching the next one -- both see fresh data
-  // instead of racing against a stale closure over `state`.
-  const stateRef = useRef(state);
-  stateRef.current = state;
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        const parsed = raw ? (JSON.parse(raw) as Partial<PersistedShape>) : null;
-        const sanitized = sanitizePersisted(parsed);
-        stateRef.current = sanitized;
-        setState(sanitized);
-      } catch {
-        // corrupt/missing storage — fall back to defaults, already set
-      } finally {
-        loadedOnce.current = true;
-        setReady(true);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!loadedOnce.current) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
-  }, [state]);
-
-  const levelFor = useCallback((levelIndex: number): KingsLevel | undefined => state.generatedLevels[levelIndex], [state]);
-
-  // Tracks levels currently being generated so a second call for the same
-  // index (e.g. the same prefetch firing twice) doesn't kick off a duplicate
-  // search -- generation is no longer instant, so overlapping calls are
-  // expected rather than a same-tick edge case.
-  const pendingGeneration = useRef<Set<number>>(new Set());
-
-  const ensureLevel = useCallback((levelIndex: number, opts?: { urgent?: boolean }): void => {
-    const current = stateRef.current;
-    if (current.generatedLevels[levelIndex]) return;
-    if (pendingGeneration.current.has(levelIndex)) return;
-    pendingGeneration.current.add(levelIndex);
-
-    const deadlines = opts?.urgent ? URGENT_DEADLINES : BACKGROUND_DEADLINES;
-    createLevelForIndexRobust(levelIndex, current.skillRating, current.recentFingerprints, deadlines)
-      .then((level) => {
-        pendingGeneration.current.delete(levelIndex);
-        const latest = stateRef.current;
-        if (latest.generatedLevels[levelIndex]) return; // generated via another path while this was in flight
-        const fingerprint = fingerprintRegions(level.regions);
-        const next: PersistedShape = {
-          ...latest,
-          generatedLevels: { ...latest.generatedLevels, [levelIndex]: level },
-          boardsByLevel: { ...latest.boardsByLevel, [levelIndex]: makeEmptyBoard(level.n) },
-          recentFingerprints: [...latest.recentFingerprints, fingerprint].slice(-MAX_RECENT_FINGERPRINTS),
-        };
-        stateRef.current = next;
-        setState(next);
-      })
-      .catch(() => {
-        pendingGeneration.current.delete(levelIndex);
-      });
-  }, []);
-
-  // Always keep one level ready ahead of the player rather than only
-  // generating on demand: as soon as the app has loaded progress, make sure
-  // the very first level exists. GameScreen extends this same idea by
-  // prefetching the *next* level the moment the current one is opened, so
-  // the whole play session (not just the win/confetti moment) is the
-  // background-generation window -- important for n=8-9 boards, which can
-  // occasionally take several seconds to find.
-  useEffect(() => {
-    if (ready) ensureLevel(0, { urgent: true });
-  }, [ready, ensureLevel]);
-
-  const cycleCell = useCallback((levelIndex: number, r: number, c: number) => {
-    const current = stateRef.current;
-    const board = current.boardsByLevel[levelIndex];
-    if (!board) return;
-    const nextBoard = board.map((row) => row.slice());
-    nextBoard[r][c] = cycleCellState(board[r][c]);
-    const next: PersistedShape = { ...current, boardsByLevel: { ...current.boardsByLevel, [levelIndex]: nextBoard } };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  /** Reveals one correct king as a locked hint cell. Returns false if the level has no hint left to give. */
-  const giveHint = useCallback((levelIndex: number): boolean => {
-    const current = stateRef.current;
-    const level = current.generatedLevels[levelIndex];
-    const board = current.boardsByLevel[levelIndex];
-    if (!level || !board) return false;
-    const nextBoard = applyHint(level, board);
-    if (!nextBoard) return false;
-
-    const next: PersistedShape = {
-      ...current,
-      boardsByLevel: { ...current.boardsByLevel, [levelIndex]: nextBoard },
-      hintsUsedByLevel: { ...current.hintsUsedByLevel, [levelIndex]: (current.hintsUsedByLevel[levelIndex] ?? 0) + 1 },
-    };
-    stateRef.current = next;
-    setState(next);
-    return true;
-  }, []);
-
-  const resetLevel = useCallback((levelIndex: number) => {
-    const current = stateRef.current;
-    const level = current.generatedLevels[levelIndex];
-    if (!level) return;
-    const next: PersistedShape = {
-      ...current,
-      boardsByLevel: { ...current.boardsByLevel, [levelIndex]: makeEmptyBoard(level.n) },
-      hintsUsedByLevel: { ...current.hintsUsedByLevel, [levelIndex]: 0 },
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const markLevelComplete = useCallback((levelIndex: number) => {
-    const current = stateRef.current;
-    if (current.levelsCompleted.includes(levelIndex)) return;
-    const hintsUsed = current.hintsUsedByLevel[levelIndex] ?? 0;
-    const next: PersistedShape = {
-      ...current,
-      levelsCompleted: current.levelsCompleted.concat(levelIndex),
-      skillRating: nextSkillRating(current.skillRating, { hintsUsed, skipped: false }),
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  /** Marks a level skipped (via ad) so the next level unlocks -- distinct from actually solving it. */
-  const markLevelSkipped = useCallback((levelIndex: number) => {
-    const current = stateRef.current;
-    if (current.levelsCompleted.includes(levelIndex) || current.levelsSkipped.includes(levelIndex)) return;
-    const next: PersistedShape = {
-      ...current,
-      levelsSkipped: current.levelsSkipped.concat(levelIndex),
-      skillRating: nextSkillRating(current.skillRating, { hintsUsed: 0, skipped: true }),
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const markTutorialSeen = useCallback((key: string) => {
-    const current = stateRef.current;
-    if (current.tutorialsSeen.includes(key)) return;
-    const next: PersistedShape = { ...current, tutorialsSeen: current.tutorialsSeen.concat(key) };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const resetAllProgress = useCallback(() => {
-    const next = defaultState();
-    stateRef.current = next;
-    setState(next);
-    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
-  }, []);
-
-  const value = useMemo<KingsProgressContextValue>(
-    () => ({
-      ready,
-      levelFor,
-      ensureLevel,
-      boardsByLevel: state.boardsByLevel,
-      levelsCompleted: new Set(state.levelsCompleted),
-      levelsSkipped: new Set(state.levelsSkipped),
-      tutorialsSeen: new Set(state.tutorialsSeen),
-      skillRating: state.skillRating,
-      cycleCell,
-      giveHint,
-      resetLevel,
-      markLevelComplete,
-      markLevelSkipped,
-      markTutorialSeen,
-      resetAllProgress,
-    }),
-    [ready, state, levelFor, ensureLevel, cycleCell, giveHint, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen, resetAllProgress]
-  );
-
-  return React.createElement(KingsProgressContext.Provider, { value }, children);
-}
+export const KingsProgressProvider = store.Provider;
 
 export function useKingsProgress(): KingsProgressContextValue {
-  const ctx = useContext(KingsProgressContext);
-  if (!ctx) throw new Error('useKingsProgress must be used within a KingsProgressProvider');
-  return ctx;
+  const s = store.useProgress();
+  const { getCurrent, commit } = s;
+
+  const cycleCell = useCallback(
+    (levelIndex: number, r: number, c: number) => {
+      const current = getCurrent();
+      const board = current.custom.boardsByLevel[levelIndex];
+      if (!board) return;
+      const nextBoard = board.map((row) => row.slice());
+      nextBoard[r][c] = cycleCellState(board[r][c]);
+      commit({ ...current, custom: { boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } } });
+    },
+    [getCurrent, commit]
+  );
+
+  /** Reveals one correct king as a locked hint cell. Returns false if the level has no hint left to give. */
+  const giveHint = useCallback(
+    (levelIndex: number): boolean => {
+      const current = getCurrent();
+      const level = current.generatedLevels[levelIndex];
+      const board = current.custom.boardsByLevel[levelIndex];
+      if (!level || !board) return false;
+      const nextBoard = applyHint(level, board);
+      if (!nextBoard) return false;
+
+      commit({
+        ...current,
+        custom: { boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } },
+        hintsUsedByLevel: { ...current.hintsUsedByLevel, [levelIndex]: (current.hintsUsedByLevel[levelIndex] ?? 0) + 1 },
+      });
+      return true;
+    },
+    [getCurrent, commit]
+  );
+
+  return {
+    ready: s.ready,
+    levelFor: s.levelFor,
+    ensureLevel: s.ensureLevel,
+    boardsByLevel: s.custom.boardsByLevel,
+    levelsCompleted: s.levelsCompleted,
+    levelsSkipped: s.levelsSkipped,
+    tutorialsSeen: s.tutorialsSeen,
+    skillRating: s.skillRating as SkillRating,
+    cycleCell,
+    giveHint,
+    resetLevel: s.resetLevel,
+    markLevelComplete: s.markLevelComplete,
+    markLevelSkipped: s.markLevelSkipped,
+    markTutorialSeen: s.markTutorialSeen,
+    resetAllProgress: s.resetAllProgress,
+  };
 }

@@ -10,6 +10,7 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
+import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import FindWordsGrid from '../components/FindWordsGrid';
@@ -35,6 +36,7 @@ export default function GameScreen({ route, navigation }: Props) {
     ensureLevel,
     foundIndicesByLevel,
     attemptWord,
+    giveHint,
     resetLevel,
     markLevelComplete,
     markLevelSkipped,
@@ -158,6 +160,14 @@ export default function GameScreen({ route, navigation }: Props) {
     requestSkip();
   }
 
+  function attemptHint(): boolean {
+    const gaveHint = giveHint(levelIndex);
+    if (gaveHint) posthog?.capture('puzzle_hint_requested', { game_id: 'find-words', level_index: levelIndex + 1 });
+    return gaveHint;
+  }
+
+  const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
+
   if (!level) {
     return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
@@ -175,11 +185,10 @@ export default function GameScreen({ route, navigation }: Props) {
       }
       boardScrollable
       controls={
-        !revealWin && (
-          <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-            <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.teal} />
-          </View>
-        )
+        <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
+          <GameActionButton.Hint onPress={onHintPress} accentColor={colors.teal} hintCount={hintCount} />
+          {!revealWin && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.teal} />}
+        </View>
       }
       winOverlay={
         <WinOverlay

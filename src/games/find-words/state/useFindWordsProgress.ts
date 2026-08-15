@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback } from 'react';
+import { createProgressStore } from '../../../state/createProgressStore';
 import i18n from '../../../i18n';
-import { matchPlacement } from '../engine';
+import { matchPlacement, pickHintPlacement } from '../engine';
 import {
   createLevelForIndexRobust,
   fingerprintFindWords,
@@ -12,51 +12,23 @@ import {
 } from '../generation';
 import type { Cell, FindWordsLevel } from '../types';
 
-const STORAGE_KEY = '@signal-arcade/find-words/progress/v1';
-/** Bounds the shape-dedup history so it can't grow unbounded over 1000+ levels. */
-const MAX_RECENT_FINGERPRINTS = 50;
+// v2: internal shape changed when progress moved onto the shared
+// createProgressStore -- old entries just get a clean slate (see that
+// file's storageKey doc).
+const STORAGE_KEY = '@signal-arcade/find-words/progress/v2';
 /** Bounds the word-repeat-avoidance history -- large enough to cover several
  * levels' worth of words, small enough to stay well under even the smallest
  * word bank tier so generation never runs short of fresh words to pick from. */
 const MAX_RECENT_WORDS = 40;
-/**
- * Sanity ceiling on how many per-level entries a real player could ever
- * legitimately reach -- see useShikakuProgress.ts's identical guard for why
- * this self-heals rather than faithfully reloading (and re-persisting) a
- * corrupted/runaway-grown blob.
- */
-const MAX_GENERATED_LEVELS = 5000;
 
 /** App language and the word bank language are the same 'en'/'fr' set, so no mapping is needed -- just a defensive default for any value outside that set. */
 function currentLanguage(): WordBankLanguage {
   return i18n.language === 'fr' ? 'fr' : 'en';
 }
 
-interface PersistedShape {
-  /** Every level a player has reached is generated once and kept forever --
-   * replaying an old level must show the same puzzle even after skill rating
-   * or app language has since moved on. */
-  generatedLevels: Record<number, FindWordsLevel>;
+interface FindWordsCustom {
   foundIndicesByLevel: Record<number, number[]>;
-  levelsCompleted: number[];
-  levelsSkipped: number[];
-  tutorialsSeen: string[];
-  skillRating: SkillRating;
-  recentFingerprints: string[];
   recentWords: string[];
-}
-
-function defaultState(): PersistedShape {
-  return {
-    generatedLevels: {},
-    foundIndicesByLevel: {},
-    levelsCompleted: [],
-    levelsSkipped: [],
-    tutorialsSeen: [],
-    skillRating: INITIAL_SKILL_RATING,
-    recentFingerprints: [],
-    recentWords: [],
-  };
 }
 
 function isValidLevel(level: unknown): level is FindWordsLevel {
@@ -69,36 +41,39 @@ function sanitizeFoundIndices(found: unknown): number[] {
   return found.filter((i): i is number => typeof i === 'number');
 }
 
-function sanitizePersisted(parsed: Partial<PersistedShape> | null): PersistedShape {
-  if (!parsed) return defaultState();
-
-  const rawGeneratedLevels = parsed.generatedLevels;
-  if (rawGeneratedLevels && Object.keys(rawGeneratedLevels).length > MAX_GENERATED_LEVELS) {
-    return defaultState();
-  }
-
-  const generatedLevels: Record<number, FindWordsLevel> = {};
-  const foundIndicesByLevel: Record<number, number[]> = {};
-  const rawFound = (parsed.foundIndicesByLevel ?? {}) as Record<string, unknown>;
-
-  for (const [key, level] of Object.entries(parsed.generatedLevels ?? {})) {
-    if (!isValidLevel(level)) continue;
-    const idx = Number(key);
-    generatedLevels[idx] = level;
-    foundIndicesByLevel[idx] = sanitizeFoundIndices(rawFound[key]);
-  }
-
-  return {
-    generatedLevels,
-    foundIndicesByLevel,
-    levelsCompleted: Array.isArray(parsed.levelsCompleted) ? parsed.levelsCompleted : [],
-    levelsSkipped: Array.isArray(parsed.levelsSkipped) ? parsed.levelsSkipped : [],
-    tutorialsSeen: Array.isArray(parsed.tutorialsSeen) ? parsed.tutorialsSeen : [],
-    skillRating: typeof parsed.skillRating === 'number' ? parsed.skillRating : INITIAL_SKILL_RATING,
-    recentFingerprints: Array.isArray(parsed.recentFingerprints) ? parsed.recentFingerprints.slice(-MAX_RECENT_FINGERPRINTS) : [],
-    recentWords: Array.isArray(parsed.recentWords) ? parsed.recentWords.slice(-MAX_RECENT_WORDS) : [],
-  };
-}
+const store = createProgressStore<FindWordsLevel, FindWordsCustom>({
+  storageKey: STORAGE_KEY,
+  initialSkillRating: INITIAL_SKILL_RATING,
+  nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
+  isValidLevel,
+  generate: (levelIndex, skillRating, recentFingerprints, custom) =>
+    createLevelForIndexRobust(levelIndex, skillRating as SkillRating, currentLanguage(), recentFingerprints, custom.recentWords),
+  fingerprint: (level) => fingerprintFindWords(level.rows, level.cols, level.placements),
+  defaultCustom: () => ({ foundIndicesByLevel: {}, recentWords: [] }),
+  sanitizeCustom: (raw, generatedLevels) => {
+    const parsed = (raw ?? {}) as Partial<FindWordsCustom>;
+    const rawFound = (parsed.foundIndicesByLevel ?? {}) as Record<string, unknown>;
+    const foundIndicesByLevel: Record<number, number[]> = {};
+    for (const key of Object.keys(generatedLevels)) {
+      foundIndicesByLevel[Number(key)] = sanitizeFoundIndices(rawFound[key]);
+    }
+    return {
+      foundIndicesByLevel,
+      recentWords: Array.isArray(parsed.recentWords) ? parsed.recentWords.slice(-MAX_RECENT_WORDS) : [],
+    };
+  },
+  // Also updates the global recentWords list -- only on real generation, not
+  // on `resetLevel` (see resetLevelCustom), or replaying an already-cached
+  // level would keep re-pushing the same words into the dedup history.
+  onLevelGenerated: (custom, level, levelIndex) => ({
+    foundIndicesByLevel: { ...custom.foundIndicesByLevel, [levelIndex]: [] },
+    recentWords: [...custom.recentWords, ...level.placements.map((p) => p.word)].slice(-MAX_RECENT_WORDS),
+  }),
+  resetLevelCustom: (custom, _level, levelIndex) => ({
+    ...custom,
+    foundIndicesByLevel: { ...custom.foundIndicesByLevel, [levelIndex]: [] },
+  }),
+});
 
 interface FindWordsProgressContextValue {
   ready: boolean;
@@ -120,6 +95,8 @@ interface FindWordsProgressContextValue {
    * direction) and, on a match, marks it found. Returns the matched
    * placement index, or null if nothing matched (no state change). */
   attemptWord: (levelIndex: number, cells: Cell[]) => number | null;
+  /** Reveals one not-yet-found word in full. Returns false if every word is already found. */
+  giveHint: (levelIndex: number) => boolean;
   resetLevel: (levelIndex: number) => void;
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
@@ -128,169 +105,66 @@ interface FindWordsProgressContextValue {
   resetAllProgress: () => void;
 }
 
-const FindWordsProgressContext = createContext<FindWordsProgressContextValue | null>(null);
-
-export function FindWordsProgressProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<PersistedShape>(defaultState);
-  const [ready, setReady] = useState(false);
-  const loadedOnce = useRef(false);
-  // Mirrors `state` but updated synchronously (ahead of React's re-render),
-  // so back-to-back calls in the same tick both see fresh data instead of
-  // racing against a stale closure over `state`.
-  const stateRef = useRef(state);
-  stateRef.current = state;
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        const parsed = raw ? (JSON.parse(raw) as Partial<PersistedShape>) : null;
-        const sanitized = sanitizePersisted(parsed);
-        stateRef.current = sanitized;
-        setState(sanitized);
-      } catch {
-        // corrupt/missing storage — fall back to defaults, already set
-      } finally {
-        loadedOnce.current = true;
-        setReady(true);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!loadedOnce.current) return;
-    let serialized: string;
-    try {
-      serialized = JSON.stringify(state);
-    } catch {
-      return;
-    }
-    AsyncStorage.setItem(STORAGE_KEY, serialized).catch(() => {});
-  }, [state]);
-
-  const levelFor = useCallback((levelIndex: number): FindWordsLevel | undefined => state.generatedLevels[levelIndex], [state]);
-
-  const ensureLevel = useCallback((levelIndex: number): void => {
-    const current = stateRef.current;
-    if (current.generatedLevels[levelIndex]) return;
-
-    const level = createLevelForIndexRobust(
-      levelIndex,
-      current.skillRating,
-      currentLanguage(),
-      current.recentFingerprints,
-      current.recentWords
-    );
-    const fingerprint = fingerprintFindWords(level.rows, level.cols, level.placements);
-    const next: PersistedShape = {
-      ...current,
-      generatedLevels: { ...current.generatedLevels, [levelIndex]: level },
-      foundIndicesByLevel: { ...current.foundIndicesByLevel, [levelIndex]: [] },
-      recentFingerprints: [...current.recentFingerprints, fingerprint].slice(-MAX_RECENT_FINGERPRINTS),
-      recentWords: [...current.recentWords, ...level.placements.map((p) => p.word)].slice(-MAX_RECENT_WORDS),
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  // Always keep one level ready ahead of the player rather than only
-  // generating on demand: as soon as the app has loaded progress, make sure
-  // the very first level exists.
-  useEffect(() => {
-    if (ready) ensureLevel(0);
-  }, [ready, ensureLevel]);
-
-  const attemptWord = useCallback((levelIndex: number, cells: Cell[]): number | null => {
-    const current = stateRef.current;
-    const level = current.generatedLevels[levelIndex];
-    if (!level) return null;
-    const found = current.foundIndicesByLevel[levelIndex] ?? [];
-
-    const matched = matchPlacement(level, cells, found);
-    if (matched === null) return null;
-
-    const next: PersistedShape = {
-      ...current,
-      foundIndicesByLevel: { ...current.foundIndicesByLevel, [levelIndex]: [...found, matched] },
-    };
-    stateRef.current = next;
-    setState(next);
-    return matched;
-  }, []);
-
-  const resetLevel = useCallback((levelIndex: number) => {
-    const current = stateRef.current;
-    if (!current.generatedLevels[levelIndex]) return;
-    const next: PersistedShape = { ...current, foundIndicesByLevel: { ...current.foundIndicesByLevel, [levelIndex]: [] } };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const markLevelComplete = useCallback((levelIndex: number) => {
-    const current = stateRef.current;
-    if (current.levelsCompleted.includes(levelIndex)) return;
-    const next: PersistedShape = {
-      ...current,
-      levelsCompleted: current.levelsCompleted.concat(levelIndex),
-      skillRating: nextSkillRating(current.skillRating, { skipped: false }),
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  /** Marks a level skipped (via ad) so the next level unlocks -- distinct from actually solving it. */
-  const markLevelSkipped = useCallback((levelIndex: number) => {
-    const current = stateRef.current;
-    if (current.levelsCompleted.includes(levelIndex) || current.levelsSkipped.includes(levelIndex)) return;
-    const next: PersistedShape = {
-      ...current,
-      levelsSkipped: current.levelsSkipped.concat(levelIndex),
-      skillRating: nextSkillRating(current.skillRating, { skipped: true }),
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const markTutorialSeen = useCallback((key: string) => {
-    const current = stateRef.current;
-    if (current.tutorialsSeen.includes(key)) return;
-    const next: PersistedShape = { ...current, tutorialsSeen: current.tutorialsSeen.concat(key) };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const resetAllProgress = useCallback(() => {
-    const next = defaultState();
-    stateRef.current = next;
-    setState(next);
-    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
-  }, []);
-
-  const value = useMemo<FindWordsProgressContextValue>(
-    () => ({
-      ready,
-      levelFor,
-      ensureLevel,
-      foundIndicesByLevel: state.foundIndicesByLevel,
-      levelsCompleted: new Set(state.levelsCompleted),
-      levelsSkipped: new Set(state.levelsSkipped),
-      tutorialsSeen: new Set(state.tutorialsSeen),
-      skillRating: state.skillRating,
-      attemptWord,
-      resetLevel,
-      markLevelComplete,
-      markLevelSkipped,
-      markTutorialSeen,
-      resetAllProgress,
-    }),
-    [ready, state, levelFor, ensureLevel, attemptWord, resetLevel, markLevelComplete, markLevelSkipped, markTutorialSeen, resetAllProgress]
-  );
-
-  return React.createElement(FindWordsProgressContext.Provider, { value }, children);
-}
+export const FindWordsProgressProvider = store.Provider;
 
 export function useFindWordsProgress(): FindWordsProgressContextValue {
-  const ctx = useContext(FindWordsProgressContext);
-  if (!ctx) throw new Error('useFindWordsProgress must be used within a FindWordsProgressProvider');
-  return ctx;
+  const s = store.useProgress();
+  const { getCurrent, commit } = s;
+
+  const attemptWord = useCallback(
+    (levelIndex: number, cells: Cell[]): number | null => {
+      const current = getCurrent();
+      const level = current.generatedLevels[levelIndex];
+      if (!level) return null;
+      const found = current.custom.foundIndicesByLevel[levelIndex] ?? [];
+
+      const matched = matchPlacement(level, cells, found);
+      if (matched === null) return null;
+
+      commit({
+        ...current,
+        custom: { ...current.custom, foundIndicesByLevel: { ...current.custom.foundIndicesByLevel, [levelIndex]: [...found, matched] } },
+      });
+      return matched;
+    },
+    [getCurrent, commit]
+  );
+
+  /** Reveals one not-yet-found word in full, same as any other game's "finish one unit of progress" hint. Returns false if every word is already found. */
+  const giveHint = useCallback(
+    (levelIndex: number): boolean => {
+      const current = getCurrent();
+      const level = current.generatedLevels[levelIndex];
+      if (!level) return false;
+      const found = current.custom.foundIndicesByLevel[levelIndex] ?? [];
+      const hintIndex = pickHintPlacement(level, found);
+      if (hintIndex === null) return false;
+
+      commit({
+        ...current,
+        custom: { ...current.custom, foundIndicesByLevel: { ...current.custom.foundIndicesByLevel, [levelIndex]: [...found, hintIndex] } },
+        hintsUsedByLevel: { ...current.hintsUsedByLevel, [levelIndex]: (current.hintsUsedByLevel[levelIndex] ?? 0) + 1 },
+      });
+      return true;
+    },
+    [getCurrent, commit]
+  );
+
+  return {
+    ready: s.ready,
+    levelFor: s.levelFor,
+    ensureLevel: s.ensureLevel,
+    foundIndicesByLevel: s.custom.foundIndicesByLevel,
+    levelsCompleted: s.levelsCompleted,
+    levelsSkipped: s.levelsSkipped,
+    tutorialsSeen: s.tutorialsSeen,
+    skillRating: s.skillRating as SkillRating,
+    attemptWord,
+    giveHint,
+    resetLevel: s.resetLevel,
+    markLevelComplete: s.markLevelComplete,
+    markLevelSkipped: s.markLevelSkipped,
+    markTutorialSeen: s.markTutorialSeen,
+    resetAllProgress: s.resetAllProgress,
+  };
 }

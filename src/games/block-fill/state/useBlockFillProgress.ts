@@ -1,39 +1,17 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback } from 'react';
+import { createProgressStore } from '../../../state/createProgressStore';
 import { extendPath, findHintCell, rewindTo } from '../engine';
-import { createLevelForIndexRobust, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
+import { createLevelForIndexRobust, fingerprintBlockFill, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { BlockFillLevel, Cell } from '../types';
 
-const STORAGE_KEY = '@signal-arcade/block-fill/progress/v1';
-/** Bounds the shape-dedup history so it can't grow unbounded over 1000+ levels. */
-const MAX_RECENT_FINGERPRINTS = 50;
+// v2: internal shape changed when progress moved onto the shared
+// createProgressStore -- old entries just get a clean slate (see that
+// file's storageKey doc).
+const STORAGE_KEY = '@signal-arcade/block-fill/progress/v2';
 
-interface PersistedShape {
-  /** Every level a player has reached is generated once and kept forever --
-   * replaying an old level must show the same puzzle even after skill rating
-   * has moved on. Keyed by level index. */
-  generatedLevels: Record<number, BlockFillLevel>;
+interface BlockFillCustom {
   /** The live in-progress path -- separate from generatedLevels[idx] so play can resume mid-solve. */
   pathsByLevel: Record<number, Cell[]>;
-  levelsCompleted: number[];
-  levelsSkipped: number[];
-  tutorialsSeen: string[];
-  skillRating: SkillRating;
-  recentFingerprints: string[];
-  hintsUsedByLevel: Record<number, number>;
-}
-
-function defaultState(): PersistedShape {
-  return {
-    generatedLevels: {},
-    pathsByLevel: {},
-    levelsCompleted: [],
-    levelsSkipped: [],
-    tutorialsSeen: [],
-    skillRating: INITIAL_SKILL_RATING,
-    recentFingerprints: [],
-    hintsUsedByLevel: {},
-  };
 }
 
 function isValidLevel(level: unknown): level is BlockFillLevel {
@@ -47,32 +25,43 @@ function sanitizePath(path: unknown, level: BlockFillLevel): Cell[] {
   return path as Cell[];
 }
 
-function sanitizePersisted(parsed: Partial<PersistedShape> | null): PersistedShape {
-  if (!parsed) return defaultState();
-
-  const generatedLevels: Record<number, BlockFillLevel> = {};
-  const pathsByLevel: Record<number, Cell[]> = {};
-  const rawPaths = (parsed.pathsByLevel ?? {}) as Record<string, unknown>;
-
-  for (const [key, level] of Object.entries(parsed.generatedLevels ?? {})) {
-    if (!isValidLevel(level)) continue;
-    const idx = Number(key);
-    generatedLevels[idx] = level;
-    pathsByLevel[idx] = sanitizePath(rawPaths[key], level);
-  }
-
-  return {
-    generatedLevels,
-    pathsByLevel,
-    levelsCompleted: Array.isArray(parsed.levelsCompleted) ? parsed.levelsCompleted : [],
-    levelsSkipped: Array.isArray(parsed.levelsSkipped) ? parsed.levelsSkipped : [],
-    tutorialsSeen: Array.isArray(parsed.tutorialsSeen) ? parsed.tutorialsSeen : [],
-    skillRating: typeof parsed.skillRating === 'number' ? parsed.skillRating : INITIAL_SKILL_RATING,
-    recentFingerprints: Array.isArray(parsed.recentFingerprints) ? parsed.recentFingerprints.slice(-MAX_RECENT_FINGERPRINTS) : [],
-    hintsUsedByLevel:
-      parsed.hintsUsedByLevel && typeof parsed.hintsUsedByLevel === 'object' ? (parsed.hintsUsedByLevel as Record<number, number>) : {},
-  };
-}
+const store = createProgressStore<BlockFillLevel, BlockFillCustom>({
+  storageKey: STORAGE_KEY,
+  initialSkillRating: INITIAL_SKILL_RATING,
+  nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
+  isValidLevel,
+  generate: (levelIndex, skillRating, recentFingerprints) =>
+    createLevelForIndexRobust(levelIndex, skillRating as SkillRating, recentFingerprints),
+  // Previously computed by the generator (generateBlockFillLevel) but never
+  // actually threaded back into recentFingerprints by the old hand-rolled
+  // hook -- the dedup-history array stayed permanently empty. Using the
+  // level's own `fillable` grid here (via the generator's own fingerprint
+  // fn) is what the generator's `recentFingerprints` param was meant to be
+  // checked against all along.
+  fingerprint: (level) => fingerprintBlockFill(level.fillable),
+  defaultCustom: () => ({ pathsByLevel: {} }),
+  sanitizeCustom: (raw, generatedLevels) => {
+    const parsed = (raw ?? {}) as Partial<BlockFillCustom>;
+    const rawPaths = (parsed.pathsByLevel ?? {}) as Record<string, unknown>;
+    const pathsByLevel: Record<number, Cell[]> = {};
+    for (const [key, level] of Object.entries(generatedLevels)) {
+      pathsByLevel[Number(key)] = sanitizePath(rawPaths[key], level);
+    }
+    return { pathsByLevel };
+  },
+  onLevelGenerated: (custom, level, levelIndex) => ({
+    pathsByLevel: { ...custom.pathsByLevel, [levelIndex]: [level.start] },
+  }),
+  resetLevelCustom: (custom, level, levelIndex) => ({
+    pathsByLevel: { ...custom.pathsByLevel, [levelIndex]: [level.start] },
+  }),
+  // `custom` changes on every single cell crossed while dragging, and
+  // stringify-ing the whole persisted shape (every level ever generated,
+  // kept forever) on every one of those is real JS-thread work stacking up
+  // mid-gesture. Debouncing means the write only runs once the finger
+  // actually pauses or lifts, never while it's still moving.
+  saveDebounceMs: 400,
+});
 
 interface BlockFillProgressContextValue {
   ready: boolean;
@@ -102,211 +91,70 @@ interface BlockFillProgressContextValue {
   resetAllProgress: () => void;
 }
 
-const BlockFillProgressContext = createContext<BlockFillProgressContextValue | null>(null);
-
-export function BlockFillProgressProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<PersistedShape>(defaultState);
-  const [ready, setReady] = useState(false);
-  const loadedOnce = useRef(false);
-  // Mirrors `state` but updated synchronously (ahead of React's re-render),
-  // so back-to-back calls in the same tick both see fresh data instead of
-  // racing against a stale closure over `state`.
-  const stateRef = useRef(state);
-  stateRef.current = state;
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        const parsed = raw ? (JSON.parse(raw) as Partial<PersistedShape>) : null;
-        const sanitized = sanitizePersisted(parsed);
-        stateRef.current = sanitized;
-        setState(sanitized);
-      } catch {
-        // corrupt/missing storage — fall back to defaults, already set
-      } finally {
-        loadedOnce.current = true;
-        setReady(true);
-      }
-    })();
-  }, []);
-
-  // Debounced rather than immediate: `state` changes on every single cell
-  // crossed while dragging, and JSON.stringify-ing the whole persisted shape
-  // (every level ever generated, kept forever -- see PersistedShape above)
-  // on every one of those is real JS-thread work stacking up mid-gesture.
-  // Trailing-debouncing means the stringify+write only runs once the finger
-  // actually pauses or lifts, never while it's still moving.
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!loadedOnce.current) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(stateRef.current)).catch(() => {});
-    }, 400);
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [state]);
-
-  const levelFor = useCallback((levelIndex: number): BlockFillLevel | undefined => state.generatedLevels[levelIndex], [state]);
-
-  const ensureLevel = useCallback((levelIndex: number): void => {
-    const current = stateRef.current;
-    if (current.generatedLevels[levelIndex]) return;
-
-    const level = createLevelForIndexRobust(levelIndex, current.skillRating, current.recentFingerprints);
-    const next: PersistedShape = {
-      ...current,
-      generatedLevels: { ...current.generatedLevels, [levelIndex]: level },
-      pathsByLevel: { ...current.pathsByLevel, [levelIndex]: [level.start] },
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  // Always keep one level ready ahead of the player rather than only
-  // generating on demand -- same rationale as Matching Numbers.
-  useEffect(() => {
-    if (ready) ensureLevel(0);
-  }, [ready, ensureLevel]);
-
-  const extend = useCallback((levelIndex: number, cell: Cell): boolean => {
-    const current = stateRef.current;
-    const level = current.generatedLevels[levelIndex];
-    const path = current.pathsByLevel[levelIndex];
-    if (!level || !path) return false;
-    const nextPath = extendPath(level, path, cell);
-    if (!nextPath) return false;
-    const next: PersistedShape = { ...current, pathsByLevel: { ...current.pathsByLevel, [levelIndex]: nextPath } };
-    stateRef.current = next;
-    setState(next);
-    return true;
-  }, []);
-
-  const rewind = useCallback((levelIndex: number, cell: Cell): boolean => {
-    const current = stateRef.current;
-    const path = current.pathsByLevel[levelIndex];
-    if (!path) return false;
-    const nextPath = rewindTo(path, cell);
-    if (!nextPath) return false;
-    const next: PersistedShape = { ...current, pathsByLevel: { ...current.pathsByLevel, [levelIndex]: nextPath } };
-    stateRef.current = next;
-    setState(next);
-    return true;
-  }, []);
-
-  const giveHint = useCallback((levelIndex: number): Cell | null => {
-    const current = stateRef.current;
-    const level = current.generatedLevels[levelIndex];
-    const path = current.pathsByLevel[levelIndex];
-    if (!level || !path) return null;
-    const cell = findHintCell(level, path);
-    if (!cell) return null;
-
-    const next: PersistedShape = {
-      ...current,
-      hintsUsedByLevel: { ...current.hintsUsedByLevel, [levelIndex]: (current.hintsUsedByLevel[levelIndex] ?? 0) + 1 },
-    };
-    stateRef.current = next;
-    setState(next);
-    return cell;
-  }, []);
-
-  const resetLevel = useCallback((levelIndex: number) => {
-    const current = stateRef.current;
-    const level = current.generatedLevels[levelIndex];
-    if (!level) return;
-    const next: PersistedShape = {
-      ...current,
-      pathsByLevel: { ...current.pathsByLevel, [levelIndex]: [level.start] },
-      hintsUsedByLevel: { ...current.hintsUsedByLevel, [levelIndex]: 0 },
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const markLevelComplete = useCallback((levelIndex: number) => {
-    const current = stateRef.current;
-    if (current.levelsCompleted.includes(levelIndex)) return;
-    const hintsUsed = current.hintsUsedByLevel[levelIndex] ?? 0;
-    const next: PersistedShape = {
-      ...current,
-      levelsCompleted: current.levelsCompleted.concat(levelIndex),
-      skillRating: nextSkillRating(current.skillRating, { hintsUsed, skipped: false }),
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  /** Marks a level skipped (via ad) so the next level unlocks -- distinct from actually solving it. */
-  const markLevelSkipped = useCallback((levelIndex: number) => {
-    const current = stateRef.current;
-    if (current.levelsCompleted.includes(levelIndex) || current.levelsSkipped.includes(levelIndex)) return;
-    const next: PersistedShape = {
-      ...current,
-      levelsSkipped: current.levelsSkipped.concat(levelIndex),
-      skillRating: nextSkillRating(current.skillRating, { hintsUsed: 0, skipped: true }),
-    };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const markTutorialSeen = useCallback((key: string) => {
-    const current = stateRef.current;
-    if (current.tutorialsSeen.includes(key)) return;
-    const next: PersistedShape = { ...current, tutorialsSeen: current.tutorialsSeen.concat(key) };
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const resetAllProgress = useCallback(() => {
-    const next = defaultState();
-    stateRef.current = next;
-    setState(next);
-    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
-  }, []);
-
-  const value = useMemo<BlockFillProgressContextValue>(
-    () => ({
-      ready,
-      levelFor,
-      ensureLevel,
-      pathsByLevel: state.pathsByLevel,
-      levelsCompleted: new Set(state.levelsCompleted),
-      levelsSkipped: new Set(state.levelsSkipped),
-      tutorialsSeen: new Set(state.tutorialsSeen),
-      skillRating: state.skillRating,
-      extend,
-      rewind,
-      giveHint,
-      resetLevel,
-      markLevelComplete,
-      markLevelSkipped,
-      markTutorialSeen,
-      resetAllProgress,
-    }),
-    [
-      ready,
-      state,
-      levelFor,
-      ensureLevel,
-      extend,
-      rewind,
-      giveHint,
-      resetLevel,
-      markLevelComplete,
-      markLevelSkipped,
-      markTutorialSeen,
-      resetAllProgress,
-    ]
-  );
-
-  return React.createElement(BlockFillProgressContext.Provider, { value }, children);
-}
+export const BlockFillProgressProvider = store.Provider;
 
 export function useBlockFillProgress(): BlockFillProgressContextValue {
-  const ctx = useContext(BlockFillProgressContext);
-  if (!ctx) throw new Error('useBlockFillProgress must be used within a BlockFillProgressProvider');
-  return ctx;
+  const s = store.useProgress();
+  const { getCurrent, commit } = s;
+
+  const extend = useCallback(
+    (levelIndex: number, cell: Cell): boolean => {
+      const current = getCurrent();
+      const level = current.generatedLevels[levelIndex];
+      const path = current.custom.pathsByLevel[levelIndex];
+      if (!level || !path) return false;
+      const nextPath = extendPath(level, path, cell);
+      if (!nextPath) return false;
+      commit({ ...current, custom: { pathsByLevel: { ...current.custom.pathsByLevel, [levelIndex]: nextPath } } });
+      return true;
+    },
+    [getCurrent, commit]
+  );
+
+  const rewind = useCallback(
+    (levelIndex: number, cell: Cell): boolean => {
+      const current = getCurrent();
+      const path = current.custom.pathsByLevel[levelIndex];
+      if (!path) return false;
+      const nextPath = rewindTo(path, cell);
+      if (!nextPath) return false;
+      commit({ ...current, custom: { pathsByLevel: { ...current.custom.pathsByLevel, [levelIndex]: nextPath } } });
+      return true;
+    },
+    [getCurrent, commit]
+  );
+
+  const giveHint = useCallback(
+    (levelIndex: number): Cell | null => {
+      const current = getCurrent();
+      const level = current.generatedLevels[levelIndex];
+      const path = current.custom.pathsByLevel[levelIndex];
+      if (!level || !path) return null;
+      const cell = findHintCell(level, path);
+      if (!cell) return null;
+
+      commit({ ...current, hintsUsedByLevel: { ...current.hintsUsedByLevel, [levelIndex]: (current.hintsUsedByLevel[levelIndex] ?? 0) + 1 } });
+      return cell;
+    },
+    [getCurrent, commit]
+  );
+
+  return {
+    ready: s.ready,
+    levelFor: s.levelFor,
+    ensureLevel: s.ensureLevel,
+    pathsByLevel: s.custom.pathsByLevel,
+    levelsCompleted: s.levelsCompleted,
+    levelsSkipped: s.levelsSkipped,
+    tutorialsSeen: s.tutorialsSeen,
+    skillRating: s.skillRating as SkillRating,
+    extend,
+    rewind,
+    giveHint,
+    resetLevel: s.resetLevel,
+    markLevelComplete: s.markLevelComplete,
+    markLevelSkipped: s.markLevelSkipped,
+    markTutorialSeen: s.markTutorialSeen,
+    resetAllProgress: s.resetAllProgress,
+  };
 }

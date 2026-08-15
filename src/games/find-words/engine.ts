@@ -100,3 +100,17 @@ export function matchPlacement(level: FindWordsLevel, cells: Cell[], foundIndice
 export function isLevelComplete(foundIndices: number[], level: FindWordsLevel): boolean {
   return foundIndices.length === level.placements.length;
 }
+
+/**
+ * The index of the first not-yet-found placement, for the Hint button --
+ * reveals one whole word rather than a single letter, matching how a hint
+ * elsewhere always finishes exactly one unit of progress (a clue, a king, a
+ * pair) rather than a partial one. Returns null once every word is found.
+ */
+export function pickHintPlacement(level: FindWordsLevel, foundIndices: number[]): number | null {
+  const found = new Set(foundIndices);
+  for (let i = 0; i < level.placements.length; i++) {
+    if (!found.has(i)) return i;
+  }
+  return null;
+}

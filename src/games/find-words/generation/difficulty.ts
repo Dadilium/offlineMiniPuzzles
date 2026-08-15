@@ -11,18 +11,22 @@ const MAX_RATING = 100;
 const STEP = 3;
 
 export interface LevelResult {
+  hintsUsed: number;
   skipped: boolean;
 }
 
 /**
  * Pure reducer: given the previous rating and how the last level went,
- * returns the next rating. There's no hint mechanic in Find Words (by
- * design -- see CLAUDE.md's "no suggestion" rule for this game), so unlike
- * every other game's reducer this only has two outcomes: a genuine solve
- * nudges up, a skip nudges down harder.
+ * returns the next rating. Same shape as every other game's reducer here --
+ * a skip nudges down harder, 2+ hints nudges down, a hint-free solve nudges
+ * up, and 1 hint holds steady.
  */
 export function nextSkillRating(prev: SkillRating, result: LevelResult): SkillRating {
-  const delta = result.skipped ? -STEP * 2 : STEP;
+  let delta = 0;
+  if (result.skipped) delta = -STEP * 2;
+  else if (result.hintsUsed >= 2) delta = -STEP;
+  else if (result.hintsUsed === 0) delta = STEP;
+
   return Math.max(MIN_RATING, Math.min(MAX_RATING, prev + delta));
 }
 
