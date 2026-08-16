@@ -16,7 +16,7 @@ import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import { MATCHING_NUMBERS_ADD_NUMBERS_AD_SCHEDULE } from '../../../config/ads';
 import MatchingNumbersGrid, { ROW_COLLAPSE_MS, type PendingMatch } from '../components/MatchingNumbersGrid';
 import FailOverlay from '../components/FailOverlay';
-import { attemptMatch, computeWin, findFullyEmptyRow, hasLegalMove, MAX_ADD_NUMBERS } from '../engine';
+import { attemptMatch, computeWin, findFullyEmptyRows, hasLegalMove, MAX_ADD_NUMBERS } from '../engine';
 import type { MatchingNumbersStackParamList } from '../navigation';
 import { useMatchingNumbersProgress } from '../state/useMatchingNumbersProgress';
 import type { Cell } from '../types';
@@ -38,7 +38,7 @@ export default function GameScreen({ route, navigation }: Props) {
     boardsByLevel,
     addNumbersUsedByLevel,
     commitMatch,
-    collapseRow,
+    collapseRows,
     addNumbers,
     giveHint,
     resetLevel,
@@ -78,10 +78,13 @@ export default function GameScreen({ route, navigation }: Props) {
   // Row index Add Numbers most recently appended from -- lets the grid
   // stagger those new cells' entrance instead of popping them all in at once.
   const [appearFromRow, setAppearFromRow] = useState<number | null>(null);
-  // Row index currently mid shift-up collapse (see engine.findFullyEmptyRow),
-  // if any -- board is only mutated (removeRow, via collapseRow) once that
-  // row's collapse animation has actually finished playing.
-  const [collapsingRow, setCollapsingRow] = useState<number | null>(null);
+  // Row indices currently mid shift-up collapse (see engine.findFullyEmptyRows),
+  // if any -- a single match can empty more than one row at once (its two
+  // cells can sit in different rows, joined by a bend), so every row that
+  // went empty this cycle collapses together in one synchronized animation
+  // rather than one at a time. Board is only mutated (removeRows, via
+  // collapseRows) once that shared animation has actually finished playing.
+  const [collapsingRows, setCollapsingRows] = useState<number[] | null>(null);
   // Backs the collapse timer below -- kept in a ref (not just the setTimeout
   // return value local to the effect) so it survives re-renders without
   // being torn down by React's own effect-cleanup mechanism. See that effect
@@ -94,34 +97,34 @@ export default function GameScreen({ route, navigation }: Props) {
   const levelStartRef = useRef(Date.now());
   useEffect(() => {
     setAppearFromRow(null);
-    setCollapsingRow(null);
+    setCollapsingRows(null);
     levelStartRef.current = Date.now();
   }, [levelIndex]);
 
   // Deliberately does NOT return a cleanup that clears the timer -- this
   // effect re-runs on every `board` change (e.g. an unrelated match clearing
-  // cells elsewhere while this row's collapse is still counting down), and a
+  // cells elsewhere while these rows' collapse is still counting down), and a
   // cleanup tied to that would cancel the in-flight timer before it ever
-  // calls collapseRow, permanently orphaning `collapsingRow` (stuck non-null
-  // forever, since nothing else resets it) -- no row ever collapses again for
-  // the rest of the level, and every future match's line/highlight math goes
-  // stale against the frozen-but-never-applied visual shift. The `board ||
-  // collapsingRow != null` guard below is what actually prevents double-
-  // scheduling, not the cleanup.
+  // calls collapseRows, permanently orphaning `collapsingRows` (stuck
+  // non-null forever, since nothing else resets it) -- no row ever collapses
+  // again for the rest of the level, and every future match's line/highlight
+  // math goes stale against the frozen-but-never-applied visual shift. The
+  // `board || collapsingRows != null` guard below is what actually prevents
+  // double-scheduling, not the cleanup.
   useEffect(() => {
-    if (!board || collapsingRow != null) return;
-    const emptyRow = findFullyEmptyRow(board);
-    if (emptyRow == null) return;
-    setCollapsingRow(emptyRow);
+    if (!board || collapsingRows != null) return;
+    const emptyRows = findFullyEmptyRows(board);
+    if (emptyRows.length === 0) return;
+    setCollapsingRows(emptyRows);
     collapseTimerRef.current = setTimeout(() => {
       collapseTimerRef.current = null;
-      collapseRow(levelIndex, emptyRow);
-      setCollapsingRow(null);
+      collapseRows(levelIndex, emptyRows);
+      setCollapsingRows(null);
     }, ROW_COLLAPSE_MS);
-  }, [board, collapsingRow, levelIndex, collapseRow]);
+  }, [board, collapsingRows, levelIndex, collapseRows]);
 
   // Unmount/level-switch safety net only -- clears any still-pending timer so
-  // it can't fire collapseRow/setCollapsingRow against a screen that's gone
+  // it can't fire collapseRows/setCollapsingRows against a screen that's gone
   // or has since moved on to a different level.
   useEffect(() => {
     return () => {
@@ -170,11 +173,11 @@ export default function GameScreen({ route, navigation }: Props) {
   }, []);
 
   function onCellPress(r: number, c: number) {
-    // Also blocked during collapsingRow: a match started now would capture
-    // (r, c) coordinates that go stale the instant this row's collapse
-    // actually removes a row and shifts everything below it up by one --
-    // see the collapse effect above for the full story.
-    if (!board || pendingMatch || rejectedPair || collapsingRow != null) return;
+    // Also blocked during collapsingRows: a match started now would capture
+    // (r, c) coordinates that go stale the instant this collapse actually
+    // removes the rows and shifts everything below them up -- see the
+    // collapse effect above for the full story.
+    if (!board || pendingMatch || rejectedPair || collapsingRows != null) return;
     if (board[r][c] === null) return;
     if (hintPair) {
       if (hintTimer.current) clearTimeout(hintTimer.current);
@@ -267,12 +270,16 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   function onRetryPress() {
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
     setSelected(null);
     setPendingMatch(null);
     setRejectedPair(null);
     setHintPair(null);
     setAppearFromRow(null);
-    setCollapsingRow(null);
+    setCollapsingRows(null);
     levelStartRef.current = Date.now();
     resetLevel(levelIndex);
   }
@@ -343,7 +350,7 @@ export default function GameScreen({ route, navigation }: Props) {
         board={board}
         availableHeight={boardAreaHeight}
         appearFromRow={appearFromRow}
-        collapsingRow={collapsingRow}
+        collapsingRows={collapsingRows}
         highlightedCells={highlightedCells}
         pendingMatch={pendingMatch}
         rejectedPair={rejectedPair}

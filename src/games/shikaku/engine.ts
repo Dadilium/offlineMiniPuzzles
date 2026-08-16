@@ -12,15 +12,18 @@ export function area(rect: RectBounds): number {
 }
 
 export function containsCell(rect: RectBounds, r: number, c: number): boolean {
+  'worklet';
   return r >= rect.r0 && r <= rect.r1 && c >= rect.c0 && c <= rect.c1;
 }
 
 export function rectsOverlap(a: RectBounds, b: RectBounds): boolean {
+  'worklet';
   return !(a.r1 < b.r0 || b.r1 < a.r0 || a.c1 < b.c0 || b.c1 < a.c0);
 }
 
 /** Normalizes two opposite drag corners into a `RectBounds` with r0<=r1, c0<=c1. */
 export function rectFromCorners(rA: number, cA: number, rB: number, cB: number): RectBounds {
+  'worklet';
   return {
     r0: Math.min(rA, rB),
     c0: Math.min(cA, cB),
@@ -31,6 +34,7 @@ export function rectFromCorners(rA: number, cA: number, rB: number, cB: number):
 
 /** Indices into `clues` whose cell falls inside `rect`. */
 export function clueIndicesIn(clues: Clue[], rect: RectBounds): number[] {
+  'worklet';
   const indices: number[] = [];
   for (let i = 0; i < clues.length; i++) {
     if (containsCell(rect, clues[i].r, clues[i].c)) indices.push(i);
@@ -65,6 +69,7 @@ export type PlaceRectResult = { placedRects: ShikakuPlayerState } | { error: 'no
  * conflict surfaced by `computeConflicts`, not an invalid move.
  */
 export function placeRect(level: ShikakuLevel, placed: ShikakuPlayerState, candidate: RectBounds): PlaceRectResult {
+  'worklet';
   const clueIndices = clueIndicesIn(level.clues, candidate);
   if (clueIndices.length === 0) return { error: 'no-clue' };
   if (clueIndices.length >= 2) return { error: 'multiple-clues' };

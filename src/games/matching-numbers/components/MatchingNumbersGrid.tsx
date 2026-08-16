@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   interpolate,
   runOnJS,
@@ -9,6 +9,7 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Polyline } from 'react-native-svg';
 import { BOARD_AREA_VERTICAL_PADDING } from '../../../components/GameScreenLayout';
@@ -43,7 +44,7 @@ const SHAKE_MS = 400;
 const APPEAR_STAGGER_MS = 45;
 const APPEAR_MS = 200;
 // How long a fully-cleared row's shift-up collapse animation takes. Exported
-// so GameScreen can time the actual row removal (engine.removeRow) to land
+// so GameScreen can time the actual row removal (engine.removeRows) to land
 // exactly when the animation finishes.
 export const ROW_COLLAPSE_MS = 220;
 
@@ -205,10 +206,38 @@ interface Props {
    * past this row pop in with a staggered entrance instead of appearing
    * instantly. Null once nothing's newly appended (the default board state). */
   appearFromRow?: number | null;
-  /** Row index currently mid shift-up collapse (see engine.findFullyEmptyRow)
-   * -- every row below it animates upward by one cell height. Null when no
-   * row is currently collapsing. */
-  collapsingRow?: number | null;
+  /** Row indices currently mid shift-up collapse (see engine.findFullyEmptyRows)
+   * -- a single match can empty more than one row at once, so every row below
+   * a given real row shifts up by one cell height per collapsing row that
+   * sits above it (see MatchingRow's shiftMultiplier). Null when nothing is
+   * currently collapsing. */
+  collapsingRows?: number[] | null;
+}
+
+interface MatchingRowProps {
+  /** How many of the currently-collapsing rows sit above this row -- e.g. 2
+   * if both a collapsing row above it are being removed at once, so this row
+   * needs to travel up two cell heights, not one. 0 for a row that's itself
+   * collapsing (it fades away in place, it doesn't travel) or when nothing
+   * above it is collapsing. */
+  shiftMultiplier: number;
+  collapseShift: SharedValue<number>;
+  size: number;
+  style: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+}
+
+/** One board row (real or filler), pulled out into its own component so its
+ * shift-up animation can carry a per-row multiplier -- `useAnimatedStyle`
+ * can't be called with a per-iteration value from inside the parent's row
+ * loop (the loop's length varies as rows collapse, which would violate the
+ * rules of hooks), but it's perfectly fine called once per row-component
+ * instance like this. */
+function MatchingRow({ shiftMultiplier, collapseShift, size, style, children }: MatchingRowProps) {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -size * shiftMultiplier * collapseShift.value }],
+  }));
+  return <Animated.View style={[style, shiftMultiplier > 0 ? animatedStyle : null]}>{children}</Animated.View>;
 }
 
 export default function MatchingNumbersGrid({
@@ -221,7 +250,7 @@ export default function MatchingNumbersGrid({
   onRejectAnimationDone,
   availableHeight = 0,
   appearFromRow = null,
-  collapsingRow = null,
+  collapsingRows = null,
 }: Props) {
   const { colors } = useTheme();
   const styles = useStyles();
@@ -229,17 +258,19 @@ export default function MatchingNumbersGrid({
   const cols = board[0]?.length ?? 0;
   const size = cellSizeFor(cols);
   const W = size * cols;
+  const collapsingCount = collapsingRows?.length ?? 0;
 
   const usableHeight = Math.max(0, availableHeight - BOARD_AREA_VERTICAL_PADDING * 2);
   const fillerRows = size > 0 ? Math.max(0, Math.floor(usableHeight / size) - rows) : 0;
-  // While a row is collapsing, every filler row shifts up right alongside the
-  // real rows below it (they're always "below" any real collapsingRow index)
-  // -- plus one extra filler row is rendered so there's already a placeholder
-  // ready to slide into the slot the last real row vacates, instead of that
-  // slot briefly showing bare background. Once the collapse actually removes
-  // the row, `rows` drops by one and fillerRows recomputes to this same
-  // total on its own, so the transition out of the animation is seamless.
-  const renderedFillerRows = collapsingRow != null ? fillerRows + 1 : fillerRows;
+  // While rows are collapsing, every filler row shifts up right alongside the
+  // real rows below them (they're always "below" every real collapsing
+  // index) -- plus one extra filler row per collapsing row so there's already
+  // a placeholder ready to slide into each slot the vacating rows leave,
+  // instead of those slots briefly showing bare background. Once the
+  // collapse actually removes the rows, `rows` drops by collapsingCount and
+  // fillerRows recomputes to this same total on its own, so the transition
+  // out of the animation is seamless.
+  const renderedFillerRows = collapsingCount > 0 ? fillerRows + collapsingCount : fillerRows;
   const H = size * (rows + renderedFillerRows);
 
   const lineProgress = useSharedValue(0);
@@ -248,16 +279,13 @@ export default function MatchingNumbersGrid({
   const collapseShift = useSharedValue(0);
 
   useEffect(() => {
-    if (collapsingRow == null) {
+    if (collapsingRows == null) {
       collapseShift.value = 0;
       return;
     }
     collapseShift.value = 0;
     collapseShift.value = withTiming(1, { duration: ROW_COLLAPSE_MS });
-  }, [collapsingRow, collapseShift]);
-  const collapseAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(collapseShift.value, [0, 1], [0, -size]) }],
-  }));
+  }, [collapsingRows, collapseShift]);
   // Drives the 3-beat match animation: draw the connecting line, pulse the
   // pair once it's reached, then fade everything (line + cells) out together.
   const [matchStage, setMatchStage] = useState<'line' | 'pulse' | 'clear'>('line');
@@ -355,11 +383,15 @@ export default function MatchingNumbersGrid({
         />
       );
     }
-    const isBelowCollapsingRow = collapsingRow != null && r > collapsingRow;
+    // A row itself being collapsed fades away in place (multiplier 0); any
+    // other row shifts up by one cell height per collapsing row above it, so
+    // two simultaneous collapses (e.g. rows 2 and 5) push row 6+ up by two
+    // cell heights while rows 3-4 (between them) only shift by one.
+    const shiftMultiplier = collapsingRows == null || collapsingRows.includes(r) ? 0 : collapsingRows.filter((cr) => cr < r).length;
     rowViews.push(
-      <Animated.View key={r} style={[styles.row, isBelowCollapsingRow ? collapseAnimatedStyle : null]}>
+      <MatchingRow key={r} shiftMultiplier={shiftMultiplier} collapseShift={collapseShift} size={size} style={styles.row}>
         {cellViews}
-      </Animated.View>
+      </MatchingRow>
     );
   }
   for (let r = 0; r < renderedFillerRows; r++) {
@@ -368,9 +400,9 @@ export default function MatchingNumbersGrid({
       cellViews.push(<FillerCell key={`filler-${r}-${c}`} size={size} />);
     }
     rowViews.push(
-      <Animated.View key={`filler-row-${r}`} style={[styles.row, collapsingRow != null ? collapseAnimatedStyle : null]}>
+      <MatchingRow key={`filler-row-${r}`} shiftMultiplier={collapsingCount} collapseShift={collapseShift} size={size} style={styles.row}>
         {cellViews}
-      </Animated.View>
+      </MatchingRow>
     );
   }
 

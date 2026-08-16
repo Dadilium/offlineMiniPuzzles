@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { createProgressStore } from '../../../state/createProgressStore';
-import { applyAddNumbers, applyMatch, findLegalMove, MAX_ADD_NUMBERS, removeRow } from '../engine';
+import { applyAddNumbers, applyMatch, findLegalMove, MAX_ADD_NUMBERS, removeRows } from '../engine';
 import { createLevelForIndexRobust, fingerprintGrid, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { Cell, GridValue, MatchingNumbersLevel } from '../types';
 
@@ -91,8 +91,8 @@ interface MatchingNumbersProgressContextValue {
   addNumbersUsedByLevel: Record<number, number>;
   /** Assumes the caller already validated legality via engine.attemptMatch (e.g. to drive a success/fail animation) -- unconditionally clears both cells. */
   commitMatch: (levelIndex: number, a: Cell, b: Cell) => void;
-  /** Removes a single row once its shift-up collapse animation has finished -- see engine.findFullyEmptyRow. */
-  collapseRow: (levelIndex: number, rowIndex: number) => void;
+  /** Removes a set of rows once their shared shift-up collapse animation has finished -- see engine.findFullyEmptyRows. */
+  collapseRows: (levelIndex: number, rowIndices: number[]) => void;
   /** Spends an Add Numbers charge if any remain. Returns false (no-op) once MAX_ADD_NUMBERS has been used this level. */
   addNumbers: (levelIndex: number) => boolean;
   /** Live scan of the current board for any currently-legal pair (see engine.ts). Returns null if the board is stuck. */
@@ -123,13 +123,13 @@ export function useMatchingNumbersProgress(): MatchingNumbersProgressContextValu
     [getCurrent, commit]
   );
 
-  /** Called once a fully-cleared row's shift-up animation has finished playing -- see engine.findFullyEmptyRow. */
-  const collapseRow = useCallback(
-    (levelIndex: number, rowIndex: number) => {
+  /** Called once a set of fully-cleared rows' shared shift-up animation has finished playing -- see engine.findFullyEmptyRows. */
+  const collapseRows = useCallback(
+    (levelIndex: number, rowIndices: number[]) => {
       const current = getCurrent();
       const board = current.custom.boardsByLevel[levelIndex];
       if (!board) return;
-      const nextBoard = removeRow(board, rowIndex);
+      const nextBoard = removeRows(board, rowIndices);
       commit({ ...current, custom: { ...current.custom, boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } } });
     },
     [getCurrent, commit]
@@ -182,7 +182,7 @@ export function useMatchingNumbersProgress(): MatchingNumbersProgressContextValu
     skillRating: s.skillRating as SkillRating,
     addNumbersUsedByLevel: s.custom.addNumbersUsedByLevel,
     commitMatch,
-    collapseRow,
+    collapseRows,
     addNumbers,
     giveHint,
     resetLevel: s.resetLevel,

@@ -125,21 +125,27 @@ export function hasLegalMove(grid: GridValue[][]): boolean {
 }
 
 /**
- * Row index of the first entirely-cleared row, if any. Removing a fully-null
- * row and shifting everything below it up by one never changes what's
- * connectable -- a fully-null row was never blocking anything to begin with,
- * so every straight-line/bend check gives the same answer before and after,
- * just addressed via shifted (relabeled) row indices. Used to trigger the
- * shift-up collapse animation once a match clears a row out completely.
+ * Indices of every entirely-cleared row, if any. Removing fully-null rows and
+ * shifting everything below them up never changes what's connectable -- a
+ * fully-null row was never blocking anything to begin with, so every
+ * straight-line/bend check gives the same answer before and after, just
+ * addressed via shifted (relabeled) row indices. A single match can empty
+ * more than one row at once (its two cells can sit in different rows, joined
+ * by a bend), so this returns all of them -- used to trigger one synchronized
+ * shift-up collapse animation instead of staggering them one at a time.
  */
-export function findFullyEmptyRow(grid: GridValue[][]): number | null {
-  const idx = grid.findIndex((row) => row.every((v) => v === null));
-  return idx === -1 ? null : idx;
+export function findFullyEmptyRows(grid: GridValue[][]): number[] {
+  const indices: number[] = [];
+  grid.forEach((row, r) => {
+    if (row.every((v) => v === null)) indices.push(r);
+  });
+  return indices;
 }
 
-/** Removes a single row -- e.g. once its shift-up collapse animation has finished -- so every row below it shifts up to fill the gap. */
-export function removeRow(grid: GridValue[][], rowIndex: number): GridValue[][] {
-  return grid.filter((_, r) => r !== rowIndex);
+/** Removes a set of rows at once -- e.g. once their shared shift-up collapse animation has finished -- so every remaining row shifts up to fill the gaps. */
+export function removeRows(grid: GridValue[][], rowIndices: number[]): GridValue[][] {
+  const toRemove = new Set(rowIndices);
+  return grid.filter((_, r) => !toRemove.has(r));
 }
 
 function shuffleValues(values: number[], rng: () => number): number[] {

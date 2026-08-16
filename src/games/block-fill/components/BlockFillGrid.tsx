@@ -156,6 +156,7 @@ export default function BlockFillGrid({ level, path, palette, onDragToCell, hint
   // navigator level for this screen (see index.tsx), so there's no native
   // edge gesture left to out-prioritize here.
   const pan = Gesture.Pan()
+    .runOnJS(true)
     .minDistance(0)
     .maxPointers(1)
     .shouldCancelWhenOutside(false)

@@ -28,6 +28,7 @@ const WAVE_STAGGER_MS = 45;
 
 /** Below this raw pixel movement, a release counts as a tap rather than a drawn rectangle. */
 function tapThresholdFor(size: number): number {
+  'worklet';
   return Math.max(10, size * 0.3);
 }
 
