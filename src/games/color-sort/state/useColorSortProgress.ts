@@ -1,6 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
 import { createProgressStore } from '../../../state/createProgressStore';
-import { findBestMove } from '../engine';
+import { findBestMove, isTubeFilledSolid } from '../engine';
 import { createLevelForIndexRobust, fingerprintColorSort, INITIAL_SKILL_RATING, nextSkillRating, pourMove, type Move, type SkillRating } from '../generation';
 import type { ColorSortLevel, Tube } from '../types';
 
@@ -112,6 +113,11 @@ export function useColorSortProgress(): ColorSortProgressContextValue {
       if (!level || !tubes) return false;
       const result = pourMove(tubes, level.capacity, from, to);
       if (!result) return false;
+
+      const justCompleted = [from, to].some(
+        (i) => !isTubeFilledSolid(tubes[i], level.capacity) && isTubeFilledSolid(result.tubes[i], level.capacity)
+      );
+      if (justCompleted) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       commit({
         ...current,

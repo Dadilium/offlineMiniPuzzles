@@ -1,6 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
 import { createProgressStore } from '../../../state/createProgressStore';
-import { applyHint, applyTool, makeInitialMarks, type CellMark, type Tool } from '../engine';
+import { applyHint, applyTool, computeSums, makeInitialMarks, type CellMark, type Tool } from '../engine';
 import { createLevelForIndexRobust, fingerprintCrossSums, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { CrossSumsLevel } from '../types';
 
@@ -106,12 +107,20 @@ export function useCrossSumsProgress(): CrossSumsProgressContextValue {
   const toggleCellAt = useCallback(
     (levelIndex: number, r: number, c: number, tool: Tool) => {
       const current = getCurrent();
+      const level = current.generatedLevels[levelIndex];
       const marks = current.custom.marksByLevel[levelIndex];
-      if (!marks) return;
+      if (!level || !marks) return;
       const hinted = current.custom.hintedCellsByLevel[levelIndex] ?? [];
       if (hinted.includes(`${r},${c}`)) return;
 
       const nextMarks = applyTool(marks, r, c, tool);
+
+      const before = computeSums(level.grid, marks);
+      const after = computeSums(level.grid, nextMarks);
+      const rowJustMatched = before.rowSums[r] !== level.rowTargets[r] && after.rowSums[r] === level.rowTargets[r];
+      const colJustMatched = before.colSums[c] !== level.colTargets[c] && after.colSums[c] === level.colTargets[c];
+      if (rowJustMatched || colJustMatched) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
       commit({ ...current, custom: { ...current.custom, marksByLevel: { ...current.custom.marksByLevel, [levelIndex]: nextMarks } } });
     },
     [getCurrent, commit]

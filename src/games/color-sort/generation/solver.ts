@@ -47,6 +47,15 @@ export function computeWin(tubes: Tube[], capacity: number): boolean {
 }
 
 /**
+ * A single tube's own "done" state -- full capacity and one color. Unlike
+ * `computeWin`, an empty tube does NOT count: this is "solved", not "no
+ * longer in play".
+ */
+export function isTubeFilledSolid(tube: Tube, capacity: number): boolean {
+  return tube.length === capacity && tube.every((c) => c === tube[0]);
+}
+
+/**
  * Canonical visited-set key: two tubes with byte-identical contents (in
  * particular, any two empty tubes) are interchangeable for solvability, so
  * sorting collapses index-permuted-but-otherwise-identical states into one

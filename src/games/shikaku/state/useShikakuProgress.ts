@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
 import { createProgressStore } from '../../../state/createProgressStore';
 import { applyHint, clueIndicesIn, containsCell, placeRect, removeRectAt } from '../engine';
@@ -132,6 +133,8 @@ export function useShikakuProgress(): ShikakuProgressContextValue {
 
       const result = placeRect(level, placed, candidate);
       if ('error' in result) return;
+
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       commit({
         ...current,

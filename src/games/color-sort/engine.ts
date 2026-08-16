@@ -3,10 +3,10 @@
 // pourMove/computeWin are the canonical rule implementations, shared with
 // generation/solver.ts (imported, not duplicated) so the player-facing
 // rules and the certifying search can never drift apart.
-import { computeWin, pourMove, solveColorSort, type Move } from './generation/solver';
+import { computeWin, isTubeFilledSolid, pourMove, solveColorSort, type Move } from './generation/solver';
 import type { Tube } from './types';
 
-export { computeWin, pourMove };
+export { computeWin, isTubeFilledSolid, pourMove };
 export type { Move, PourResult } from './generation/solver';
 
 // A single on-demand call per hint tap or stuck-check, not thousands of

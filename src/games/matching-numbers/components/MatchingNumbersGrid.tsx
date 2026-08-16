@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
+  FadeOut,
+  LinearTransition,
   interpolate,
   runOnJS,
   useAnimatedProps,
@@ -9,7 +11,6 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
-  type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Polyline } from 'react-native-svg';
 import { BOARD_AREA_VERTICAL_PADDING } from '../../../components/GameScreenLayout';
@@ -43,9 +44,11 @@ const SHAKE_MS = 400;
 // reading order, APPEAR_MS is how long each individual cell's own pop takes.
 const APPEAR_STAGGER_MS = 45;
 const APPEAR_MS = 200;
-// How long a fully-cleared row's shift-up collapse animation takes. Exported
-// so GameScreen can time the actual row removal (engine.removeRows) to land
-// exactly when the animation finishes.
+// How long a fully-cleared row's exit/reflow animation takes -- purely
+// decorative now (see the `layout`/`exiting` props below): GameScreen removes
+// an emptied row from `board` the instant it notices, with no artificial
+// hold, so this duration only governs how long Reanimated spends smoothing
+// the visual transition, not when the data actually changes.
 export const ROW_COLLAPSE_MS = 220;
 
 const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
@@ -76,17 +79,33 @@ function MatchingNumbersCell({ value, size, selected, pulsing, clearing, rejecte
   const appearScale = useSharedValue(appearDelayMs == null ? 1 : 0);
   const appearOpacity = useSharedValue(appearDelayMs == null ? 1 : 0);
 
+  // Reactive on `appearDelayMs`, not mount-once: this cell's (r, c) key can
+  // get reused for a different board's content without unmounting (e.g. a
+  // non-empty cell staying non-empty across a Retry) whenever React sees the
+  // same key AND element type across the change -- a fully-empty cell always
+  // remounts (it swaps to/from FillerCell, a different type), but a
+  // still-filled one doesn't. A reused fiber keeps its shared values, so if
+  // this position's still-pending appear-in animation from a moment ago
+  // stayed queued while `appearDelayMs` flips to null underneath it (that
+  // position no longer counts as newly appeared), waiting on the original
+  // timer left it invisible for however much of the original stagger delay
+  // was left -- long enough to read as a permanently blank/black cell if the
+  // delay was large. Snapping straight to visible here instead removes that
+  // wait entirely.
   useEffect(() => {
-    if (appearDelayMs == null) return;
+    if (appearDelayMs == null) {
+      appearOpacity.value = 1;
+      appearScale.value = 1;
+      return;
+    }
+    appearOpacity.value = 0;
+    appearScale.value = 0;
     const t = setTimeout(() => {
       appearOpacity.value = withTiming(1, { duration: APPEAR_MS });
       appearScale.value = withSpring(1, { duration: 260, dampingRatio: 0.75 });
     }, appearDelayMs);
     return () => clearTimeout(t);
-    // Runs once per cell instance, at mount -- appearDelayMs is fixed for
-    // this cell's whole lifetime (see MatchingNumbersGrid).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [appearDelayMs, appearOpacity, appearScale]);
 
   useEffect(() => {
     if (selected) {
@@ -189,6 +208,14 @@ export interface PendingMatch {
 
 interface Props {
   board: GridValue[][];
+  /** Stable per-row identity, parallel to `board` (same length, same order) --
+   * see GameScreen's rowIdsRef for how these are maintained. Used as each
+   * real row's React key INSTEAD OF its array index, so a row that collapses
+   * out of the middle of the board doesn't reassign every surviving row's
+   * identity (which otherwise breaks Reanimated's `layout`/`exiting`
+   * transitions below -- they need to see "row 2 left" rather than "row 2's
+   * content silently changed and the last row vanished"). */
+  rowIds: number[];
   /** "r,c" keys currently showing the selection highlight -- covers both the
    * single tap-to-select cell and a Hint's two-cell pulse. */
   highlightedCells: Set<string>;
@@ -202,46 +229,21 @@ interface Props {
    * the real ones so it always fills the screen the same way regardless of
    * difficulty. Omit (or 0) to render only the real board. */
   availableHeight?: number;
-  /** Row index Add Numbers most recently appended from, if any -- cells at or
-   * past this row pop in with a staggered entrance instead of appearing
-   * instantly. Null once nothing's newly appended (the default board state). */
-  appearFromRow?: number | null;
-  /** Row indices currently mid shift-up collapse (see engine.findFullyEmptyRows)
-   * -- a single match can empty more than one row at once, so every row below
-   * a given real row shifts up by one cell height per collapsing row that
-   * sits above it (see MatchingRow's shiftMultiplier). Null when nothing is
-   * currently collapsing. */
-  collapsingRows?: number[] | null;
-}
-
-interface MatchingRowProps {
-  /** How many of the currently-collapsing rows sit above this row -- e.g. 2
-   * if both a collapsing row above it are being removed at once, so this row
-   * needs to travel up two cell heights, not one. 0 for a row that's itself
-   * collapsing (it fades away in place, it doesn't travel) or when nothing
-   * above it is collapsing. */
-  shiftMultiplier: number;
-  collapseShift: SharedValue<number>;
-  size: number;
-  style: StyleProp<ViewStyle>;
-  children: React.ReactNode;
-}
-
-/** One board row (real or filler), pulled out into its own component so its
- * shift-up animation can carry a per-row multiplier -- `useAnimatedStyle`
- * can't be called with a per-iteration value from inside the parent's row
- * loop (the loop's length varies as rows collapse, which would violate the
- * rules of hooks), but it's perfectly fine called once per row-component
- * instance like this. */
-function MatchingRow({ shiftMultiplier, collapseShift, size, style, children }: MatchingRowProps) {
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: -size * shiftMultiplier * collapseShift.value }],
-  }));
-  return <Animated.View style={[style, shiftMultiplier > 0 ? animatedStyle : null]}>{children}</Animated.View>;
+  /** Stable ids (from `rowIds`) of the rows Add Numbers most recently
+   * appended, in append order, if any -- their cells pop in with a staggered
+   * entrance instead of appearing instantly. Keyed by id rather than current
+   * row position: a row's position shifts every time an unrelated row above
+   * it collapses, but its id doesn't, so this keeps a cell's stagger delay
+   * fixed for its whole pop-in regardless of how many collapses happen while
+   * it's mid-animation (recomputing the delay from position instead would
+   * change its value mid-flight and restart the pop-in from scratch every
+   * time -- exactly the bug this replaced). Empty once nothing's pending. */
+  appearRowIds?: number[];
 }
 
 export default function MatchingNumbersGrid({
   board,
+  rowIds,
   highlightedCells,
   pendingMatch,
   rejectedPair,
@@ -249,8 +251,7 @@ export default function MatchingNumbersGrid({
   onMatchAnimationDone,
   onRejectAnimationDone,
   availableHeight = 0,
-  appearFromRow = null,
-  collapsingRows = null,
+  appearRowIds = [],
 }: Props) {
   const { colors } = useTheme();
   const styles = useStyles();
@@ -258,34 +259,14 @@ export default function MatchingNumbersGrid({
   const cols = board[0]?.length ?? 0;
   const size = cellSizeFor(cols);
   const W = size * cols;
-  const collapsingCount = collapsingRows?.length ?? 0;
 
   const usableHeight = Math.max(0, availableHeight - BOARD_AREA_VERTICAL_PADDING * 2);
   const fillerRows = size > 0 ? Math.max(0, Math.floor(usableHeight / size) - rows) : 0;
-  // While rows are collapsing, every filler row shifts up right alongside the
-  // real rows below them (they're always "below" every real collapsing
-  // index) -- plus one extra filler row per collapsing row so there's already
-  // a placeholder ready to slide into each slot the vacating rows leave,
-  // instead of those slots briefly showing bare background. Once the
-  // collapse actually removes the rows, `rows` drops by collapsingCount and
-  // fillerRows recomputes to this same total on its own, so the transition
-  // out of the animation is seamless.
-  const renderedFillerRows = collapsingCount > 0 ? fillerRows + collapsingCount : fillerRows;
-  const H = size * (rows + renderedFillerRows);
+  const H = size * (rows + fillerRows);
 
   const lineProgress = useSharedValue(0);
   const lineOpacity = useSharedValue(1);
   const prevPendingKey = useRef<string | null>(null);
-  const collapseShift = useSharedValue(0);
-
-  useEffect(() => {
-    if (collapsingRows == null) {
-      collapseShift.value = 0;
-      return;
-    }
-    collapseShift.value = 0;
-    collapseShift.value = withTiming(1, { duration: ROW_COLLAPSE_MS });
-  }, [collapsingRows, collapseShift]);
   // Drives the 3-beat match animation: draw the connecting line, pulse the
   // pair once it's reached, then fade everything (line + cells) out together.
   const [matchStage, setMatchStage] = useState<'line' | 'pulse' | 'clear'>('line');
@@ -353,6 +334,9 @@ export default function MatchingNumbersGrid({
   const pulseKeys = new Set(pendingMatch && matchStage === 'pulse' ? [cellKey(pendingMatch.a), cellKey(pendingMatch.b)] : []);
   const clearingKeys = new Set(pendingMatch && matchStage === 'clear' ? [cellKey(pendingMatch.a), cellKey(pendingMatch.b)] : []);
   const rejectedKeys = new Set(rejectedPair ? [cellKey(rejectedPair[0]), cellKey(rejectedPair[1])] : []);
+  // Row id -> its position within the last-appended batch, for the stagger
+  // order below -- see the `appearRowIds` prop doc for why this is id-based.
+  const appearOrderById = new Map(appearRowIds.map((id, idx) => [id, idx]));
 
   const rowViews: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
@@ -368,7 +352,8 @@ export default function MatchingNumbersGrid({
         cellViews.push(<FillerCell key={k} size={size} />);
         continue;
       }
-      const appearDelayMs = appearFromRow != null && r >= appearFromRow ? ((r - appearFromRow) * cols + c) * APPEAR_STAGGER_MS : null;
+      const appearOrder = appearOrderById.get(rowIds[r]);
+      const appearDelayMs = appearOrder != null ? (appearOrder * cols + c) * APPEAR_STAGGER_MS : null;
       cellViews.push(
         <MatchingNumbersCell
           key={k}
@@ -383,26 +368,29 @@ export default function MatchingNumbersGrid({
         />
       );
     }
-    // A row itself being collapsed fades away in place (multiplier 0); any
-    // other row shifts up by one cell height per collapsing row above it, so
-    // two simultaneous collapses (e.g. rows 2 and 5) push row 6+ up by two
-    // cell heights while rows 3-4 (between them) only shift by one.
-    const shiftMultiplier = collapsingRows == null || collapsingRows.includes(r) ? 0 : collapsingRows.filter((cr) => cr < r).length;
+    // Keyed by the row's stable id (see the `rowIds` prop doc), not `r` --
+    // when this row is the one that just collapsed, that's what lets
+    // Reanimated see it as "this specific row exited" (playing `exiting`)
+    // while every other row is recognized as the SAME row merely moving to a
+    // new slot (animated by `layout`), instead of every row's identity
+    // reshuffling down by one.
     rowViews.push(
-      <MatchingRow key={r} shiftMultiplier={shiftMultiplier} collapseShift={collapseShift} size={size} style={styles.row}>
+      <Animated.View key={rowIds[r]} style={styles.row} layout={LinearTransition.duration(ROW_COLLAPSE_MS)} exiting={FadeOut.duration(ROW_COLLAPSE_MS)}>
         {cellViews}
-      </MatchingRow>
+      </Animated.View>
     );
   }
-  for (let r = 0; r < renderedFillerRows; r++) {
+  for (let r = 0; r < fillerRows; r++) {
     const cellViews: React.ReactNode[] = [];
     for (let c = 0; c < cols; c++) {
       cellViews.push(<FillerCell key={`filler-${r}-${c}`} size={size} />);
     }
+    // Filler rows are interchangeable placeholders (no content identity to
+    // preserve), so a plain positional key is fine here.
     rowViews.push(
-      <MatchingRow key={`filler-row-${r}`} shiftMultiplier={collapsingCount} collapseShift={collapseShift} size={size} style={styles.row}>
+      <Animated.View key={`filler-row-${r}`} style={styles.row} layout={LinearTransition.duration(ROW_COLLAPSE_MS)}>
         {cellViews}
-      </MatchingRow>
+      </Animated.View>
     );
   }
 

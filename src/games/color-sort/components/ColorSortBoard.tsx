@@ -3,6 +3,7 @@ import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { isTubeFilledSolid } from '../engine';
 import { colorForId, iconForId } from '../palette';
 import type { Tube } from '../types';
 
@@ -201,10 +202,6 @@ function TubeView({ index, tube, capacity, layout, selected, highlighted, shake,
   );
 }
 
-function isSolvedTube(tube: Tube, capacity: number): boolean {
-  return tube.length === capacity && tube.every((c) => c === tube[0]);
-}
-
 interface Props {
   tubes: Tube[];
   capacity: number;
@@ -246,7 +243,7 @@ export default function ColorSortBoard({ tubes, capacity, selected, hint, shakeT
                 selected={selected === index}
                 highlighted={!!hint && (hint.from === index || hint.to === index)}
                 shake={shakeTube === index}
-                solved={isSolvedTube(tube, capacity)}
+                solved={isTubeFilledSolid(tube, capacity)}
                 tiltDir={tiltDirFor(index)}
                 isPourDest={!!pouring && pouring.to === index}
                 showIcons={showIcons}

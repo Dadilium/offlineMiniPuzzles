@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
 import { createProgressStore } from '../../../state/createProgressStore';
 import { applyAddNumbers, applyMatch, findLegalMove, MAX_ADD_NUMBERS, removeRows } from '../engine';
@@ -33,7 +34,15 @@ function sanitizeBoard(board: unknown, level: MatchingNumbersLevel): GridValue[]
   for (const row of board) {
     if (!Array.isArray(row) || row.length !== level.cols) return cloneGrid(level.grid);
   }
-  return board as GridValue[][];
+  // A fully-empty row should never survive to a persisted save -- the
+  // collapse effect always removes one within ROW_COLLAPSE_MS of it
+  // appearing. One showing up here means a prior session's save landed
+  // mid-collapse (or hit the row-index race this hardens elsewhere) --
+  // self-heal by dropping it now instead of rendering it as a dead/blank
+  // row forever. Skipped if it would empty the board entirely (a genuine
+  // full clear) -- that state is handled by the level-restart effect, not here.
+  const withoutEmptyRows = (board as GridValue[][]).filter((row) => row.some((v) => v !== null));
+  return withoutEmptyRows.length > 0 ? withoutEmptyRows : (board as GridValue[][]);
 }
 
 const store = createProgressStore<MatchingNumbersLevel, MatchingNumbersCustom>({
@@ -118,18 +127,28 @@ export function useMatchingNumbersProgress(): MatchingNumbersProgressContextValu
       const board = current.custom.boardsByLevel[levelIndex];
       if (!board) return;
       const nextBoard = applyMatch(board, a, b);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       commit({ ...current, custom: { ...current.custom, boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } } });
     },
     [getCurrent, commit]
   );
 
-  /** Called once a set of fully-cleared rows' shared shift-up animation has finished playing -- see engine.findFullyEmptyRows. */
+  /**
+   * Called once a set of fully-cleared rows' shared shift-up animation has
+   * finished playing -- see engine.findFullyEmptyRows. `rowIndices` was
+   * computed by the caller up to ROW_COLLAPSE_MS ago; re-checked against the
+   * CURRENT board here rather than trusted blindly, so a row that picked up
+   * new content in between (or was never truly empty due to some other race)
+   * never gets deleted along with whatever numbers are sitting in it.
+   */
   const collapseRows = useCallback(
     (levelIndex: number, rowIndices: number[]) => {
       const current = getCurrent();
       const board = current.custom.boardsByLevel[levelIndex];
       if (!board) return;
-      const nextBoard = removeRows(board, rowIndices);
+      const stillEmpty = rowIndices.filter((r) => board[r]?.every((v) => v === null));
+      if (stillEmpty.length === 0) return;
+      const nextBoard = removeRows(board, stillEmpty);
       commit({ ...current, custom: { ...current.custom, boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } } });
     },
     [getCurrent, commit]

@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
 import { createProgressStore } from '../../../state/createProgressStore';
 import i18n from '../../../i18n';
@@ -120,6 +121,8 @@ export function useFindWordsProgress(): FindWordsProgressContextValue {
 
       const matched = matchPlacement(level, cells, found);
       if (matched === null) return null;
+
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       commit({
         ...current,

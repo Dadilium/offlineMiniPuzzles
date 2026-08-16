@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
 import { createProgressStore } from '../../../state/createProgressStore';
 import { applyHint, cycleCellState, makeEmptyBoard } from '../engine';
@@ -111,8 +112,14 @@ export function useKingsProgress(): KingsProgressContextValue {
       const current = getCurrent();
       const board = current.custom.boardsByLevel[levelIndex];
       if (!board) return;
+      const prevValue = board[r][c];
       const nextBoard = board.map((row) => row.slice());
-      nextBoard[r][c] = cycleCellState(board[r][c]);
+      nextBoard[r][c] = cycleCellState(prevValue);
+
+      if (prevValue === 1 && nextBoard[r][c] === 2) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
       commit({ ...current, custom: { boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } } });
     },
     [getCurrent, commit]

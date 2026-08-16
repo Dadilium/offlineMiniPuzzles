@@ -1,6 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
 import { createProgressStore } from '../../../state/createProgressStore';
-import { applyHint, makeInitialTents, toggleTent } from '../engine';
+import { applyHint, computeCounts, makeInitialTents, toggleTent } from '../engine';
 import {
   createLevelForIndexRobust,
   fingerprintTentsAndTrees,
@@ -110,12 +111,20 @@ export function useTentsAndTreesProgress(): TentsAndTreesProgressContextValue {
   const toggleTentAt = useCallback(
     (levelIndex: number, r: number, c: number) => {
       const current = getCurrent();
+      const level = current.generatedLevels[levelIndex];
       const tents = current.custom.tentsByLevel[levelIndex];
-      if (!tents) return;
+      if (!level || !tents) return;
       const hinted = current.custom.hintedCellsByLevel[levelIndex] ?? [];
       if (hinted.includes(`${r},${c}`)) return;
 
       const nextTents = toggleTent(tents, r, c);
+
+      const before = computeCounts(tents);
+      const after = computeCounts(nextTents);
+      const rowJustMatched = before.rowCounts[r] !== level.rowTargets[r] && after.rowCounts[r] === level.rowTargets[r];
+      const colJustMatched = before.colCounts[c] !== level.colTargets[c] && after.colCounts[c] === level.colTargets[c];
+      if (rowJustMatched || colJustMatched) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
       commit({ ...current, custom: { ...current.custom, tentsByLevel: { ...current.custom.tentsByLevel, [levelIndex]: nextTents } } });
     },
     [getCurrent, commit]

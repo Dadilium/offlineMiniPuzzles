@@ -14,7 +14,7 @@ import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialOnAction, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import { MATCHING_NUMBERS_ADD_NUMBERS_AD_SCHEDULE } from '../../../config/ads';
-import MatchingNumbersGrid, { ROW_COLLAPSE_MS, type PendingMatch } from '../components/MatchingNumbersGrid';
+import MatchingNumbersGrid, { type PendingMatch } from '../components/MatchingNumbersGrid';
 import FailOverlay from '../components/FailOverlay';
 import { attemptMatch, computeWin, findFullyEmptyRows, hasLegalMove, MAX_ADD_NUMBERS } from '../engine';
 import type { MatchingNumbersStackParamList } from '../navigation';
@@ -75,63 +75,74 @@ export default function GameScreen({ route, navigation }: Props) {
   // placeholder rows so it always visually fills the screen, regardless of
   // how few rows a given difficulty actually needs.
   const [boardAreaHeight, setBoardAreaHeight] = useState(0);
-  // Row index Add Numbers most recently appended from -- lets the grid
-  // stagger those new cells' entrance instead of popping them all in at once.
-  const [appearFromRow, setAppearFromRow] = useState<number | null>(null);
-  // Row indices currently mid shift-up collapse (see engine.findFullyEmptyRows),
-  // if any -- a single match can empty more than one row at once (its two
-  // cells can sit in different rows, joined by a bend), so every row that
-  // went empty this cycle collapses together in one synchronized animation
-  // rather than one at a time. Board is only mutated (removeRows, via
-  // collapseRows) once that shared animation has actually finished playing.
-  const [collapsingRows, setCollapsingRows] = useState<number[] | null>(null);
-  // Backs the collapse timer below -- kept in a ref (not just the setTimeout
-  // return value local to the effect) so it survives re-renders without
-  // being torn down by React's own effect-cleanup mechanism. See that effect
-  // for why that distinction matters.
-  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Wall-clock time this level attempt began -- reset on level change and on
   // retry, so it always reflects the current attempt, not cumulative time
   // across retries. Used to force the level-completion interstitial due when
   // a level takes unusually long to solve (see SLOW_LEVEL_MS).
   const levelStartRef = useRef(Date.now());
   useEffect(() => {
-    setAppearFromRow(null);
-    setCollapsingRows(null);
     levelStartRef.current = Date.now();
   }, [levelIndex]);
 
-  // Deliberately does NOT return a cleanup that clears the timer -- this
-  // effect re-runs on every `board` change (e.g. an unrelated match clearing
-  // cells elsewhere while these rows' collapse is still counting down), and a
-  // cleanup tied to that would cancel the in-flight timer before it ever
-  // calls collapseRows, permanently orphaning `collapsingRows` (stuck
-  // non-null forever, since nothing else resets it) -- no row ever collapses
-  // again for the rest of the level, and every future match's line/highlight
-  // math goes stale against the frozen-but-never-applied visual shift. The
-  // `board || collapsingRows != null` guard below is what actually prevents
-  // double-scheduling, not the cleanup.
+  // Stable per-row identity for MatchingNumbersGrid's row keys, independent
+  // of the row's current position in `board`. Rows were previously keyed by
+  // their plain array index, which reassigns a "new identity" to every
+  // surviving row the instant one above it is removed (old row 4 becomes
+  // "row 3"). React (and Reanimated's layout/exiting transitions) key
+  // identity off that same index, so a collapse never actually looked like
+  // "row 2 left, everything else slid up" to them -- it looked like "row 2's
+  // *content* silently changed, and the LAST row vanished," which is why the
+  // shift/fade animation could land on the wrong rows and visually stack
+  // content. These ids are computed fresh each render (not in an effect) so
+  // they're ready in time for that same render's row keys:
+  // - a fully-empty row's id is spliced out by the collapse effect below, in
+  //   the same tick it removes that row from `board` -- every surviving row
+  //   keeps its existing id, so Reanimated correctly sees only the removed
+  //   row exit and everything else merely reflow.
+  // - any other mismatch (board grew via Add Numbers, or was wholly replaced
+  //   by a level switch/Retry) means row identity doesn't carry over
+  //   meaningfully anyway, so ids are extended or fully reset here.
+  const rowIdsRef = useRef<number[]>([]);
+  const nextRowIdRef = useRef(0);
+  const rowIdsLevelRef = useRef<number | null>(null);
+  // Ids of the rows Add Numbers most recently appended, in append order --
+  // see MatchingNumbersGrid's `appearRowIds` prop doc for why this rides
+  // along with `rowIdsRef` instead of being computed from position. Only
+  // overwritten when a fresh batch actually appends (below); reset alongside
+  // a full rowIds reset since a wholly different board makes any pending
+  // batch meaningless.
+  const appearRowIdsRef = useRef<number[]>([]);
+  if (rowIdsLevelRef.current !== levelIndex || (board && board.length < rowIdsRef.current.length)) {
+    rowIdsRef.current = board ? board.map((_, i) => i) : [];
+    nextRowIdRef.current = board ? board.length : 0;
+    rowIdsLevelRef.current = levelIndex;
+    appearRowIdsRef.current = [];
+  } else if (board && board.length > rowIdsRef.current.length) {
+    const toAdd = board.length - rowIdsRef.current.length;
+    const newIds: number[] = [];
+    for (let i = 0; i < toAdd; i++) {
+      const id = nextRowIdRef.current++;
+      rowIdsRef.current.push(id);
+      newIds.push(id);
+    }
+    appearRowIdsRef.current = newIds;
+  }
+  const rowIds = rowIdsRef.current;
+
+  // Collapses every fully-emptied row as soon as it's noticed -- no artificial
+  // hold. The visual shift/fade is entirely Reanimated's job now (`layout`
+  // and `exiting` props in MatchingNumbersGrid, keyed by the stable ids
+  // above), decoupled from when the data actually updates, so there's no
+  // asynchronous "pending collapse" window left for a fast second tap to land
+  // in and capture coordinates that go stale -- see onCellPress/
+  // onAddNumbersPress, which no longer need to guard against one.
   useEffect(() => {
-    if (!board || collapsingRows != null) return;
+    if (!board) return;
     const emptyRows = findFullyEmptyRows(board);
     if (emptyRows.length === 0) return;
-    setCollapsingRows(emptyRows);
-    collapseTimerRef.current = setTimeout(() => {
-      collapseTimerRef.current = null;
-      collapseRows(levelIndex, emptyRows);
-      setCollapsingRows(null);
-    }, ROW_COLLAPSE_MS);
-  }, [board, collapsingRows, levelIndex, collapseRows]);
-
-  // Unmount/level-switch safety net only -- clears any still-pending timer so
-  // it can't fire collapseRows/setCollapsingRows against a screen that's gone
-  // or has since moved on to a different level.
-  useEffect(() => {
-    return () => {
-      if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
-      collapseTimerRef.current = null;
-    };
-  }, [levelIndex]);
+    rowIdsRef.current = rowIdsRef.current.filter((_, i) => !emptyRows.includes(i));
+    collapseRows(levelIndex, emptyRows);
+  }, [board, levelIndex, collapseRows]);
 
   // Boards persist forever, so reopening an already-completed level would
   // otherwise land straight on the cleared board with the win popup showing.
@@ -173,11 +184,7 @@ export default function GameScreen({ route, navigation }: Props) {
   }, []);
 
   function onCellPress(r: number, c: number) {
-    // Also blocked during collapsingRows: a match started now would capture
-    // (r, c) coordinates that go stale the instant this collapse actually
-    // removes the rows and shifts everything below them up -- see the
-    // collapse effect above for the full story.
-    if (!board || pendingMatch || rejectedPair || collapsingRows != null) return;
+    if (!board || pendingMatch || rejectedPair) return;
     if (board[r][c] === null) return;
     if (hintPair) {
       if (hintTimer.current) clearTimeout(hintTimer.current);
@@ -235,13 +242,11 @@ export default function GameScreen({ route, navigation }: Props) {
   );
 
   function onAddNumbersPress() {
-    const prevRows = board.length;
     const ok = addNumbers(levelIndex);
     if (!ok) {
       showToast(t('game.addNumbersFailToast'));
       return;
     }
-    setAppearFromRow(prevRows);
     notifyAddNumbersUsed();
   }
 
@@ -270,16 +275,16 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   function onRetryPress() {
-    if (collapseTimerRef.current) {
-      clearTimeout(collapseTimerRef.current);
-      collapseTimerRef.current = null;
-    }
     setSelected(null);
     setPendingMatch(null);
     setRejectedPair(null);
     setHintPair(null);
-    setAppearFromRow(null);
-    setCollapsingRows(null);
+    // Forces the row-ids sync above to treat the next render as a full reset
+    // (see its `rowIdsLevelRef.current !== levelIndex` check) rather than
+    // reading the pristine board's row count as "growth" -- which it could
+    // otherwise look like whenever the board had shrunk (via collapses)
+    // below the level's original row count before this Retry.
+    rowIdsLevelRef.current = null;
     levelStartRef.current = Date.now();
     resetLevel(levelIndex);
   }
@@ -348,9 +353,9 @@ export default function GameScreen({ route, navigation }: Props) {
     >
       <MatchingNumbersGrid
         board={board}
+        rowIds={rowIds}
         availableHeight={boardAreaHeight}
-        appearFromRow={appearFromRow}
-        collapsingRows={collapsingRows}
+        appearRowIds={appearRowIdsRef.current}
         highlightedCells={highlightedCells}
         pendingMatch={pendingMatch}
         rejectedPair={rejectedPair}
