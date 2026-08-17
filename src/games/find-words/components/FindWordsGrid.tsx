@@ -335,7 +335,7 @@ export default function FindWordsGrid({ level, foundIndices, celebrate, onCelebr
     for (let c = 0; c < cols; c++) {
       cellsInRow.push(
         <View key={c} style={[styles.cell, { width: size, height: size }]}>
-          <Text style={[styles.letter, { fontSize: size * 0.46 }]}>{grid[r][c]}</Text>
+          <Text style={[styles.letter, { fontSize: size * 0.52 }]}>{grid[r][c]}</Text>
         </View>
       );
     }
