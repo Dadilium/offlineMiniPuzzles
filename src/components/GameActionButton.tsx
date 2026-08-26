@@ -5,13 +5,18 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTim
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { createThemedStyles } from '../theme/createThemedStyles';
-import { useTheme } from '../theme/ThemeProvider';
 import { darken } from '../theme/colorUtils';
 
 const SIZE = 56;
 const PRESS_DEPTH = 6;
 const ICON_SIZE = 30;
 const BADGE_SIZE = 22;
+// Fixed, not `colors.text`/`colors.bgDeep` -- the badge's own background
+// (colors.gold) is theme-invariant, but those theme colors flip between
+// near-white (dark mode) and near-black (light mode), so pulling from them
+// made the badge unreadable in dark mode specifically. Pinned dark so it
+// stays high-contrast against gold in both themes.
+const BADGE_CONTENT_COLOR = '#1a1206';
 
 interface Props {
   icon: keyof typeof Ionicons.glyphMap;
@@ -49,7 +54,6 @@ function GameActionButton({
   disabled,
   style,
 }: Props) {
-  const { colors } = useTheme();
   const styles = useStyles();
   const translateY = useSharedValue(0);
   const interactive = !hidden && !disabled;
@@ -81,7 +85,7 @@ function GameActionButton({
             {badge !== undefined && (
               <View style={[styles.badge, badge === 'ad' && styles.badgeAd]}>
                 {badge === 'ad' ? (
-                  <Ionicons name="videocam" size={10} color={colors.bgDeep} />
+                  <Ionicons name="videocam" size={10} color={BADGE_CONTENT_COLOR} />
                 ) : (
                   <Text style={styles.badgeText}>{badge}</Text>
                 )}
@@ -226,5 +230,5 @@ const useStyles = createThemedStyles((colors) => ({
     justifyContent: 'center',
   },
   badgeAd: { backgroundColor: colors.gold },
-  badgeText: { color: colors.text, fontWeight: '700', fontSize: 10 },
+  badgeText: { color: BADGE_CONTENT_COLOR, fontWeight: '800', fontSize: 10 },
 }));

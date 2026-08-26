@@ -5,28 +5,34 @@ import { KingCrownGlyph } from './KingCrown';
 
 const BOARD_RADIUS = 10;
 
-// The same region palette used in the real game grid (see KingsGrid.tsx) --
-// exposed as a hook (rather than a plain constant) since it depends on the
-// active theme. Kept here too so tutorial diagrams look identical. Exactly
-// 9 entries, one per region up to the largest board (n=9), spaced around
-// the hue wheel so no two ever read as "the same color" once alpha-blended
-// over the board background -- `rid % palette.length` then never wraps for
-// a real board, so no two regions can collide.
+// The same region palette used in the real game grid (see KingsGrid.tsx).
+// Dusty/jewel-toned versions of the theme signal colors -- lower lightness
+// than the raw signalRed/warn/gold/etc (too bright as a solid cell fill),
+// but still meaningfully saturated so regions read as distinct colors
+// rather than washed-out pastels (a first pass that blended 50% toward
+// neutral gray killed saturation along with brightness and came out pale
+// and muddy in both themes -- this trades some of that lightness reduction
+// back for saturation). Kept as a hook (rather than a plain constant) for
+// parity with the rest of the theme system, though the values themselves
+// are intentionally theme-invariant so regions look identical in light and
+// dark mode. Exactly 9 entries, one per region up to the largest board
+// (n=9), spaced around the hue wheel so no two ever read as "the same
+// color" -- `rid % palette.length` then never wraps for a real board, so no
+// two regions can collide.
 export function useRegionPalette(): string[] {
-  const { colors } = useTheme();
   return useMemo(
     () => [
-      colors.signalRed,
-      colors.warn,
-      colors.gold,
-      colors.success,
-      colors.teal,
-      colors.signalBlue,
-      colors.indigo,
-      colors.purple,
-      colors.pink,
+      '#c1605a', // terracotta red
+      '#cd9145', // amber/ochre
+      '#cdbf5c', // mustard gold
+      '#5da173', // sage green
+      '#3f9c95', // deep teal
+      '#5c93cc', // steel blue
+      '#6f74bd', // slate indigo
+      '#9569bd', // muted violet
+      '#c06f96', // dusty rose
     ],
-    [colors]
+    []
   );
 }
 
