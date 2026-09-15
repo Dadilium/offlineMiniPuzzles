@@ -78,7 +78,8 @@
         "react-native-google-mobile-ads/app.plugin.js",
         {
           "androidAppId": "ca-app-pub-2631204280172241~3792617336",
-          "iosAppId": "ca-app-pub-2631204280172241~3357503060"
+          "iosAppId": "ca-app-pub-2631204280172241~3357503060",
+          "delayAppMeasurementInit": true
         }
       ],
       "./plugins/withKotlinSkipMetadataVersionCheck.js"

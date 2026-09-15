@@ -31,8 +31,14 @@ interface PersistedShape {
   streakDays: number;
 }
 
+/** New installs start with 2 hints in reserve, on top of whatever the
+ * first-launch daily claim adds -- gives brand-new players something to
+ * spend before they've earned anything, without touching the claim/streak
+ * logic itself. */
+const STARTING_BALANCE = 2;
+
 function defaultState(): PersistedShape {
-  return { balance: 0, lastClaimDate: null, streakDays: 0 };
+  return { balance: STARTING_BALANCE, lastClaimDate: null, streakDays: 0 };
 }
 
 function sanitizePersisted(parsed: Partial<PersistedShape> | null): PersistedShape {

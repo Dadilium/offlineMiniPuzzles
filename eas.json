@@ -41,6 +41,17 @@
         "buildType": "apk"
       }
     },
+    "preview-device": {
+      "distribution": "internal",
+      "environment": "preview",
+      "channel": "preview",
+      "env": {
+        "SENTRY_ALLOW_FAILURE": "true"
+      },
+      "ios": {
+        "image": "macos-tahoe-26.5-xcode-26.6"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "environment": "production",
@@ -51,6 +62,10 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6802090640"
+      }
+    }
   }
 }
