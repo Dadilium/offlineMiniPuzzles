@@ -2,7 +2,7 @@ import type { BoardBuildParams } from './boardBuilder';
 
 // 0-100, starts around the middle-low so early levels are gentle.
 export type SkillRating = number;
-export const INITIAL_SKILL_RATING: SkillRating = 20;
+export const INITIAL_SKILL_RATING: SkillRating = 40;
 
 const MIN_RATING = 0;
 const MAX_RATING = 100;

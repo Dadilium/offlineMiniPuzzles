@@ -1,5 +1,6 @@
 import type { BlockFillLevel } from '../types';
-import { difficultyParams, INITIAL_SKILL_RATING, maxAttemptsFor, type SkillRating } from './difficulty';
+import { difficultyParams, maxAttemptsFor, type SkillRating } from './difficulty';
+import { tierFloor } from '../../../state/difficultyTiers';
 import { generateBlockFillLevel, type GenerateFailure, type GenerateSuccess } from './generator';
 import { mulberry32, seedFromLevelIndex } from './rng';
 
@@ -21,8 +22,8 @@ export function createLevelForIndex(
 
 /**
  * Same as `createLevelForIndex`, but never fails: relaxes the request in
- * stages (drop the recent-shape de-dup constraint, then fall back toward the
- * gentle baseline rating) before finally trying the smallest, most
+ * stages (drop the recent-shape de-dup constraint, then fall back to the floor of the
+ * player's difficulty tier -- never an easier tier) before finally trying the smallest, most
  * permissive band on a fresh seed stream. Same ladder as Kings'
  * `createLevelForIndexRobust`.
  */
@@ -30,7 +31,7 @@ export function createLevelForIndexRobust(levelIndex: number, skillRating: Skill
   const attempts: Array<() => GenerateSuccess | GenerateFailure> = [
     () => createLevelForIndex(levelIndex, skillRating, recentFingerprints),
     () => createLevelForIndex(levelIndex, skillRating, []),
-    () => createLevelForIndex(levelIndex, INITIAL_SKILL_RATING, []),
+    () => createLevelForIndex(levelIndex, tierFloor(skillRating), []),
   ];
   for (const attempt of attempts) {
     const result = attempt();

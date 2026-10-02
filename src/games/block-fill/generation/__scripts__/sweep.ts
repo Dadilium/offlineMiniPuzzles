@@ -23,7 +23,7 @@ function renderPath(rows: number, cols: number, fillable: boolean[][], path: Cel
   return grid.map((row) => row.map((cell) => cell.toString().padStart(3, ' ')).join('')).join('\n');
 }
 
-const RATINGS: SkillRating[] = [INITIAL_SKILL_RATING, 40, 60, 80, 100];
+const RATINGS: SkillRating[] = [INITIAL_SKILL_RATING, 60, 80, 100];
 const LEVELS_PER_RATING = 8;
 const DEDUP_WINDOW = 5;
 

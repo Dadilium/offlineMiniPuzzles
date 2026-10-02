@@ -6,6 +6,7 @@ import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-nat
 import { fonts, radii } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
 import { useTheme } from '../theme/ThemeProvider';
+import DifficultySelector, { type DifficultySelectorProps } from './DifficultySelector';
 import TopBar from './TopBar';
 
 // TopBar's own height (paddingTop + IconButton size) -- used so the banner
@@ -64,14 +65,16 @@ interface Props {
   onLevels: () => void;
   howToPlayLabel: string;
   onHowToPlay: () => void;
+  /** Difficulty picker shown above the actions (see `useHubDifficulty`); omitted for games without generated levels. */
+  difficulty?: DifficultySelectorProps;
   /** Extra content rendered directly above the Play button, e.g. Relay's __DEV__-only tools. */
   aboveActions?: React.ReactNode;
 }
 
 /** Shared hub screen used by every game: a full-bleed banner (this game's
  * motif over a soft dot pattern + color glow, name overlaid at the base)
- * that runs up behind the status bar and top bar, a tagline, a Play/Resume
- * button, and Levels / How-to-play buttons. */
+ * that runs up behind the status bar and top bar, a tagline, an optional
+ * difficulty picker, a Play/Resume button, and Levels / How-to-play buttons. */
 export default function GameHubScreen({
   onBack,
   backAccessibilityLabel,
@@ -85,6 +88,7 @@ export default function GameHubScreen({
   onLevels,
   howToPlayLabel,
   onHowToPlay,
+  difficulty,
   aboveActions,
 }: Props) {
   const { colors } = useTheme();
@@ -132,6 +136,8 @@ export default function GameHubScreen({
         <Text style={styles.tagline}>{tagline}</Text>
 
         <View style={styles.spacer} />
+
+        {difficulty && <DifficultySelector {...difficulty} accentColor={accentColor} />}
 
         {aboveActions}
 

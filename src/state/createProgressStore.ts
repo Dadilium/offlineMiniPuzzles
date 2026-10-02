@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { type DifficultyTier, effectiveRating, isTierUnlocked, tierForRating, tierRank } from './difficultyTiers';
+import { isLevelTouched, resolvePersistedTiers, withRating, withTierSwitch } from './progressTransitions';
 
 const DEFAULT_MAX_RECENT_FINGERPRINTS = 50;
 /**
@@ -23,6 +25,15 @@ export interface ProgressState<TLevel, TCustom> {
   skillRating: number;
   recentFingerprints: string[];
   hintsUsedByLevel: Record<number, number>;
+  /** Difficulty the player picked on the hub -- generation and the skill
+   * reducer both work on `skillRating` held inside this tier's band. */
+  selectedTier: DifficultyTier;
+  /** Hardest tier `skillRating` has ever reached. Only ever grows; reaching a
+   * new tier unlocks it without changing `selectedTier`. */
+  unlockedTier: DifficultyTier;
+  /** Last `unlockedTier` the hub has acknowledged -- lets it celebrate a fresh
+   * unlock exactly once. */
+  seenUnlockedTier: DifficultyTier;
 }
 
 export interface ProgressStoreConfig<TLevel, TCustom> {
@@ -84,6 +95,7 @@ export interface ProgressStore<TLevel, TCustom> {
   tutorialsSeen: Set<string>;
   skillRating: number;
   hintsUsedByLevel: Record<number, number>;
+  difficulty: DifficultyControls;
   markLevelComplete: (levelIndex: number) => void;
   markLevelSkipped: (levelIndex: number) => void;
   markTutorialSeen: (key: string) => void;
@@ -94,6 +106,22 @@ export interface ProgressStore<TLevel, TCustom> {
    * exactly like every game's own `stateRef.current` pair used to. */
   getCurrent: () => ProgressState<TLevel, TCustom>;
   commit: (next: ProgressState<TLevel, TCustom>) => void;
+}
+
+/** Everything the hub's difficulty selector needs -- grouped so each game's
+ * progress hook can pass it straight through untouched. */
+export interface DifficultyControls {
+  selectedTier: DifficultyTier;
+  unlockedTier: DifficultyTier;
+  /** True while a tier has been unlocked that the hub hasn't shown yet. */
+  hasNewUnlock: boolean;
+  /** Switches difficulty and regenerates every not-yet-played level at it.
+   * No-op for a locked or already-selected tier. */
+  setSelectedTier: (tier: DifficultyTier) => void;
+  /** Whether the player has touched this level (hints spent or any board
+   * progress) -- i.e. whether regenerating it would discard their work. */
+  isLevelStarted: (levelIndex: number) => boolean;
+  markUnlockSeen: () => void;
 }
 
 /**
@@ -116,6 +144,7 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
   const maxGeneratedLevels = config.maxGeneratedLevels ?? DEFAULT_MAX_GENERATED_LEVELS;
 
   function defaultState(): ProgressState<TLevel, TCustom> {
+    const initialTier = tierForRating(config.initialSkillRating);
     return {
       generatedLevels: {},
       custom: config.defaultCustom(),
@@ -125,6 +154,9 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
       skillRating: config.initialSkillRating,
       recentFingerprints: [],
       hintsUsedByLevel: {},
+      selectedTier: initialTier,
+      unlockedTier: initialTier,
+      seenUnlockedTier: initialTier,
     };
   }
 
@@ -154,15 +186,19 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
       }
     }
 
+    const skillRating = typeof parsed.skillRating === 'number' ? parsed.skillRating : config.initialSkillRating;
+    const tiers = resolvePersistedTiers(parsed, skillRating);
+
     return {
       generatedLevels,
       custom: config.sanitizeCustom(parsed.custom, generatedLevels),
       levelsCompleted: Array.isArray(parsed.levelsCompleted) ? parsed.levelsCompleted : [],
       levelsSkipped: Array.isArray(parsed.levelsSkipped) ? parsed.levelsSkipped : [],
       tutorialsSeen: Array.isArray(parsed.tutorialsSeen) ? parsed.tutorialsSeen : [],
-      skillRating: typeof parsed.skillRating === 'number' ? parsed.skillRating : config.initialSkillRating,
+      skillRating,
       recentFingerprints: Array.isArray(parsed.recentFingerprints) ? parsed.recentFingerprints.slice(-maxRecentFingerprints) : [],
       hintsUsedByLevel,
+      ...tiers,
     };
   }
 
@@ -180,6 +216,9 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
     // Tracks levels currently being generated (async games only) so a
     // second call for the same index doesn't kick off a duplicate search.
     const pendingGeneration = useRef<Set<number>>(new Set());
+    // Bumped on every difficulty switch, so an async generation started
+    // under the old tier is discarded instead of landing a stale board.
+    const generationEpoch = useRef(0);
 
     const getCurrent = useCallback(() => stateRef.current, []);
     const commit = useCallback((next: ProgressState<TLevel, TCustom>) => {
@@ -250,18 +289,21 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
         if (current.generatedLevels[levelIndex]) return;
         if (pendingGeneration.current.has(levelIndex)) return;
 
-        const result = config.generate(levelIndex, current.skillRating, current.recentFingerprints, current.custom, opts);
+        const rating = effectiveRating(current.skillRating, current.selectedTier);
+        const result = config.generate(levelIndex, rating, current.recentFingerprints, current.custom, opts);
         if (result instanceof Promise) {
+          const epoch = generationEpoch.current;
           pendingGeneration.current.add(levelIndex);
           result
             .then((level) => {
+              if (epoch !== generationEpoch.current) return; // difficulty changed while in flight
               pendingGeneration.current.delete(levelIndex);
               const latest = stateRef.current;
               if (latest.generatedLevels[levelIndex]) return; // generated via another path while this was in flight
               commit(applyGenerated(latest, levelIndex, level));
             })
             .catch(() => {
-              pendingGeneration.current.delete(levelIndex);
+              if (epoch === generationEpoch.current) pendingGeneration.current.delete(levelIndex);
             });
           return;
         }
@@ -283,12 +325,12 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
         if (current.levelsCompleted.includes(levelIndex)) return;
         const hintsUsed = current.hintsUsedByLevel[levelIndex] ?? 0;
         const extra = config.extraSkillInputs?.(levelIndex, current, 'complete') ?? {};
-        const next: ProgressState<TLevel, TCustom> = {
-          ...current,
-          levelsCompleted: current.levelsCompleted.concat(levelIndex),
-          skillRating: config.nextSkillRating(current.skillRating, { hintsUsed, skipped: false, ...extra }),
-        };
-        commit(next);
+        const skillRating = config.nextSkillRating(effectiveRating(current.skillRating, current.selectedTier), {
+          hintsUsed,
+          skipped: false,
+          ...extra,
+        });
+        commit(withRating({ ...current, levelsCompleted: current.levelsCompleted.concat(levelIndex) }, skillRating));
       },
       [commit]
     );
@@ -299,12 +341,12 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
         const current = stateRef.current;
         if (current.levelsCompleted.includes(levelIndex) || current.levelsSkipped.includes(levelIndex)) return;
         const extra = config.extraSkillInputs?.(levelIndex, current, 'skip') ?? {};
-        const next: ProgressState<TLevel, TCustom> = {
-          ...current,
-          levelsSkipped: current.levelsSkipped.concat(levelIndex),
-          skillRating: config.nextSkillRating(current.skillRating, { hintsUsed: 0, skipped: true, ...extra }),
-        };
-        commit(next);
+        const skillRating = config.nextSkillRating(effectiveRating(current.skillRating, current.selectedTier), {
+          hintsUsed: 0,
+          skipped: true,
+          ...extra,
+        });
+        commit(withRating({ ...current, levelsSkipped: current.levelsSkipped.concat(levelIndex) }, skillRating));
       },
       [commit]
     );
@@ -334,9 +376,44 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
 
     const resetAllProgress = useCallback(() => {
       const next = defaultState();
+      generationEpoch.current += 1;
+      pendingGeneration.current.clear();
       commit(next);
       AsyncStorage.removeItem(config.storageKey).catch(() => {});
     }, [commit]);
+
+    const setSelectedTier = useCallback(
+      (tier: DifficultyTier) => {
+        const current = stateRef.current;
+        if (tier === current.selectedTier || !isTierUnlocked(tier, current.unlockedTier)) return;
+        generationEpoch.current += 1;
+        pendingGeneration.current.clear();
+        commit(withTierSwitch(current, tier, config.resetLevelCustom));
+        const resumeIdx = current.levelsCompleted.length + current.levelsSkipped.length;
+        ensureLevel(resumeIdx, config.initialEnsureOpts);
+      },
+      [commit, ensureLevel]
+    );
+
+    const isLevelStarted = useCallback((levelIndex: number): boolean => isLevelTouched(stateRef.current, levelIndex, config.resetLevelCustom), []);
+
+    const markUnlockSeen = useCallback(() => {
+      const current = stateRef.current;
+      if (current.seenUnlockedTier === current.unlockedTier) return;
+      commit({ ...current, seenUnlockedTier: current.unlockedTier });
+    }, [commit]);
+
+    const difficulty = useMemo<DifficultyControls>(
+      () => ({
+        selectedTier: state.selectedTier,
+        unlockedTier: state.unlockedTier,
+        hasNewUnlock: tierRank(state.unlockedTier) > tierRank(state.seenUnlockedTier),
+        setSelectedTier,
+        isLevelStarted,
+        markUnlockSeen,
+      }),
+      [state.selectedTier, state.unlockedTier, state.seenUnlockedTier, setSelectedTier, isLevelStarted, markUnlockSeen]
+    );
 
     const value = useMemo<ProgressStore<TLevel, TCustom>>(
       () => ({
@@ -349,6 +426,7 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
         tutorialsSeen: new Set(state.tutorialsSeen),
         skillRating: state.skillRating,
         hintsUsedByLevel: state.hintsUsedByLevel,
+        difficulty,
         markLevelComplete,
         markLevelSkipped,
         markTutorialSeen,
@@ -357,7 +435,20 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
         getCurrent,
         commit,
       }),
-      [ready, state, levelFor, ensureLevel, markLevelComplete, markLevelSkipped, markTutorialSeen, resetLevel, resetAllProgress, getCurrent, commit]
+      [
+        ready,
+        state,
+        levelFor,
+        ensureLevel,
+        difficulty,
+        markLevelComplete,
+        markLevelSkipped,
+        markTutorialSeen,
+        resetLevel,
+        resetAllProgress,
+        getCurrent,
+        commit,
+      ]
     );
 
     return React.createElement(ProgressContext.Provider, { value }, children);

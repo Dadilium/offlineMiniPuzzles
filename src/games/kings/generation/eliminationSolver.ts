@@ -1,5 +1,9 @@
 import type { KingsLevel } from '../types';
 
+/** Hardest technique a board needed: hidden singles only, plus locked
+ * candidates, or plus one-step lookahead. */
+export type ReasoningTier = 'easy' | 'medium' | 'hard';
+
 export interface EliminationResult {
   /** True if the board fully resolves via pure deduction, with no guessing. */
   solved: boolean;
@@ -9,6 +13,10 @@ export interface EliminationResult {
   /** Whether the locked-candidates pass ever contributed a deduction (hidden
    * singles alone weren't enough) -- the difficulty-tier signal. */
   usedLockedCandidates: boolean;
+  /** Whether one-step lookahead ("a king here would leave some row, column
+   * or region with no cell left") was ever needed. */
+  usedLookahead: boolean;
+  tier: ReasoningTier;
   /** How many fixed-point loop iterations it took to finish (or get stuck) --
    * a continuous "how much reasoning" signal within a tier. */
   rounds: number;
@@ -17,11 +25,14 @@ export interface EliminationResult {
 /**
  * Mimics how a person actually solves these boards -- repeatedly applies
  * "only one legal cell left in this row/column/region -> place a king
- * there" (hidden singles) and "this region's remaining candidates all sit
+ * there" (hidden singles), "this region's remaining candidates all sit
  * in one row/column (or vice versa) -> the other cells in that line/region
- * can't hold a king" (locked candidates), looping to a fixed point. If it
+ * can't hold a king" (locked candidates), and -- only once both are stuck --
+ * "a king here would wipe out every remaining cell of some other row, column
+ * or region, so it can't go here" (one-step lookahead, the go-to move for
+ * larger boards), looping to a fixed point. If it
  * fully places all `n` kings this way, the level is solvable without ever
- * having to guess-and-backtrack. Both techniques are "safe": they only ever
+ * having to guess-and-backtrack. All three are "safe": they only ever
  * eliminate cells that can be proven impossible, never the true solution --
  * so this should never contradict a level `solveKings` already confirmed
  * has exactly one solution.
@@ -35,7 +46,10 @@ export function solveByElimination(level: KingsLevel): EliminationResult {
   const regionDone = Array(n).fill(false);
   const positions: Array<{ r: number; c: number }> = [];
   let usedLockedCandidates = false;
+  let usedLookahead = false;
   let rounds = 0;
+  const wiped = new Int32Array(n * n);
+  let wipeStamp = 0;
 
   function rowCandidates(r: number): number[] {
     const cols: number[] = [];
@@ -179,6 +193,55 @@ export function solveByElimination(level: KingsLevel): EliminationResult {
         }
       }
     }
+    if (changed) continue; // re-run the cheaper techniques before lookahead
+
+    // One-step lookahead: rule out any candidate whose placement would
+    // leave another unfinished row, column or region with zero candidates.
+    for (let r = 0; r < n; r++) {
+      if (rowDone[r]) continue;
+      for (let c = 0; c < n; c++) {
+        if (!candidates[r][c]) continue;
+        if (placementEmptiesAUnit(r, c)) {
+          candidates[r][c] = false;
+          changed = true;
+          usedLookahead = true;
+        }
+      }
+    }
+  }
+
+  /** Whether placing a king at (r, c) would leave some other unfinished
+   * row/column/region with no candidate cell. */
+  function placementEmptiesAUnit(r: number, c: number): boolean {
+    const stamp = ++wipeStamp;
+    const rid = regions[r][c];
+    for (let rr = 0; rr < n; rr++) {
+      for (let cc = 0; cc < n; cc++) {
+        if (!candidates[rr][cc]) continue;
+        if (rr === r || cc === c || regions[rr][cc] === rid || (Math.abs(rr - r) <= 1 && Math.abs(cc - c) <= 1)) wiped[rr * n + cc] = stamp;
+      }
+    }
+    const alive = (rr: number, cc: number) => candidates[rr][cc] && wiped[rr * n + cc] !== stamp;
+
+    for (let rr = 0; rr < n; rr++) {
+      if (rr === r || rowDone[rr]) continue;
+      let any = false;
+      for (let cc = 0; cc < n && !any; cc++) any = alive(rr, cc);
+      if (!any) return true;
+    }
+    for (let cc = 0; cc < n; cc++) {
+      if (cc === c || colDone[cc]) continue;
+      let any = false;
+      for (let rr = 0; rr < n && !any; rr++) any = alive(rr, cc);
+      if (!any) return true;
+    }
+    for (let other = 0; other < n; other++) {
+      if (other === rid || regionDone[other]) continue;
+      let any = false;
+      for (let rr = 0; rr < n && !any; rr++) for (let cc = 0; cc < n && !any; cc++) any = regions[rr][cc] === other && alive(rr, cc);
+      if (!any) return true;
+    }
+    return false;
   }
 
   const solved = !contradiction && positions.length === n;
@@ -189,6 +252,8 @@ export function solveByElimination(level: KingsLevel): EliminationResult {
       ? undefined
       : `stuck after placing ${positions.length}/${n} kings by pure deduction -- the rest needs guessing/backtracking`,
     usedLockedCandidates,
+    usedLookahead,
+    tier: usedLookahead ? 'hard' : usedLockedCandidates ? 'medium' : 'easy',
     rounds,
   };
 }

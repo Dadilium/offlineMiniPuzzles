@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
-import { createProgressStore } from '../../../state/createProgressStore';
+import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
 import i18n from '../../../i18n';
 import { matchPlacement, pickHintPlacement } from '../engine';
 import {
@@ -104,6 +104,8 @@ interface FindWordsProgressContextValue {
   markTutorialSeen: (key: string) => void;
   /** Wipes all generated levels, found words, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
   resetAllProgress: () => void;
+  /** Hub difficulty selector state + actions, straight from the shared store. */
+  difficulty: DifficultyControls;
 }
 
 export const FindWordsProgressProvider = store.Provider;
@@ -169,5 +171,6 @@ export function useFindWordsProgress(): FindWordsProgressContextValue {
     markLevelSkipped: s.markLevelSkipped,
     markTutorialSeen: s.markTutorialSeen,
     resetAllProgress: s.resetAllProgress,
+    difficulty: s.difficulty,
   };
 }

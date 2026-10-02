@@ -70,5 +70,21 @@
     "startPlaying": "Commencer à jouer",
     "newRule": "Nouvelle règle",
     "stepOf": "Étape {{current}} sur {{total}}"
+  },
+  "difficulty": {
+    "label": "Difficulté",
+    "tiers": {
+      "easy": "Facile",
+      "medium": "Moyen",
+      "hard": "Difficile",
+      "expert": "Expert"
+    },
+    "lockedToast": "Terminez des niveaux en {{current}} pour débloquer {{tier}}",
+    "unlockedA11y": "{{tier}}, débloqué",
+    "lockedA11y": "{{tier}}, verrouillé",
+    "confirmTitle": "Changer la difficulté ?",
+    "confirmMessage": "Passer en {{tier}} redémarre votre niveau actuel avec une nouvelle grille.",
+    "confirmAction": "Changer",
+    "cancelAction": "Continuer"
   }
 }

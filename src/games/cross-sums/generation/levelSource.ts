@@ -1,5 +1,6 @@
 import type { CrossSumsLevel } from '../types';
-import { difficultyParams, INITIAL_SKILL_RATING, maxAttemptsFor, type SkillRating } from './difficulty';
+import { difficultyParams, maxAttemptsFor, type SkillRating } from './difficulty';
+import { tierFloor } from '../../../state/difficultyTiers';
 import { generateCrossSumsLevel, type GenerateFailure, type GenerateSuccess } from './generator';
 import { mulberry32, seedFromLevelIndex } from './rng';
 
@@ -22,8 +23,8 @@ export function createLevelForIndex(
 
 /**
  * Same as `createLevelForIndex`, but never fails: relaxes the request in
- * stages (drop the recent-shape de-dup constraint, then fall back toward the
- * gentle baseline rating) before finally trying a small fixed-size board on a
+ * stages (drop the recent-shape de-dup constraint, then fall back to the floor of the
+ * player's difficulty tier -- never an easier tier) before finally trying a small fixed-size board on a
  * fresh seed stream. Uniqueness at these sizes is found on essentially the
  * first attempt in practice (see the checkpoint sweep), so this ladder
  * exists so a player is never left without a level, not because it's
@@ -33,7 +34,7 @@ export function createLevelForIndexRobust(levelIndex: number, skillRating: Skill
   const attempts: Array<() => GenerateSuccess | GenerateFailure> = [
     () => createLevelForIndex(levelIndex, skillRating, recentFingerprints),
     () => createLevelForIndex(levelIndex, skillRating, []),
-    () => createLevelForIndex(levelIndex, INITIAL_SKILL_RATING, []),
+    () => createLevelForIndex(levelIndex, tierFloor(skillRating), []),
   ];
   for (const attempt of attempts) {
     const result = attempt();

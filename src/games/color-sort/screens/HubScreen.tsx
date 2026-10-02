@@ -2,6 +2,7 @@ import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import GameHubScreen from '../../../components/GameHubScreen';
+import { useHubDifficulty } from '../../../components/useHubDifficulty';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { getResumeIndex } from '../../../utils/levelProgress';
 import ColorSortCardArt from '../CardArt';
@@ -13,7 +14,7 @@ type Props = NativeStackScreenProps<ColorSortStackParamList, 'ColorSortHub'>;
 
 export default function HubScreen({ navigation }: Props) {
   const { colors } = useTheme();
-  const { levelsCompleted, levelsSkipped, tutorialsSeen, showColorblindIcons, setShowColorblindIcons } = useColorSortProgress();
+  const { levelsCompleted, levelsSkipped, tutorialsSeen, difficulty, showColorblindIcons, setShowColorblindIcons } = useColorSortProgress();
   const { t } = useTranslation('color-sort');
   const { t: tc } = useTranslation('common');
 
@@ -26,6 +27,7 @@ export default function HubScreen({ navigation }: Props) {
   }
 
   const resumeIdx = getResumeIndex(levelsCompleted, levelsSkipped);
+  const difficultyProps = useHubDifficulty(difficulty, resumeIdx);
 
   return (
     <GameHubScreen
@@ -35,6 +37,7 @@ export default function HubScreen({ navigation }: Props) {
       CardArt={ColorSortCardArt}
       name={t('meta.name')}
       tagline={t('hub.tagline')}
+      difficulty={difficultyProps}
       playLabel={levelsCompleted.size === 0 && levelsSkipped.size === 0 ? tc('actions.play') : tc('actions.resume')}
       onPlay={() => enterLevel(resumeIdx)}
       levelsLabel={tc('actions.levels')}

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { createProgressStore } from '../../../state/createProgressStore';
+import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
 import { extendPath, findHintCell, rewindTo } from '../engine';
 import { createLevelForIndexRobust, fingerprintBlockFill, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { BlockFillLevel, Cell } from '../types';
@@ -89,6 +89,8 @@ interface BlockFillProgressContextValue {
   markTutorialSeen: (key: string) => void;
   /** Wipes all generated levels, paths, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
   resetAllProgress: () => void;
+  /** Hub difficulty selector state + actions, straight from the shared store. */
+  difficulty: DifficultyControls;
 }
 
 export const BlockFillProgressProvider = store.Provider;
@@ -156,5 +158,6 @@ export function useBlockFillProgress(): BlockFillProgressContextValue {
     markLevelSkipped: s.markLevelSkipped,
     markTutorialSeen: s.markTutorialSeen,
     resetAllProgress: s.resetAllProgress,
+    difficulty: s.difficulty,
   };
 }

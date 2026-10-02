@@ -1,5 +1,6 @@
 import type { KingsLevel } from '../types';
-import { difficultyParams, INITIAL_SKILL_RATING, maxAttemptsFor, stepDownRating, type SkillRating } from './difficulty';
+import { difficultyParams, maxAttemptsFor, stepDownRating, type SkillRating } from './difficulty';
+import { tierFloor } from '../../../state/difficultyTiers';
 import { generateKingsLevelAsync, type GenerateFailure, type GenerateSuccess } from './generator';
 import { mulberry32, seedFromLevelIndex } from './rng';
 
@@ -62,7 +63,7 @@ export const BACKGROUND_DEADLINES: GenerationDeadlines = {
  * Same as `createLevelForIndex`, but never fails: relaxes the request in
  * stages before finally trying the widest possible band (n=5, easy tier, no
  * de-dup) on a fresh seed stream. The middle rung steps the skill rating
- * *down* rather than dropping straight to the gentle baseline -- dropping
+ * *down* rather than dropping straight to the tier floor -- dropping
  * recentFingerprints alone (retrying the exact same difficulty) rarely
  * helps, since rarity of a valid board is the bottleneck, not de-dup
  * collisions; a real step down (e.g. n=9 -> n=8) means a player who times
@@ -80,7 +81,7 @@ export async function createLevelForIndexRobust(
   const attempts: Array<() => Promise<GenerateSuccess | GenerateFailure>> = [
     () => createLevelForIndex(levelIndex, skillRating, recentFingerprints, deadlines.primaryMs),
     () => createLevelForIndex(levelIndex, stepDownRating(skillRating), [], deadlines.stepDownMs),
-    () => createLevelForIndex(levelIndex, INITIAL_SKILL_RATING, [], deadlines.baselineMs),
+    () => createLevelForIndex(levelIndex, tierFloor(skillRating), [], deadlines.baselineMs),
   ];
   for (const attempt of attempts) {
     const result = await attempt();
@@ -90,7 +91,7 @@ export async function createLevelForIndexRobust(
   const rng = mulberry32(seedFromLevelIndex(levelIndex, 1));
   const lastResort = await generateKingsLevelAsync(
     rng,
-    { nRange: [5, 5], requiredTier: 'easy', styleWeights: { uniform: 1, directional: 0, thin: 0, jagged: 0 } },
+    { nRange: [5, 5], allowedTiers: ['easy'], styleWeights: { uniform: 1, directional: 0, thin: 0, jagged: 0 } },
     [],
     4000,
     deadlines.lastResortMs

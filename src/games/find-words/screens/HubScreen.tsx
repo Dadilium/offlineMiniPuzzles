@@ -2,6 +2,7 @@ import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import GameHubScreen from '../../../components/GameHubScreen';
+import { useHubDifficulty } from '../../../components/useHubDifficulty';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { getResumeIndex } from '../../../utils/levelProgress';
 import FindWordsCardArt from '../CardArt';
@@ -11,7 +12,7 @@ import { useFindWordsProgress } from '../state/useFindWordsProgress';
 type Props = NativeStackScreenProps<FindWordsStackParamList, 'FindWordsHub'>;
 
 export default function HubScreen({ navigation }: Props) {
-  const { levelsCompleted, levelsSkipped, tutorialsSeen } = useFindWordsProgress();
+  const { levelsCompleted, levelsSkipped, tutorialsSeen, difficulty } = useFindWordsProgress();
   const { colors } = useTheme();
   const { t } = useTranslation('find-words');
   const { t: tc } = useTranslation('common');
@@ -25,6 +26,7 @@ export default function HubScreen({ navigation }: Props) {
   }
 
   const resumeIdx = getResumeIndex(levelsCompleted, levelsSkipped);
+  const difficultyProps = useHubDifficulty(difficulty, resumeIdx);
 
   return (
     <GameHubScreen
@@ -34,6 +36,7 @@ export default function HubScreen({ navigation }: Props) {
       CardArt={FindWordsCardArt}
       name={t('meta.name')}
       tagline={t('hub.tagline')}
+      difficulty={difficultyProps}
       playLabel={levelsCompleted.size === 0 && levelsSkipped.size === 0 ? tc('actions.play') : tc('actions.resume')}
       onPlay={() => enterLevel(resumeIdx)}
       levelsLabel={tc('actions.levels')}

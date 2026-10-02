@@ -1,5 +1,6 @@
 import type { BoardBuildParams } from './boardBuilder';
-import { BOARD_COLS, difficultyParams, INITIAL_SKILL_RATING, maxAttemptsFor, type SkillRating } from './difficulty';
+import { BOARD_COLS, difficultyParams, maxAttemptsFor, type SkillRating } from './difficulty';
+import { tierFloor } from '../../../state/difficultyTiers';
 import { generateMatchingNumbersLevel, type GenerateFailure, type GenerateSuccess } from './generator';
 import { mulberry32, seedFromLevelIndex } from './rng';
 import type { MatchingNumbersLevel } from '../types';
@@ -19,14 +20,14 @@ const LAST_RESORT_BOARD_PARAMS: BoardBuildParams = { minHeadstartMoves: 5, maxAt
 
 /**
  * Fallback ladder, never fails in practice -- same shape as Kings'
- * createLevelForIndexRobust: (1) full request -> (2) drop de-dup -> (3) also
- * reset skill rating -> (4) last-resort fixed small board, fresh salted seed.
+ * createLevelForIndexRobust: (1) full request -> (2) drop de-dup -> (3) drop to the floor of the
+ * same difficulty tier -> (4) last-resort fixed small board, fresh salted seed.
  */
 export function createLevelForIndexRobust(levelIndex: number, skillRating: SkillRating, recentFingerprints: string[]): MatchingNumbersLevel {
   const attempts: Array<() => GenerateSuccess | GenerateFailure> = [
     () => createLevelForIndex(levelIndex, skillRating, recentFingerprints),
     () => createLevelForIndex(levelIndex, skillRating, []),
-    () => createLevelForIndex(levelIndex, INITIAL_SKILL_RATING, []),
+    () => createLevelForIndex(levelIndex, tierFloor(skillRating), []),
   ];
   for (const attempt of attempts) {
     const result = attempt();

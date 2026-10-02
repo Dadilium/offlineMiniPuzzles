@@ -70,5 +70,21 @@
     "startPlaying": "Start playing",
     "newRule": "New rule",
     "stepOf": "Step {{current}} of {{total}}"
+  },
+  "difficulty": {
+    "label": "Difficulty",
+    "tiers": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard",
+      "expert": "Expert"
+    },
+    "lockedToast": "Clear levels on {{current}} to unlock {{tier}}",
+    "unlockedA11y": "{{tier}}, unlocked",
+    "lockedA11y": "{{tier}}, locked",
+    "confirmTitle": "Change difficulty?",
+    "confirmMessage": "Switching to {{tier}} restarts your current level with a new board.",
+    "confirmAction": "Switch",
+    "cancelAction": "Keep playing"
   }
 }

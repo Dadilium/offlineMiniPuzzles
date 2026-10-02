@@ -1,9 +1,11 @@
 import type { RegionStyle } from './regionGrowth';
+import { tierFloor, tierForRating } from '../../../state/difficultyTiers';
+import type { ReasoningTier } from './eliminationSolver';
 
 /** 0-100, starts around the middle-low so early levels are gentle. */
 export type SkillRating = number;
 
-export const INITIAL_SKILL_RATING: SkillRating = 20;
+export const INITIAL_SKILL_RATING: SkillRating = 40;
 
 const MIN_RATING = 0;
 const MAX_RATING = 100;
@@ -36,49 +38,62 @@ export function nextSkillRating(prev: SkillRating, result: LevelResult): SkillRa
 
 export interface GenerationParams {
   nRange: [number, number];
-  /** Which tier of elimination-solver reasoning the level must require. */
-  requiredTier: 'easy' | 'medium';
+  /** Reasoning tiers (hardest elimination-solver technique needed) a level
+   * may require -- anything else is rejected. */
+  allowedTiers: ReasoningTier[];
+  /** When several allowed tiers turn up, keep the hardest one found rather
+   * than the first -- Expert wants lookahead boards whenever they exist. */
+  preferHarderTier?: boolean;
   styleWeights: Record<RegionStyle, number>;
+  /** Forces how region layouts are drawn; omitted = `constructionFor(n)`. */
+  construction?: RegionConstruction;
 }
 
-/** Grid size floor/ceiling regardless of skill -- past this, difficulty
- * comes from reasoning tier/rounds/shape, not a bigger (harder-to-tap)
- * board. Existing hand-authored levels ran 5-7; 9 is reserved for rare
- * high-skill "big board" levels, not the norm. */
-const N_FLOOR = 5;
-const N_CEILING = 9;
+export type RegionConstruction = 'random' | 'planted';
 
 /**
- * Pure mapping from a skill rating to generation parameters. Grid size ramps
- * from 5 up to 8 across the rating range, with 9 reserved for the very top
- * decile. The ramp uses sqrt(t) rather than a linear t (tuned 2026-07-31,
- * alongside the STEP bump above): a concave curve front-loads the climb so
- * medium-tier 7x7 boards show up within the first handful of no-hint clears
- * instead of requiring a long grind through the middle of the rating range,
- * while still tapering off gradually near the top instead of spiking.
- *
- * The required reasoning tier is tied to grid size, not rating directly:
- * empirically, "easy" (hidden-singles-only) layouts get combinatorially rare
- * past n=6 (n=7 needs ~15k rejection-sampling attempts on average for one,
- * n=8-9 essentially never turn one up), while "medium" (needs locked
- * candidates) is comfortably findable at every size from 5 to 9. Requiring
- * "easy" at n>=7 would starve the search and silently fall back to a much
- * easier baseline level instead -- exactly what this is meant to avoid.
+ * 'planted' (kings first, then regions repaired to a unique solution) finds
+ * usable boards several times faster from n=7 up and is the only way 10-11
+ * are reachable at all -- but its repaired layouts essentially never solve by
+ * hidden singles alone, so small boards (which must be 'easy') stay
+ * 'random', which is already fast there. Measured with
+ * `__scripts__/plantedSweep.ts`.
+ */
+export function constructionFor(n: number): RegionConstruction {
+  return n >= 7 ? 'planted' : 'random';
+}
+
+const STYLE_WEIGHTS: Record<RegionStyle, number> = { uniform: 0.3, directional: 0.25, thin: 0.25, jagged: 0.2 };
+
+/**
+ * Pure mapping from a skill rating to generation parameters, one distinct
+ * band per difficulty tier (see state/difficultyTiers) so each step the
+ * player picks on the hub really plays differently:
+ * - Easy: 5-6, hidden singles only ("easy" reasoning).
+ * - Medium: 6-7, needs locked candidates ("medium").
+ * - Hard: 7-8, then 8-9 in the upper half of the band; medium or hard
+ *   (one-step lookahead) reasoning.
+ * - Expert: 10x10, with 11x11 mixed in from rating 90; prefers boards that
+ *   need lookahead.
+ * Easy stays at n<=6 because hidden-singles-only layouts get
+ * combinatorially rare past that size.
  */
 export function difficultyParams(rating: SkillRating): GenerationParams {
-  const t = Math.max(0, Math.min(1, rating / MAX_RATING));
-  const curved = Math.sqrt(t);
-
-  const nMax = t >= 0.85 ? N_CEILING : Math.min(N_CEILING - 1, N_FLOOR + Math.round(curved * 3));
-  const nMin = Math.max(N_FLOOR, nMax - 1);
-
-  const requiredTier: 'easy' | 'medium' = nMax <= 6 ? 'easy' : 'medium';
-
-  return {
-    nRange: [nMin, nMax],
-    requiredTier,
-    styleWeights: { uniform: 0.3, directional: 0.25, thin: 0.25, jagged: 0.2 },
-  };
+  switch (tierForRating(rating)) {
+    case 'easy':
+      return { nRange: [5, 6], allowedTiers: ['easy'], styleWeights: STYLE_WEIGHTS };
+    case 'medium':
+      return { nRange: [6, 7], allowedTiers: ['medium'], styleWeights: STYLE_WEIGHTS };
+    case 'hard':
+      return { nRange: rating < 70 ? [7, 8] : [8, 9], allowedTiers: ['medium', 'hard'], styleWeights: STYLE_WEIGHTS };
+    case 'expert':
+      return {
+        nRange: rating < 90 ? [10, 10] : [10, 11],
+        allowedTiers: ['medium', 'hard'],
+        preferHarderTier: true,
+        styleWeights: STYLE_WEIGHTS,
+      };
+  }
 }
 
 /**
@@ -93,7 +108,7 @@ export function maxAttemptsFor(params: GenerationParams): number {
   if (nMax <= 6) return 4000;
   if (nMax === 7) return 6000;
   if (nMax === 8) return 10000;
-  return 30000;
+  return 30000; // 9-11: the wall-clock deadline is the real cap here
 }
 
 /** Per-rung drop used by the generation fallback ladder (see
@@ -101,9 +116,10 @@ export function maxAttemptsFor(params: GenerationParams): number {
  * time. One step is tuned to move `difficultyParams` down roughly one grid
  * size (e.g. rating 100 -> 70 takes nMax from 9 to 8) rather than dropping
  * all the way to INITIAL_SKILL_RATING -- a player at the top of the range
- * timing out should land on a still-hard board, not a beginner one. */
+ * timing out should land on a still-hard board, not a beginner one. Never
+ * steps below the floor of the player's difficulty tier. */
 const FALLBACK_STEP = 30;
 
 export function stepDownRating(rating: SkillRating): SkillRating {
-  return Math.max(MIN_RATING, rating - FALLBACK_STEP);
+  return Math.max(MIN_RATING, tierFloor(rating), rating - FALLBACK_STEP);
 }

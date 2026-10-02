@@ -15,10 +15,11 @@ const BOARD_RADIUS = 10;
 // back for saturation). Kept as a hook (rather than a plain constant) for
 // parity with the rest of the theme system, though the values themselves
 // are intentionally theme-invariant so regions look identical in light and
-// dark mode. Exactly 9 entries, one per region up to the largest board
-// (n=9), spaced around the hue wheel so no two ever read as "the same
-// color" -- `rid % palette.length` then never wraps for a real board, so no
-// two regions can collide.
+// dark mode. Exactly 11 entries, one per region up to the largest board
+// (n=11): nine spaced around the hue wheel, plus two low-saturation earth
+// tones (taupe, olive) so no two ever read as "the same color" --
+// `rid % palette.length` then never wraps for a real board, so no two
+// regions can collide.
 export function useRegionPalette(): string[] {
   return useMemo(
     () => [
@@ -31,6 +32,8 @@ export function useRegionPalette(): string[] {
       '#6f74bd', // slate indigo
       '#9569bd', // muted violet
       '#c06f96', // dusty rose
+      '#a08670', // warm taupe
+      '#8d9a3c', // olive
     ],
     []
   );

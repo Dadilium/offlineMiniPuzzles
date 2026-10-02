@@ -1,15 +1,16 @@
 import type { KingsLevel } from '../types';
-import { solveByElimination } from './eliminationSolver';
+import { solveByElimination, type ReasoningTier } from './eliminationSolver';
 import { fingerprintRegions } from './fingerprint';
-import { generateRegions, type RegionStyle } from './regionGrowth';
-import type { GenerationParams } from './difficulty';
+import { generatePlantedRegions, generateRegions, type RegionStyle } from './regionGrowth';
+import { constructionFor, type GenerationParams } from './difficulty';
 import type { RNG } from './rng';
 import { solveKings } from './solver';
+import { repairToUnique } from './uniqueRepair';
 
 export interface GenerateSuccess {
   level: KingsLevel;
   attempts: number;
-  tier: 'easy' | 'medium';
+  tier: ReasoningTier;
   rounds: number;
   fingerprint: string;
 }
@@ -30,23 +31,50 @@ function pickStyle(rng: RNG, weights: GenerationParams['styleWeights']): RegionS
 }
 
 /** Once a tier-matching board is found, how many more attempts to spend
- * hunting for a board that needs more elimination-solver rounds (a proxy
- * for "the deduction chain is longer/less obvious") before settling. Flat
- * rather than scaled by board size on purpose: cheap sizes (where matches
- * are common) get several extra candidates to pick from almost for free,
- * while rare sizes (n=8-9, where a single match can already cost thousands
- * of attempts) mostly exhaust this window without finding a second one and
- * fall back to the first match -- self-scaling without per-size tuning. */
-const EXTRA_ATTEMPTS_FOR_QUALITY = 3000;
+ * hunting for one that needs more elimination-solver rounds (a proxy for
+ * "the deduction chain is longer/less obvious") before settling. The window
+ * is a fraction of what the first match cost, so it scales with how rare
+ * matches are at this size: a flat window (the old 3000) was most of the
+ * total time on small boards and ~2s on 9x9 for a usually-fruitless hunt.
+ * Counted in attempts rather than wall-clock so a given seed yields the same
+ * board on every device. */
+const QUALITY_WINDOW_RATIO = 0.5;
+const QUALITY_WINDOW_MIN = 150;
+const QUALITY_WINDOW_MAX = 3000;
+
+function qualityWindowFor(firstMatchAttempt: number): number {
+  return Math.max(QUALITY_WINDOW_MIN, Math.min(QUALITY_WINDOW_MAX, Math.ceil(firstMatchAttempt * QUALITY_WINDOW_RATIO)));
+}
+
+/** Repair steps allowed per planted layout before drawing a fresh one. */
+const REPAIR_STEPS_PER_CELL = 0.5;
+
+/** Planted layout repaired to a single solution, or null to retry. */
+function plantedUniqueRegions(n: number, rng: RNG, style: RegionStyle): number[][] | null {
+  const planted = generatePlantedRegions(n, rng, style);
+  if (!planted) return null;
+  return repairToUnique(planted.regions, planted.kingCols, rng, Math.ceil(n * n * REPAIR_STEPS_PER_CELL));
+}
+
+const TIER_RANK: Record<ReasoningTier, number> = { easy: 0, medium: 1, hard: 2 };
+
+/** Pure: more elimination rounds wins, unless `preferHarderTier` makes a
+ * harder reasoning tier win outright first. */
+function isBetterCandidate(candidate: GenerateSuccess, best: GenerateSuccess, params: GenerationParams): boolean {
+  if (params.preferHarderTier && TIER_RANK[candidate.tier] !== TIER_RANK[best.tier]) {
+    return TIER_RANK[candidate.tier] > TIER_RANK[best.tier];
+  }
+  return candidate.rounds > best.rounds;
+}
 
 /**
- * Pure, seeded rejection-sampling search: generate random regions (varying
- * size and growth style per attempt), keep the best layout that (a)
- * `solveKings` confirms has exactly one solution, (b) isn't a near-duplicate
- * of a recently-served shape, and (c) requires exactly the reasoning tier
- * `params.requiredTier` asks for -- "best" meaning the most elimination
- * rounds among candidates found within `EXTRA_ATTEMPTS_FOR_QUALITY` attempts
- * of the first match. Never returns a level that needs guessing/backtracking
+ * Pure, seeded rejection-sampling search: draw region layouts (random or
+ * planted per `constructionFor`, varying size and growth style per attempt),
+ * keep the best layout that (a) `solveKings` confirms has exactly one
+ * solution, (b) isn't a near-duplicate of a recently-served shape, and (c)
+ * requires one of `params.allowedTiers` -- "best" per `isBetterCandidate`
+ * among candidates found within `qualityWindowFor` attempts of the first
+ * match. Never returns a level that needs guessing/backtracking
  * to solve -- if nothing in-band turns up within `maxAttempts`, it fails
  * outright rather than quietly shipping something easier, harder, or
  * guessier than requested.
@@ -66,7 +94,7 @@ function* searchKingsLevel(
 ): Generator<GenerateSuccess | null, GenerateSuccess | GenerateFailure, void> {
   const [nMin, nMax] = params.nRange;
   let best: GenerateSuccess | null = null;
-  let extraAttemptsLeft = EXTRA_ATTEMPTS_FOR_QUALITY;
+  let extraAttemptsLeft = 0;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (best !== null) {
@@ -76,7 +104,8 @@ function* searchKingsLevel(
 
     const n = nMin === nMax ? nMin : nMin + Math.floor(rng() * (nMax - nMin + 1));
     const style = pickStyle(rng, params.styleWeights);
-    const regions = generateRegions(n, rng, style);
+    const construction = params.construction ?? constructionFor(n);
+    const regions = construction === 'planted' ? plantedUniqueRegions(n, rng, style) : generateRegions(n, rng, style);
     if (!regions) {
       yield best;
       continue;
@@ -102,14 +131,15 @@ function* searchKingsLevel(
       continue;
     }
 
-    const tier: 'easy' | 'medium' = elimination.usedLockedCandidates ? 'medium' : 'easy';
-    if (tier !== params.requiredTier) {
+    const tier = elimination.tier;
+    if (!params.allowedTiers.includes(tier)) {
       yield best;
       continue;
     }
 
     const candidate: GenerateSuccess = { level, attempts: attempt, tier, rounds: elimination.rounds, fingerprint };
-    if (!best || candidate.rounds > best.rounds) best = candidate;
+    if (!best) extraAttemptsLeft = qualityWindowFor(attempt);
+    if (!best || isBetterCandidate(candidate, best, params)) best = candidate;
     yield best;
   }
 

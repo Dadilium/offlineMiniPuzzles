@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
-import { createProgressStore } from '../../../state/createProgressStore';
+import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
 import { applyAddNumbers, applyMatch, findLegalMove, MAX_ADD_NUMBERS, removeRows } from '../engine';
 import { createLevelForIndexRobust, fingerprintGrid, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { Cell, GridValue, MatchingNumbersLevel } from '../types';
@@ -113,6 +113,8 @@ interface MatchingNumbersProgressContextValue {
   markTutorialSeen: (key: string) => void;
   /** Wipes all generated levels, boards, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
   resetAllProgress: () => void;
+  /** Hub difficulty selector state + actions, straight from the shared store. */
+  difficulty: DifficultyControls;
 }
 
 export const MatchingNumbersProgressProvider = store.Provider;
@@ -209,5 +211,6 @@ export function useMatchingNumbersProgress(): MatchingNumbersProgressContextValu
     markLevelSkipped: s.markLevelSkipped,
     markTutorialSeen: s.markTutorialSeen,
     resetAllProgress: s.resetAllProgress,
+    difficulty: s.difficulty,
   };
 }

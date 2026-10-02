@@ -24,22 +24,41 @@ function shuffledCells(n: number, rng: RNG): Cell[] {
   return cells;
 }
 
-function frontierFor(n: number, regions: number[][], rid: number): Cell[] {
-  const seen = new Set<string>();
+/** Each region's own cells as row-major indices (r*n+c), kept sorted so
+ * iterating them visits cells in the same order a full-grid scan would --
+ * walking only a region's cells instead of all n*n keeps the frontier /
+ * directional scoring linear in region size while picking identically. */
+type RegionCells = number[][];
+
+function insertSorted(list: number[], value: number): void {
+  let lo = 0;
+  let hi = list.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid] < value) lo = mid + 1;
+    else hi = mid;
+  }
+  list.splice(lo, 0, value);
+}
+
+/** Unclaimed cells orthogonally adjacent to region `rid`, in row-major order
+ * of the region cell they were reached from (then DIRS order), de-duplicated.
+ * `seenStamp` is a scratch buffer reused across calls (stamp-based, so it
+ * never needs clearing). */
+function frontierFor(n: number, regions: number[][], cells: number[], seen: Int32Array, stamp: number): Cell[] {
   const out: Cell[] = [];
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      if (regions[r][c] !== rid) continue;
-      for (const [dr, dc] of DIRS) {
-        const rr = r + dr;
-        const cc = c + dc;
-        if (rr < 0 || rr >= n || cc < 0 || cc >= n) continue;
-        if (regions[rr][cc] !== -1) continue;
-        const key = `${rr},${cc}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          out.push({ r: rr, c: cc });
-        }
+  for (const idx of cells) {
+    const r = (idx / n) | 0;
+    const c = idx - r * n;
+    for (const [dr, dc] of DIRS) {
+      const rr = r + dr;
+      const cc = c + dc;
+      if (rr < 0 || rr >= n || cc < 0 || cc >= n) continue;
+      if (regions[rr][cc] !== -1) continue;
+      const key = rr * n + cc;
+      if (seen[key] !== stamp) {
+        seen[key] = stamp;
+        out.push({ r: rr, c: cc });
       }
     }
   }
@@ -49,18 +68,18 @@ function frontierFor(n: number, regions: number[][], rid: number): Cell[] {
 /** Among a region's frontier, picks the cell that best continues in `dir`
  * relative to the region's own existing cells -- biases growth to be
  * elongated/snake-like instead of a uniform blob. Ties broken randomly. */
-function directionalPick(n: number, regions: number[][], rid: number, frontier: Cell[], dir: [number, number], rng: RNG): Cell {
+function directionalPick(n: number, cells: number[], frontier: Cell[], dir: [number, number], rng: RNG): Cell {
   const [pdr, pdc] = dir;
+  // sum over region cells of (cand - cell) . dir == size * (cand . dir) - sum(cell . dir)
+  let cellDot = 0;
+  for (const idx of cells) {
+    const r = (idx / n) | 0;
+    cellDot += r * pdr + (idx - r * n) * pdc;
+  }
   let best: Cell[] = [];
   let bestScore = -Infinity;
   for (const cand of frontier) {
-    let score = 0;
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        if (regions[r][c] !== rid) continue;
-        score += (cand.r - r) * pdr + (cand.c - c) * pdc;
-      }
-    }
+    const score = cells.length * (cand.r * pdr + cand.c * pdc) - cellDot;
     if (score > bestScore) {
       bestScore = score;
       best = [cand];
@@ -113,14 +132,75 @@ const JAGGED_TURN_CHANCE = 0.3;
  * fresh seeds.
  */
 export function generateRegions(n: number, rng: RNG, style: RegionStyle = 'uniform'): number[][] | null {
-  const regions: number[][] = Array.from({ length: n }, () => Array(n).fill(-1));
+  return growRegions(n, shuffledCells(n, rng).slice(0, n), rng, style);
+}
 
-  const seeds = shuffledCells(n, rng).slice(0, n);
+/**
+ * Random valid king placement -- one per row and column, no two touching
+ * (only consecutive rows can touch, so that's |col difference| > 1).
+ * Randomised depth-first search over shuffled columns; always succeeds for
+ * n >= 4. Returns the column of the king in each row.
+ */
+export function randomKingPlacement(n: number, rng: RNG): number[] | null {
+  const cols: number[] = [];
+  const used = new Array<boolean>(n).fill(false);
+
+  function place(row: number): boolean {
+    if (row === n) return true;
+    const order = Array.from({ length: n }, (_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    for (const c of order) {
+      if (used[c]) continue;
+      if (row > 0 && Math.abs(cols[row - 1] - c) <= 1) continue;
+      used[c] = true;
+      cols.push(c);
+      if (place(row + 1)) return true;
+      cols.pop();
+      used[c] = false;
+    }
+    return false;
+  }
+
+  return place(0) ? cols : null;
+}
+
+/**
+ * Solution-first ("planted") region growth: places a valid set of kings
+ * first, then grows one region out of each king. Every board this produces
+ * has at least that one solution by construction, so the generator only has
+ * to reject boards with a *second* solution -- instead of the vast majority
+ * of random partitions, which have none at all. Same growth (and `style`)
+ * as `generateRegions`; the seeds are just the kings instead of random cells.
+ * Region ids are shuffled so growth order (round-robin by id) isn't tied to
+ * row order. On its own this almost never yields a *unique* board (compact
+ * blobs around spread-out kings leave room for alternatives) -- it's the
+ * starting point for `repairToUnique`, which also needs `kingCols`.
+ */
+export function generatePlantedRegions(n: number, rng: RNG, style: RegionStyle = 'uniform'): { regions: number[][]; kingCols: number[] } | null {
+  const kingCols = randomKingPlacement(n, rng);
+  if (!kingCols) return null;
+  const seeds: Cell[] = kingCols.map((c, r) => ({ r, c }));
+  for (let i = seeds.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [seeds[i], seeds[j]] = [seeds[j], seeds[i]];
+  }
+  const regions = growRegions(n, seeds, rng, style);
+  return regions ? { regions, kingCols } : null;
+}
+
+function growRegions(n: number, seeds: Cell[], rng: RNG, style: RegionStyle): number[][] | null {
+  const regions: number[][] = Array.from({ length: n }, () => Array(n).fill(-1));
+  const cells: RegionCells = seeds.map((cell) => [cell.r * n + cell.c]);
   seeds.forEach((cell, rid) => {
     regions[cell.r][cell.c] = rid;
   });
 
   const preferredDir: Array<[number, number]> = seeds.map(() => DIRS[Math.floor(rng() * DIRS.length)]);
+  const seen = new Int32Array(n * n);
+  let stamp = 0;
 
   let remaining = n * n - n;
 
@@ -128,7 +208,7 @@ export function generateRegions(n: number, rng: RNG, style: RegionStyle = 'unifo
     let progressed = false;
     for (let rid = 0; rid < n; rid++) {
       if (remaining === 0) break;
-      const frontier = frontierFor(n, regions, rid);
+      const frontier = frontierFor(n, regions, cells[rid], seen, ++stamp);
       if (frontier.length === 0) continue;
 
       let pick: Cell;
@@ -136,14 +216,15 @@ export function generateRegions(n: number, rng: RNG, style: RegionStyle = 'unifo
         pick = thinPick(n, regions, rid, frontier, rng);
       } else if (style === 'jagged') {
         if (rng() < JAGGED_TURN_CHANCE) preferredDir[rid] = DIRS[Math.floor(rng() * DIRS.length)];
-        pick = frontier.length > 1 ? directionalPick(n, regions, rid, frontier, preferredDir[rid], rng) : frontier[0];
+        pick = frontier.length > 1 ? directionalPick(n, cells[rid], frontier, preferredDir[rid], rng) : frontier[0];
       } else if (style === 'directional' && frontier.length > 1) {
-        pick = directionalPick(n, regions, rid, frontier, preferredDir[rid], rng);
+        pick = directionalPick(n, cells[rid], frontier, preferredDir[rid], rng);
       } else {
         pick = frontier[Math.floor(rng() * frontier.length)];
       }
 
       regions[pick.r][pick.c] = rid;
+      insertSorted(cells[rid], pick.r * n + pick.c);
       remaining--;
       progressed = true;
     }

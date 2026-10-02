@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
-import { createProgressStore } from '../../../state/createProgressStore';
+import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
 import { applyHint, cycleCellState, makeEmptyBoard } from '../engine';
 import {
   BACKGROUND_DEADLINES,
@@ -99,6 +99,8 @@ interface KingsProgressContextValue {
   markTutorialSeen: (key: string) => void;
   /** Wipes all generated levels, boards, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
   resetAllProgress: () => void;
+  /** Hub difficulty selector state + actions, straight from the shared store. */
+  difficulty: DifficultyControls;
 }
 
 export const KingsProgressProvider = store.Provider;
@@ -161,5 +163,6 @@ export function useKingsProgress(): KingsProgressContextValue {
     markLevelSkipped: s.markLevelSkipped,
     markTutorialSeen: s.markTutorialSeen,
     resetAllProgress: s.resetAllProgress,
+    difficulty: s.difficulty,
   };
 }

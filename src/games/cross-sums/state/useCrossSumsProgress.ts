@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
-import { createProgressStore } from '../../../state/createProgressStore';
+import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
 import { applyHint, applyTool, computeSums, makeInitialMarks, type CellMark, type Tool } from '../engine';
 import { createLevelForIndexRobust, fingerprintCrossSums, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { CrossSumsLevel } from '../types';
@@ -90,6 +90,8 @@ interface CrossSumsProgressContextValue {
   markTutorialSeen: (key: string) => void;
   /** Wipes all generated levels, masks, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
   resetAllProgress: () => void;
+  /** Hub difficulty selector state + actions, straight from the shared store. */
+  difficulty: DifficultyControls;
 }
 
 export const CrossSumsProgressProvider = store.Provider;
@@ -167,5 +169,6 @@ export function useCrossSumsProgress(): CrossSumsProgressContextValue {
     markLevelSkipped: s.markLevelSkipped,
     markTutorialSeen: s.markTutorialSeen,
     resetAllProgress: s.resetAllProgress,
+    difficulty: s.difficulty,
   };
 }

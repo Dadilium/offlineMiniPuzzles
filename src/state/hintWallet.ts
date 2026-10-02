@@ -31,10 +31,8 @@ interface PersistedShape {
   streakDays: number;
 }
 
-/** New installs start with 2 hints in reserve, on top of whatever the
- * first-launch daily claim adds -- gives brand-new players something to
- * spend before they've earned anything, without touching the claim/streak
- * logic itself. */
+/** New installs start with exactly 2 hints -- the first launch is not a daily
+ * claim (see `resolveLaunchClaim`), so the first gift arrives on day 2. */
 const STARTING_BALANCE = 2;
 
 function defaultState(): PersistedShape {
@@ -62,6 +60,38 @@ function daysBetween(fromKey: string, toKey: string): number {
   const from = new Date(`${fromKey}T00:00:00`);
   const to = new Date(`${toKey}T00:00:00`);
   return Math.round((to.getTime() - from.getTime()) / 86_400_000);
+}
+
+interface LaunchResolution {
+  state: PersistedShape;
+  /** The claim granted on this launch, or null when nothing was granted. */
+  claim: { reward: number; streakDays: number } | null;
+}
+
+/**
+ * Pure: decides what a launch on `today` does to the persisted wallet.
+ * - First-ever launch (no `lastClaimDate`): no gift, just stamps today so the
+ *   next calendar day becomes streak day 1 -- the player keeps the starting
+ *   balance and the gift alert first shows on day 2.
+ * - Already claimed today: no-op.
+ * - Otherwise: a claim yesterday extends the streak, a gap restarts it at 1.
+ * `force` (testing only) claims every launch and always counts as consecutive,
+ * so relaunching cycles through the whole reward table.
+ */
+function resolveLaunchClaim(current: PersistedShape, today: string, force: boolean): LaunchResolution {
+  if (!force && current.lastClaimDate === null) {
+    return { state: { ...current, lastClaimDate: today, streakDays: 0 }, claim: null };
+  }
+  if (!force && current.lastClaimDate === today) {
+    return { state: current, claim: null };
+  }
+  const consecutive = force || (current.lastClaimDate !== null && daysBetween(current.lastClaimDate, today) === 1);
+  const streakDays = consecutive ? current.streakDays + 1 : 1;
+  const reward = rewardForStreakDay(streakDays);
+  return {
+    state: { balance: current.balance + reward, lastClaimDate: today, streakDays },
+    claim: { reward, streakDays },
+  };
 }
 
 interface HintWalletContextValue {
@@ -102,25 +132,19 @@ export function HintWalletProvider({ children }: { children: React.ReactNode }) 
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         const parsed = raw ? (JSON.parse(raw) as Partial<PersistedShape>) : null;
-        let sanitized = sanitizePersisted(parsed);
+        const { state: resolved, claim } = resolveLaunchClaim(
+          sanitizePersisted(parsed),
+          todayKey(),
+          FORCE_DAILY_CLAIM_FOR_TESTING
+        );
 
-        const today = todayKey();
-        if (FORCE_DAILY_CLAIM_FOR_TESTING || sanitized.lastClaimDate !== today) {
-          // A claim yesterday extends the streak; anything else (a gap, or no
-          // prior claim at all) starts a fresh one at day 1. Forced-testing
-          // claims count as consecutive too, so relaunching cycles through
-          // the whole reward table instead of sitting on day 1 forever.
-          const consecutive =
-            FORCE_DAILY_CLAIM_FOR_TESTING || (sanitized.lastClaimDate !== null && daysBetween(sanitized.lastClaimDate, today) === 1);
-          const streakDays = consecutive ? sanitized.streakDays + 1 : 1;
-          const reward = rewardForStreakDay(streakDays);
-          sanitized = { balance: sanitized.balance + reward, lastClaimDate: today, streakDays };
-          setPendingDailyClaim(reward);
-          setPendingStreakDays(streakDays);
+        if (claim) {
+          setPendingDailyClaim(claim.reward);
+          setPendingStreakDays(claim.streakDays);
         }
 
-        stateRef.current = sanitized;
-        setState(sanitized);
+        stateRef.current = resolved;
+        setState(resolved);
       } catch {
         // corrupt/missing storage — fall back to defaults, already set
       } finally {

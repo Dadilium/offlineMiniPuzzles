@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
-import { createProgressStore } from '../../../state/createProgressStore';
+import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
 import { findBestMove, isTubeFilledSolid } from '../engine';
 import { createLevelForIndexRobust, fingerprintColorSort, INITIAL_SKILL_RATING, nextSkillRating, pourMove, type Move, type SkillRating } from '../generation';
 import type { ColorSortLevel, Tube } from '../types';
@@ -94,6 +94,8 @@ interface ColorSortProgressContextValue {
   markTutorialSeen: (key: string) => void;
   /** Wipes all generated levels, tubes, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
   resetAllProgress: () => void;
+  /** Hub difficulty selector state + actions, straight from the shared store. */
+  difficulty: DifficultyControls;
   /** Colorblind-friendly mode: overlays a shape icon on every tube unit. Off by default -- see ColorSortBoard/palette.ts. */
   showColorblindIcons: boolean;
   setShowColorblindIcons: (value: boolean) => void;
@@ -192,6 +194,7 @@ export function useColorSortProgress(): ColorSortProgressContextValue {
     markLevelSkipped: s.markLevelSkipped,
     markTutorialSeen: s.markTutorialSeen,
     resetAllProgress: s.resetAllProgress,
+    difficulty: s.difficulty,
     showColorblindIcons: s.custom.showColorblindIcons,
     setShowColorblindIcons,
   };

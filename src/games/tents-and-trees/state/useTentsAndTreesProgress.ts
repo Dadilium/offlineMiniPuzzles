@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
-import { createProgressStore } from '../../../state/createProgressStore';
+import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
 import { applyHint, computeCounts, makeInitialTents, toggleTent } from '../engine';
 import {
   createLevelForIndexRobust,
@@ -94,6 +94,8 @@ interface TentsAndTreesProgressContextValue {
   markTutorialSeen: (key: string) => void;
   /** Wipes all generated levels, tents, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
   resetAllProgress: () => void;
+  /** Hub difficulty selector state + actions, straight from the shared store. */
+  difficulty: DifficultyControls;
 }
 
 export const TentsAndTreesProgressProvider = store.Provider;
@@ -171,5 +173,6 @@ export function useTentsAndTreesProgress(): TentsAndTreesProgressContextValue {
     markLevelSkipped: s.markLevelSkipped,
     markTutorialSeen: s.markTutorialSeen,
     resetAllProgress: s.resetAllProgress,
+    difficulty: s.difficulty,
   };
 }

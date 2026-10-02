@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
-import { createProgressStore } from '../../../state/createProgressStore';
+import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
 import { applyHint, clueIndicesIn, containsCell, placeRect, removeRectAt } from '../engine';
 import {
   createLevelForIndexRobust,
@@ -106,6 +106,8 @@ interface ShikakuProgressContextValue {
   markTutorialSeen: (key: string) => void;
   /** Wipes all generated levels, placed rects, and completion/skip/tutorial state -- for the Settings > Game Progress reset. */
   resetAllProgress: () => void;
+  /** Hub difficulty selector state + actions, straight from the shared store. */
+  difficulty: DifficultyControls;
 }
 
 export const ShikakuProgressProvider = store.Provider;
@@ -205,5 +207,6 @@ export function useShikakuProgress(): ShikakuProgressContextValue {
     markLevelSkipped: s.markLevelSkipped,
     markTutorialSeen: s.markTutorialSeen,
     resetAllProgress: s.resetAllProgress,
+    difficulty: s.difficulty,
   };
 }
