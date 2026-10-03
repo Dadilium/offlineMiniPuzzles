@@ -22,7 +22,8 @@ export const kingsGame: GameModule = {
     { name: 'KingsHub', component: HubScreen },
     { name: 'KingsLevels', component: LevelListScreen },
     { name: 'KingsTutorial', component: TutorialScreen },
-    { name: 'KingsGame', component: GameScreen },
+    // Drag-to-mark on the board -- no edge swipe-back stealing strokes that start near the left edge.
+    { name: 'KingsGame', component: GameScreen, options: { gestureEnabled: false } },
   ],
   entryScreen: 'KingsHub',
   useProgress: () => {

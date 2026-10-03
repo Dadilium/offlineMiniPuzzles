@@ -16,7 +16,7 @@ import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplet
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import KingsGrid from '../components/KingsGrid';
 import { useRegionPalette } from '../components/TutorialDiagram';
-import { computeAutoUnavailable, computeKingsState } from '../engine';
+import { computeAutoUnavailable, computeKingsState, showsAutoMarks, type MarkStrokeMode } from '../engine';
 import type { KingsStackParamList } from '../navigation';
 import { useKingsProgress } from '../state/useKingsProgress';
 
@@ -34,11 +34,13 @@ export default function GameScreen({ route, navigation }: Props) {
     ensureLevel,
     boardsByLevel,
     cycleCell,
+    paintMarks,
     giveHint,
     resetLevel,
     markLevelComplete,
     markLevelSkipped,
     levelsCompleted,
+    difficulty,
   } = useKingsProgress();
   const { showToast } = useToast();
   const { t } = useTranslation('kings');
@@ -67,7 +69,10 @@ export default function GameScreen({ route, navigation }: Props) {
   const board = level ? boardsByLevel[levelIndex] : undefined;
 
   const state = useMemo(() => (level && board ? computeKingsState(level, board) : EMPTY_STATE), [level, board]);
-  const autoUnavailable = useMemo(() => (level && board ? computeAutoUnavailable(level, board) : new Set<string>()), [level, board]);
+  const autoUnavailable = useMemo(
+    () => (level && board && showsAutoMarks(level, difficulty.selectedTier) ? computeAutoUnavailable(level, board) : new Set<string>()),
+    [level, board, difficulty.selectedTier]
+  );
 
   // Boards persist forever, so reopening an already-completed level would
   // otherwise land straight on the solved board with the win popup showing.
@@ -97,6 +102,10 @@ export default function GameScreen({ route, navigation }: Props) {
 
   function onCellPress(r: number, c: number) {
     cycleCell(levelIndex, r, c);
+  }
+
+  function onMarkStroke(cells: Array<[number, number]>, mode: MarkStrokeMode) {
+    paintMarks(levelIndex, cells, mode);
   }
 
   function attemptHint(): boolean {
@@ -178,6 +187,8 @@ export default function GameScreen({ route, navigation }: Props) {
           subtitle={t('game.winSubtitle')}
           nextLabel={tc('actions.nextLevel')}
           onNext={nextLevel}
+          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          onUnlockSeen={difficulty.markUnlockSeen}
         />
       }
     >
@@ -187,6 +198,7 @@ export default function GameScreen({ route, navigation }: Props) {
         autoUnavailable={autoUnavailable}
         conflictSet={state.conflictSet}
         onCellPress={onCellPress}
+        onMarkStroke={onMarkStroke}
       />
     </GameScreenLayout>
   );

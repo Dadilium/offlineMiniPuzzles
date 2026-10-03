@@ -1,3 +1,5 @@
+import type { DifficultyTier } from '../../state/difficultyTiers';
+
 // 0 = empty, 1 = mark (player-placed "ruled out" dot), 2 = king,
 // 3 = hinted king (revealed via hint -- locked, can't be cycled away).
 export type CellState = 0 | 1 | 2 | 3;
@@ -11,6 +13,9 @@ export interface KingsLevel {
   regions: number[][];
   /** The unique solution: king position per row, as [row, col] pairs. */
   solution: Array<[number, number]>;
+  /** Difficulty step this level was generated for -- drives play aids like
+   * auto-marking. Absent on hand-authored and pre-tier saved levels. */
+  difficulty?: DifficultyTier;
 }
 
 export interface KingPos {

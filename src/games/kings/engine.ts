@@ -2,6 +2,7 @@
 // prototype (signal-arcade-prototype.html). No React/RN dependencies in this
 // file on purpose -- keeps it trivially unit-testable and reusable by the
 // Python-style level generator/solver logic if that ever gets ported too.
+import type { DifficultyTier } from '../../state/difficultyTiers';
 import type { CellState, KingPos, KingsLevel, KingsStateResult } from './types';
 
 export function makeEmptyBoard(n: number): CellState[][] {
@@ -74,6 +75,44 @@ export function computeAutoUnavailable(level: KingsLevel, board: CellState[][]):
     }
   }
   return auto;
+}
+
+/** Auto-marking is a beginner aid: Hard and Expert boards leave every
+ * ruled-out cell for the player to find. A level without a recorded
+ * difficulty (generated before levels were tagged) is judged by
+ * `fallbackTier` -- the player's currently selected difficulty. */
+export function showsAutoMarks(level: KingsLevel, fallbackTier?: DifficultyTier): boolean {
+  const tier = level.difficulty ?? fallbackTier;
+  return tier !== 'hard' && tier !== 'expert';
+}
+
+export type MarkStrokeMode = 'mark' | 'erase';
+
+/** A drag that starts on a dot erases dots; starting anywhere else paints them. */
+export function markStrokeModeFor(value: CellState): MarkStrokeMode {
+  return value === 1 ? 'erase' : 'mark';
+}
+
+/** What a cell shows while a stroke passes over it -- only empty<->mark
+ * changes; kings (placed or hinted) are never touched by a stroke. */
+export function strokeCellValue(value: CellState, mode: MarkStrokeMode): CellState {
+  if (mode === 'mark' && value === 0) return 1;
+  if (mode === 'erase' && value === 1) return 0;
+  return value;
+}
+
+/** Applies a finished stroke (cells as [r, c]) to the board; returns the
+ * same board instance when nothing changed. */
+export function applyMarkStroke(board: CellState[][], cells: Array<[number, number]>, mode: MarkStrokeMode): CellState[][] {
+  let next: CellState[][] | null = null;
+  for (const [r, c] of cells) {
+    const value = (next ?? board)[r][c];
+    const updated = strokeCellValue(value, mode);
+    if (updated === value) continue;
+    next = next ?? board.map((row) => row.slice());
+    next[r][c] = updated;
+  }
+  return next ?? board;
 }
 
 /** Cycles a single cell: empty -> mark -> king -> empty. Hinted kings (3) are locked and don't cycle. */

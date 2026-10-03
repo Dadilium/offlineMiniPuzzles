@@ -44,6 +44,7 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelComplete,
     markLevelSkipped,
     levelsCompleted,
+    difficulty,
   } = useShikakuProgress();
   const { showToast } = useToast();
   const { t } = useTranslation('shikaku');
@@ -211,6 +212,8 @@ export default function GameScreen({ route, navigation }: Props) {
           subtitle={t('game.winSubtitle')}
           nextLabel={tc('actions.nextLevel')}
           onNext={nextLevel}
+          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          onUnlockSeen={difficulty.markUnlockSeen}
         />
       }
     >

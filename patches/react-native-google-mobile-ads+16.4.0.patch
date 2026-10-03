@@ -1,0 +1,72 @@
+diff --git a/node_modules/react-native-google-mobile-ads/ios/RNGoogleMobileAds/RNGoogleMobileAdsCommon.h b/node_modules/react-native-google-mobile-ads/ios/RNGoogleMobileAds/RNGoogleMobileAdsCommon.h
+index aa800e4..a3647fd 100644
+--- a/node_modules/react-native-google-mobile-ads/ios/RNGoogleMobileAds/RNGoogleMobileAdsCommon.h
++++ b/node_modules/react-native-google-mobile-ads/ios/RNGoogleMobileAds/RNGoogleMobileAdsCommon.h
+@@ -40,6 +40,7 @@
+ 
+ + (BOOL)isAdManagerUnit:(NSString *_Nonnull)unitId;
+ 
+++ (nullable UIWindow *)activeWindow;
+ + (nullable UIViewController *)currentViewController;
+ 
+ @end
+diff --git a/node_modules/react-native-google-mobile-ads/ios/RNGoogleMobileAds/RNGoogleMobileAdsCommon.mm b/node_modules/react-native-google-mobile-ads/ios/RNGoogleMobileAds/RNGoogleMobileAdsCommon.mm
+index 0d85b45..c49b331 100644
+--- a/node_modules/react-native-google-mobile-ads/ios/RNGoogleMobileAds/RNGoogleMobileAdsCommon.mm
++++ b/node_modules/react-native-google-mobile-ads/ios/RNGoogleMobileAds/RNGoogleMobileAdsCommon.mm
+@@ -207,7 +207,7 @@ + (GADAdSize)stringToAdSize:(NSString *)value
+     CGRect frame = [[UIScreen mainScreen] bounds];
+     if (@available(iOS 11.0, *)) {
+       frame =
+-          UIEdgeInsetsInsetRect(frame, [UIApplication sharedApplication].keyWindow.safeAreaInsets);
++          UIEdgeInsetsInsetRect(frame, [RNGoogleMobileAdsCommon activeWindow].safeAreaInsets);
+     }
+     CGFloat viewWidth = adWidth > 0 ? MIN(frame.size.width, adWidth) : frame.size.width;
+     if ([value isEqualToString:@"INLINE_ADAPTIVE_BANNER"]) {
+@@ -232,8 +232,45 @@ + (BOOL)isAdManagerUnit:(NSString *)unitId {
+   return [unitId hasPrefix:@"/"];
+ }
+ 
++// Scene-aware lookup of the window ads should present from. With the UIKit
++// scene lifecycle (Expo `ios.enableSceneSupport`, default from SDK 58),
++// `UIApplication.keyWindow` is deprecated and isn't guaranteed to return the
++// active window -- presenting from the wrong one leaves full-screen ads (and
++// the alerts they raise, like "close video?") unable to dismiss. Prefers the
++// key window of the foreground-active scene, then the app delegate's window
++// (Expo mirrors the scene window onto it), then the legacy `keyWindow`.
+++ (UIWindow *)activeWindow {
++  UIApplication *application = [UIApplication sharedApplication];
++  if (@available(iOS 13.0, *)) {
++    for (UIScene *scene in application.connectedScenes) {
++      if (scene.activationState != UISceneActivationStateForegroundActive ||
++          ![scene isKindOfClass:[UIWindowScene class]]) {
++        continue;
++      }
++      UIWindowScene *windowScene = (UIWindowScene *)scene;
++      if (@available(iOS 15.0, *)) {
++        if (windowScene.keyWindow) {
++          return windowScene.keyWindow;
++        }
++      }
++      for (UIWindow *window in windowScene.windows) {
++        if (window.isKeyWindow) {
++          return window;
++        }
++      }
++    }
++  }
++  if ([application.delegate respondsToSelector:@selector(window)] && application.delegate.window) {
++    return application.delegate.window;
++  }
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
++  return application.keyWindow;
++#pragma clang diagnostic pop
++}
++
+ + (UIViewController *)currentViewController {
+-  UIViewController *controller = [[[UIApplication sharedApplication] keyWindow] rootViewController];
++  UIViewController *controller = [[RNGoogleMobileAdsCommon activeWindow] rootViewController];
+   UIViewController *presentedController = controller.presentedViewController;
+ 
+   while (presentedController && ![presentedController isBeingDismissed]) {

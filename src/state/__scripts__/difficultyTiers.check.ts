@@ -15,7 +15,7 @@ import {
   tierForRating,
   unplayedLevelIndices,
 } from '../difficultyTiers';
-import { isLevelTouched, resolvePersistedTiers, withRating, withTierSwitch } from '../progressTransitions';
+import { isLevelTouched, resolvePersistedTiers, withRating, withRatingAndAutoSwitch, withTierSwitch } from '../progressTransitions';
 
 type Level = { n: number };
 type Custom = { boardsByLevel: Record<number, number[]> };
@@ -120,6 +120,26 @@ const checks: Array<[string, () => void]> = [
       const next = withRating(baseState({ skillRating: 59 }), 62);
       assert.equal(next.unlockedTier, 'hard');
       assert.equal(next.selectedTier, 'medium');
+    },
+  ],
+  [
+    'unlocking a tier moves the player straight onto it',
+    () => {
+      const { state, switched } = withRatingAndAutoSwitch(baseState({ skillRating: 59 }), 62, resetLevelCustom);
+      assert.ok(switched);
+      assert.equal(state.selectedTier, 'hard');
+      assert.equal(state.unlockedTier, 'hard');
+      assert.deepEqual(Object.keys(state.generatedLevels).map(Number), [0, 1], 'unplayed old-tier levels dropped');
+    },
+  ],
+  [
+    'no switch while staying inside unlocked tiers',
+    () => {
+      const easyPick = baseState({ selectedTier: 'easy', skillRating: 39 });
+      const { state, switched } = withRatingAndAutoSwitch(easyPick, 42, resetLevelCustom);
+      assert.ok(!switched, 'Medium was already unlocked -- a deliberate Easy pick stays');
+      assert.equal(state.selectedTier, 'easy');
+      assert.deepEqual(Object.keys(state.generatedLevels).map(Number), [0, 1, 2, 3], 'nothing regenerated');
     },
   ],
   [

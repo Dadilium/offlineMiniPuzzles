@@ -5,6 +5,7 @@ import {
   isTierUnlocked,
   maxTier,
   tierForRating,
+  tierRank,
   unplayedLevelIndices,
 } from './difficultyTiers';
 
@@ -34,10 +35,25 @@ export function resolvePersistedTiers(raw: Partial<Record<keyof PersistedTiers, 
   return { selectedTier, unlockedTier, seenUnlockedTier };
 }
 
-/** Applies a new rating and unlocks whatever tier it reaches. Never touches
- * `selectedTier` -- unlocking is the player's cue, not a switch. */
+/** Applies a new rating and unlocks whatever tier it reaches, leaving
+ * `selectedTier` alone (see `withRatingAndAutoSwitch` for the switch). */
 export function withRating<TLevel, TCustom>(base: ProgressState<TLevel, TCustom>, skillRating: number): ProgressState<TLevel, TCustom> {
   return { ...base, skillRating, unlockedTier: maxTier(base.unlockedTier, tierForRating(skillRating)) };
+}
+
+/** Applies a new rating; if that unlocks a harder tier, moves the player
+ * straight onto it (regenerating every unplayed level there) so the very
+ * next level is at the new difficulty. Unlocks only happen while playing
+ * the hardest unlocked tier -- the rating is held inside the selected band --
+ * so this never overrides a deliberate pick of an easier step. */
+export function withRatingAndAutoSwitch<TLevel, TCustom>(
+  base: ProgressState<TLevel, TCustom>,
+  skillRating: number,
+  resetLevelCustom: ResetLevelCustom<TLevel, TCustom>
+): { state: ProgressState<TLevel, TCustom>; switched: boolean } {
+  const rated = withRating(base, skillRating);
+  if (tierRank(rated.unlockedTier) <= tierRank(base.unlockedTier)) return { state: rated, switched: false };
+  return { state: withTierSwitch(rated, rated.unlockedTier, resetLevelCustom), switched: true };
 }
 
 /** Selects `tier` and drops every unplayed level (board progress and hint

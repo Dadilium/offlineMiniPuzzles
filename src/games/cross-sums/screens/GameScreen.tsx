@@ -38,6 +38,7 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelComplete,
     markLevelSkipped,
     levelsCompleted,
+    difficulty,
   } = useCrossSumsProgress();
   const { showToast } = useToast();
   const { t } = useTranslation('cross-sums');
@@ -202,6 +203,8 @@ export default function GameScreen({ route, navigation }: Props) {
           subtitle={t('game.winSubtitle')}
           nextLabel={tc('actions.nextLevel')}
           onNext={nextLevel}
+          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          onUnlockSeen={difficulty.markUnlockSeen}
         />
       }
     >

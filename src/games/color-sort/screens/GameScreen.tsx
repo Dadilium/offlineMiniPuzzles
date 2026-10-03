@@ -43,6 +43,7 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelSkipped,
     levelsCompleted,
     showColorblindIcons,
+    difficulty,
   } = useColorSortProgress();
   const { showToast } = useToast();
   const { t } = useTranslation('color-sort');
@@ -255,6 +256,8 @@ export default function GameScreen({ route, navigation }: Props) {
           subtitle={t('game.winSubtitle', { count: moveCount, par: level.parMoves })}
           nextLabel={tc('actions.nextLevel')}
           onNext={nextLevel}
+          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          onUnlockSeen={difficulty.markUnlockSeen}
         />
       }
     >

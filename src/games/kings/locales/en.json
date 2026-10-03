@@ -18,11 +18,11 @@
       },
       {
         "title": "Mark cells you've ruled out",
-        "desc": "Tap once to leave a small MARK on a cell you know can't hold a king. Tap again to place the crown. Tap a third time to clear it."
+        "desc": "Tap once to leave a small MARK on a cell you know can't hold a king. Tap again to place the crown. Tap a third time to clear it. Drag across cells to mark several at once — start the drag on a mark to erase instead."
       },
       {
         "title": "Placing a king marks the rest",
-        "desc": "The instant you crown a cell, every cell that's now impossible — same row, column, realm, and anything touching — gets dotted for you automatically. Remove the king and those dots clear right back up."
+        "desc": "On Easy and Medium, the instant you crown a cell, every cell that's now impossible — same row, column, realm, and anything touching — gets dotted for you automatically. Remove the king and those dots clear right back up. On Hard and Expert, finding them is up to you."
       }
     ]
   },

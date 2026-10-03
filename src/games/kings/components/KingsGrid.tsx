@@ -1,5 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   cancelAnimation,
   interpolate,
@@ -13,6 +15,7 @@ import Animated, {
 import Svg from 'react-native-svg';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { markStrokeModeFor, strokeCellValue, type MarkStrokeMode } from '../engine';
 import type { CellState, KingsLevel } from '../types';
 import { KingCrownGlyph } from './KingCrown';
 import { useRegionPalette } from './TutorialDiagram';
@@ -26,16 +29,19 @@ function KingPiece({ size, fill }: { size: number; fill: string }) {
 }
 
 const MIN_CELL = 24;
-const MAX_CELL = 54;
+const MAX_CELL = 60;
 // Rough non-board chrome (top bar, status row, legend, controls, safe areas)
 // so a large board sizes itself to actually fit the screen instead of
 // overflowing it -- same estimate as ShikakuGrid, which has the same
 // statusRow/legend/controls shape.
 const CHROME_ESTIMATE = 330;
+// GameScreenLayout's own board-area side padding (12 each side) -- the board
+// fills the rest of the width, so it sits 12pt from each screen edge.
+const SIDE_GUTTER_TOTAL = 24;
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 function cellSizeFor(n: number) {
-  const widthBudget = Math.floor((screenWidth - 48) / n);
+  const widthBudget = Math.floor((screenWidth - SIDE_GUTTER_TOTAL) / n);
   const heightBudget = Math.floor((screenHeight - CHROME_ESTIMATE) / n);
   return Math.max(MIN_CELL, Math.min(MAX_CELL, widthBudget, heightBudget));
 }
@@ -190,15 +196,106 @@ interface Props {
   autoUnavailable: Set<string>;
   conflictSet: Set<string>;
   onCellPress: (r: number, c: number) => void;
+  /** A finished drag across cells: paints dots on empty cells, or erases
+   * dots when the drag started on one. */
+  onMarkStroke: (cells: Array<[number, number]>, mode: MarkStrokeMode) => void;
 }
 
-export default function KingsGrid({ level, board, autoUnavailable, conflictSet, onCellPress }: Props) {
+/** Finger travel before a press becomes a mark-painting drag -- below this
+ * it stays a plain tap (cycle the cell). */
+const DRAG_ACTIVATION_PX = 8;
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface ActiveStroke {
+  mode: MarkStrokeMode;
+  cells: Map<string, [number, number]>;
+  last: Point;
+}
+
+export default function KingsGrid({ level, board, autoUnavailable, conflictSet, onCellPress, onMarkStroke }: Props) {
   const styles = useStyles();
   const regionPalette = useRegionPalette();
   const n = level.n;
   const size = cellSizeFor(n);
   const W = size * n;
   const H = size * n;
+
+  // Live preview of the stroke in progress; it's committed once, on release,
+  // rather than persisting progress on every cell the finger crosses.
+  const [preview, setPreview] = useState<{ mode: MarkStrokeMode; keys: Set<string> } | null>(null);
+  const strokeRef = useRef<ActiveStroke | null>(null);
+  const beginRef = useRef<Point | null>(null);
+
+  function cellAt({ x, y }: Point): [number, number] | null {
+    const r = Math.floor(y / size);
+    const c = Math.floor(x / size);
+    return r >= 0 && r < n && c >= 0 && c < n ? [r, c] : null;
+  }
+
+  /** Adds every cell the finger crossed between two samples -- touch events
+   * arrive far coarser than one per cell on a fast swipe, so the segment is
+   * walked in quarter-cell steps instead of trusting the endpoints. */
+  function extendStroke(stroke: ActiveStroke, to: Point): boolean {
+    const { last } = stroke;
+    const steps = Math.max(1, Math.ceil(Math.hypot(to.x - last.x, to.y - last.y) / (size / 4)));
+    let added = false;
+    for (let i = 1; i <= steps; i++) {
+      const cell = cellAt({ x: last.x + ((to.x - last.x) * i) / steps, y: last.y + ((to.y - last.y) * i) / steps });
+      if (!cell) continue;
+      const key = `${cell[0]},${cell[1]}`;
+      if (stroke.cells.has(key)) continue;
+      stroke.cells.set(key, cell);
+      added = true;
+      const value = board[cell[0]][cell[1]];
+      if (strokeCellValue(value, stroke.mode) !== value) void Haptics.selectionAsync();
+    }
+    stroke.last = to;
+    return added;
+  }
+
+  function publish(stroke: ActiveStroke): void {
+    setPreview({ mode: stroke.mode, keys: new Set(stroke.cells.keys()) });
+  }
+
+  // Rebuilt each render (a config builder, same as Block Fill's grid) so the
+  // callbacks always see this render's board.
+  const paint = Gesture.Pan()
+    .runOnJS(true)
+    .minDistance(DRAG_ACTIVATION_PX)
+    .maxPointers(1)
+    .shouldCancelWhenOutside(false)
+    .onBegin((e) => {
+      beginRef.current = { x: e.x, y: e.y };
+    })
+    .onStart((e) => {
+      const begin = beginRef.current ?? { x: e.x, y: e.y };
+      const startCell = cellAt(begin);
+      if (!startCell) return;
+      const stroke: ActiveStroke = { mode: markStrokeModeFor(board[startCell[0]][startCell[1]]), cells: new Map(), last: begin };
+      stroke.cells.set(`${startCell[0]},${startCell[1]}`, startCell);
+      const startValue = board[startCell[0]][startCell[1]];
+      if (strokeCellValue(startValue, stroke.mode) !== startValue) void Haptics.selectionAsync();
+      extendStroke(stroke, { x: e.x, y: e.y });
+      strokeRef.current = stroke;
+      publish(stroke);
+    })
+    .onUpdate((e) => {
+      const stroke = strokeRef.current;
+      if (stroke && extendStroke(stroke, { x: e.x, y: e.y })) publish(stroke);
+    })
+    .onEnd(() => {
+      const stroke = strokeRef.current;
+      if (stroke && stroke.cells.size > 0) onMarkStroke([...stroke.cells.values()], stroke.mode);
+    })
+    .onFinalize(() => {
+      strokeRef.current = null;
+      beginRef.current = null;
+      setPreview(null);
+    });
 
   const rows: React.ReactNode[] = [];
   for (let r = 0; r < n; r++) {
@@ -210,10 +307,11 @@ export default function KingsGrid({ level, board, autoUnavailable, conflictSet, 
       // so region colors stay identical across both themes.
       const regionColor = regionPalette[rid % regionPalette.length];
       const key = `${r},${c}`;
+      const value = preview?.keys.has(key) ? strokeCellValue(board[r][c], preview.mode) : board[r][c];
       cellsInRow.push(
         <KingsCell
           key={key}
-          value={board[r][c]}
+          value={value}
           isAuto={autoUnavailable.has(key)}
           isConflict={conflictSet.has(key)}
           regionColor={regionColor}
@@ -238,9 +336,11 @@ export default function KingsGrid({ level, board, autoUnavailable, conflictSet, 
   }
 
   return (
-    <View style={[styles.wrap, { width: W, height: H }]}>
-      <View style={styles.inner}>{rows}</View>
-    </View>
+    <GestureDetector gesture={paint}>
+      <View style={[styles.wrap, { width: W, height: H }]}>
+        <View style={styles.inner}>{rows}</View>
+      </View>
+    </GestureDetector>
   );
 }
 

@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
 import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
-import { applyHint, cycleCellState, makeEmptyBoard } from '../engine';
+import { applyHint, applyMarkStroke, cycleCellState, makeEmptyBoard, type MarkStrokeMode } from '../engine';
 import {
   BACKGROUND_DEADLINES,
   createLevelForIndexRobust,
@@ -92,6 +92,8 @@ interface KingsProgressContextValue {
   tutorialsSeen: Set<string>;
   skillRating: SkillRating;
   cycleCell: (levelIndex: number, r: number, c: number) => void;
+  /** Commits a finished drag stroke of dots (painted or erased) in one write. */
+  paintMarks: (levelIndex: number, cells: Array<[number, number]>, mode: MarkStrokeMode) => void;
   giveHint: (levelIndex: number) => boolean;
   resetLevel: (levelIndex: number) => void;
   markLevelComplete: (levelIndex: number) => void;
@@ -127,6 +129,18 @@ export function useKingsProgress(): KingsProgressContextValue {
     [getCurrent, commit]
   );
 
+  const paintMarks = useCallback(
+    (levelIndex: number, cells: Array<[number, number]>, mode: MarkStrokeMode) => {
+      const current = getCurrent();
+      const board = current.custom.boardsByLevel[levelIndex];
+      if (!board) return;
+      const nextBoard = applyMarkStroke(board, cells, mode);
+      if (nextBoard === board) return;
+      commit({ ...current, custom: { boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } } });
+    },
+    [getCurrent, commit]
+  );
+
   /** Reveals one correct king as a locked hint cell. Returns false if the level has no hint left to give. */
   const giveHint = useCallback(
     (levelIndex: number): boolean => {
@@ -157,6 +171,7 @@ export function useKingsProgress(): KingsProgressContextValue {
     tutorialsSeen: s.tutorialsSeen,
     skillRating: s.skillRating as SkillRating,
     cycleCell,
+    paintMarks,
     giveHint,
     resetLevel: s.resetLevel,
     markLevelComplete: s.markLevelComplete,

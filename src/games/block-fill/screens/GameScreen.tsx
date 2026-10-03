@@ -25,8 +25,19 @@ type Props = NativeStackScreenProps<BlockFillStackParamList, 'BlockFillGame'>;
 export default function GameScreen({ route, navigation }: Props) {
   const { colors } = useTheme();
   const { levelIndex } = route.params;
-  const { levelFor, ensureLevel, pathsByLevel, extend, rewind, giveHint, resetLevel, markLevelComplete, markLevelSkipped, levelsCompleted } =
-    useBlockFillProgress();
+  const {
+    levelFor,
+    ensureLevel,
+    pathsByLevel,
+    extend,
+    rewind,
+    giveHint,
+    resetLevel,
+    markLevelComplete,
+    markLevelSkipped,
+    levelsCompleted,
+    difficulty,
+  } = useBlockFillProgress();
   const { showToast } = useToast();
   const confettiPalette = useMemo(
     () => [colors.purple, colors.gold, colors.cyan, colors.pink, colors.success, colors.signalBlue],
@@ -174,6 +185,8 @@ export default function GameScreen({ route, navigation }: Props) {
           subtitle={t('game.winSubtitle')}
           nextLabel={tc('actions.nextLevel')}
           onNext={nextLevel}
+          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          onUnlockSeen={difficulty.markUnlockSeen}
         />
       }
     >

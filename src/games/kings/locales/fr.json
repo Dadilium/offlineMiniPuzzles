@@ -18,11 +18,11 @@
       },
       {
         "title": "Marquez les cases exclues",
-        "desc": "Touchez une fois pour laisser une petite MARQUE sur une case qui ne peut pas accueillir de roi. Touchez à nouveau pour placer la couronne. Une troisième fois pour l'effacer."
+        "desc": "Touchez une fois pour laisser une petite MARQUE sur une case qui ne peut pas accueillir de roi. Touchez à nouveau pour placer la couronne. Une troisième fois pour l'effacer. Glissez sur plusieurs cases pour les marquer d'un coup — commencez sur une marque pour effacer à la place."
       },
       {
         "title": "Placer un roi marque le reste",
-        "desc": "Dès que vous couronnez une case, toutes les cases désormais impossibles — même ligne, colonne, région et cases adjacentes — sont automatiquement marquées d'un point. Retirez le roi et ces points disparaissent aussitôt."
+        "desc": "En Facile et Moyen, dès que vous couronnez une case, toutes les cases désormais impossibles — même ligne, colonne, région et cases adjacentes — sont automatiquement marquées d'un point. Retirez le roi et ces points disparaissent aussitôt. En Difficile et Expert, c'est à vous de les trouver."
       }
     ]
   },

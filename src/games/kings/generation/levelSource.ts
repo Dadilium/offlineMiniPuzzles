@@ -1,6 +1,6 @@
 import type { KingsLevel } from '../types';
 import { difficultyParams, maxAttemptsFor, stepDownRating, type SkillRating } from './difficulty';
-import { tierFloor } from '../../../state/difficultyTiers';
+import { tierFloor, tierForRating } from '../../../state/difficultyTiers';
 import { generateKingsLevelAsync, type GenerateFailure, type GenerateSuccess } from './generator';
 import { mulberry32, seedFromLevelIndex } from './rng';
 
@@ -78,6 +78,7 @@ export async function createLevelForIndexRobust(
   recentFingerprints: string[],
   deadlines: GenerationDeadlines = URGENT_DEADLINES
 ): Promise<KingsLevel> {
+  const tagged = (level: KingsLevel): KingsLevel => ({ ...level, difficulty: tierForRating(skillRating) });
   const attempts: Array<() => Promise<GenerateSuccess | GenerateFailure>> = [
     () => createLevelForIndex(levelIndex, skillRating, recentFingerprints, deadlines.primaryMs),
     () => createLevelForIndex(levelIndex, stepDownRating(skillRating), [], deadlines.stepDownMs),
@@ -85,7 +86,7 @@ export async function createLevelForIndexRobust(
   ];
   for (const attempt of attempts) {
     const result = await attempt();
-    if ('level' in result) return result.level;
+    if ('level' in result) return tagged(result.level);
   }
 
   const rng = mulberry32(seedFromLevelIndex(levelIndex, 1));
@@ -96,6 +97,6 @@ export async function createLevelForIndexRobust(
     4000,
     deadlines.lastResortMs
   );
-  if ('level' in lastResort) return lastResort.level;
+  if ('level' in lastResort) return tagged(lastResort.level);
   throw new Error(`Kings level generation failed for index ${levelIndex}`);
 }

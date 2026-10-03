@@ -85,6 +85,7 @@
     "confirmTitle": "Changer la difficulté ?",
     "confirmMessage": "Passer en {{tier}} redémarre votre niveau actuel avec une nouvelle grille.",
     "confirmAction": "Changer",
-    "cancelAction": "Continuer"
+    "cancelAction": "Continuer",
+    "unlockedBanner": "{{tier}} débloqué — votre prochain niveau est en {{tier}}"
   }
 }

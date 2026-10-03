@@ -85,6 +85,7 @@
     "confirmTitle": "Change difficulty?",
     "confirmMessage": "Switching to {{tier}} restarts your current level with a new board.",
     "confirmAction": "Switch",
-    "cancelAction": "Keep playing"
+    "cancelAction": "Keep playing",
+    "unlockedBanner": "{{tier}} unlocked — your next level is {{tier}}"
   }
 }

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { type DifficultyTier, effectiveRating, isTierUnlocked, tierForRating, tierRank } from './difficultyTiers';
-import { isLevelTouched, resolvePersistedTiers, withRating, withTierSwitch } from './progressTransitions';
+import { isLevelTouched, resolvePersistedTiers, withRating, withRatingAndAutoSwitch, withTierSwitch } from './progressTransitions';
 
 const DEFAULT_MAX_RECENT_FINGERPRINTS = 50;
 /**
@@ -330,9 +330,21 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
           skipped: false,
           ...extra,
         });
-        commit(withRating({ ...current, levelsCompleted: current.levelsCompleted.concat(levelIndex) }, skillRating));
+        const { state: next, switched } = withRatingAndAutoSwitch(
+          { ...current, levelsCompleted: current.levelsCompleted.concat(levelIndex) },
+          skillRating,
+          config.resetLevelCustom
+        );
+        if (switched) {
+          // Prefetched levels at the old tier were just dropped -- discard any
+          // in-flight one too, and start the next level at the new tier now.
+          generationEpoch.current += 1;
+          pendingGeneration.current.clear();
+        }
+        commit(next);
+        if (switched) ensureLevel(next.levelsCompleted.length + next.levelsSkipped.length, config.initialEnsureOpts);
       },
-      [commit]
+      [commit, ensureLevel]
     );
 
     /** Marks a level skipped (via ad) so the next level unlocks -- distinct from actually solving it. */
