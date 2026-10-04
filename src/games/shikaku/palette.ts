@@ -26,3 +26,13 @@ export function paletteForClue(clueIndex: number): ShikakuPalette {
   const len = PALETTES.length;
   return PALETTES[((clueIndex % len) + len) % len];
 }
+
+/**
+ * Cell grid-line color. The theme's `borderSoft` sits too close to `surface2`
+ * to count cells by, so derive a stronger line from `textFaint` at partial
+ * alpha -- clearly legible in both themes while staying quieter than the
+ * full-opacity rectangle borders drawn on top of it.
+ */
+export function gridLineColor(colors: { textFaint: string }): string {
+  return `${colors.textFaint}99`;
+}

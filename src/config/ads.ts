@@ -4,6 +4,7 @@ import { AdsConsent, AdsConsentStatus, MobileAds, TestIds } from 'react-native-g
 import { getTrackingPermissionsAsync, requestTrackingPermissionsAsync, PermissionStatus } from 'expo-tracking-transparency';
 import { delay, waitUntilAppActive } from '../utils/timing';
 import { posthog } from './posthog';
+import type { InterstitialSchedule } from '../ads/interstitialRules';
 
 export type GameId =
   | 'kings'
@@ -13,7 +14,8 @@ export type GameId =
   | 'color-sort'
   | 'tents-and-trees'
   | 'shikaku'
-  | 'find-words';
+  | 'find-words'
+  | 'arrows';
 
 type AdFormat = 'banner' | 'interstitial' | 'rewarded';
 
@@ -62,11 +64,6 @@ const INTERSTITIAL_INTERVAL_OVERRIDES: Partial<Record<GameId, number>> = {
   'find-words': 2,
 };
 
-export interface InterstitialSchedule {
-  first: number;
-  interval: number;
-}
-
 export function interstitialScheduleFor(gameId: GameId): InterstitialSchedule {
   return {
     first: INTERSTITIAL_FIRST_OVERRIDES[gameId] ?? DEFAULT_INTERSTITIAL_FIRST,
@@ -78,42 +75,11 @@ export function interstitialScheduleFor(gameId: GameId): InterstitialSchedule {
  * tracked independently of level completions -- an ad every other press. */
 export const MATCHING_NUMBERS_ADD_NUMBERS_AD_SCHEDULE: InterstitialSchedule = { first: 2, interval: 2 };
 
-export interface InterstitialState {
-  /** Level completions since the last interstitial the player actually
-   * watched through to close. */
-  sinceLastAd: number;
-  /** Whether any interstitial has ever been shown to completion -- before
-   * the first one, `schedule.first` is the threshold; after, `interval` is. */
-  everShownAd: boolean;
-  /** True from the moment an ad is due until it's confirmed closed. If the
-   * app is killed mid-ad (or the ad wasn't loaded at all), this survives
-   * and forces the very next completion to retry, instead of waiting for
-   * the schedule to come back around. */
-  pendingRetry: boolean;
-}
-
-export const DEFAULT_INTERSTITIAL_STATE: InterstitialState = {
-  sinceLastAd: 0,
-  everShownAd: false,
-  pendingRetry: false,
-};
-
-/** Pure decision step for one trigger event (a level completion, or any
- * other cadence-tracked action): bumps the counter and says whether an
- * interstitial is due. `forceDue` short-circuits straight to due regardless
- * of the count-based threshold (e.g. Matching Numbers forces it when a level
- * took unusually long to solve) without disturbing the counter bookkeeping.
- * Persistence is the caller's job. */
-export function nextInterstitialDecision(
-  state: InterstitialState,
-  schedule: InterstitialSchedule,
-  forceDue: boolean = false
-): { due: boolean; sinceLastAd: number } {
-  const sinceLastAd = state.sinceLastAd + 1;
-  const threshold = state.everShownAd ? schedule.interval : schedule.first;
-  const due = state.pendingRetry || forceDue || sinceLastAd >= threshold;
-  return { due, sinceLastAd };
-}
+/** Arrows' "Try again" after running out of hearts gets its own cadence,
+ * separate from level completions -- an ad on every retry. The app-wide
+ * cooldown (INTERSTITIAL_COOLDOWN_MS) still applies, so retries in quick
+ * succession don't chain ads back to back. */
+export const ARROWS_RETRY_AD_SCHEDULE: InterstitialSchedule = { first: 1, interval: 1 };
 
 /** Settle time after the UMP consent form's dismiss animation before asking
  * for ATT -- see the comment on the ATT call in `initAds` for why. */

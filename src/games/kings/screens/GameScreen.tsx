@@ -12,7 +12,7 @@ import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
-import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import KingsGrid from '../components/KingsGrid';
 import { useRegionPalette } from '../components/TutorialDiagram';
@@ -86,6 +86,8 @@ export default function GameScreen({ route, navigation }: Props) {
   }, [levelIndex, level, levelsCompleted, resetLevel]);
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('kings');
+  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
+  useInterstitialAtLevelStart(level ? levelIndex : null);
 
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {

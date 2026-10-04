@@ -16,6 +16,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/Toast';
 import AdBanner from './src/components/AdBanner';
 import { HintWalletProvider } from './src/state/hintWallet';
+import { InterstitialProvider } from './src/ads/InterstitialProvider';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import * as Sentry from '@sentry/react-native';
 import { PostHogProvider } from 'posthog-react-native';
@@ -69,7 +70,9 @@ export default Sentry.wrap(function App() {
         <ThemeProvider>
           <ToastProvider>
             <HintWalletProvider>
-              <AppContent />
+              <InterstitialProvider>
+                <AppContent />
+              </InterstitialProvider>
             </HintWalletProvider>
           </ToastProvider>
         </ThemeProvider>

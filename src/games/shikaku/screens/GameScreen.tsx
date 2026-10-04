@@ -11,7 +11,8 @@ import WinOverlay from '../../../components/WinOverlay';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
-import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useLatestRef } from '../../../utils/useLatestRef';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import ShikakuGrid from '../components/ShikakuGrid';
 import { computeConflicts, computeWin } from '../engine';
@@ -97,6 +98,12 @@ export default function GameScreen({ route, navigation }: Props) {
   useEffect(() => clearConfettiTimer, []);
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('shikaku');
+  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
+  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // Replays of an already-cleared level never count toward the interstitial
+  // schedule -- read at win time, before `markLevelComplete` adds it.
+  const levelsCompletedRef = useLatestRef(levelsCompleted);
+  const firstClearRef = useRef(false);
 
   // Boards persist forever, so reopening an already-completed level would
   // otherwise land straight on the solved board with the win popup showing.
@@ -121,6 +128,7 @@ export default function GameScreen({ route, navigation }: Props) {
     if (!win) return;
     if (celebratedForLevel.current === levelIndex) return;
     celebratedForLevel.current = levelIndex;
+    firstClearRef.current = !levelsCompletedRef.current.has(levelIndex);
 
     markLevelComplete(levelIndex);
     posthog?.capture('puzzle_level_completed', { game_id: 'shikaku', level_index: levelIndex + 1 });
@@ -130,7 +138,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function handleCelebrationDone() {
     setRevealWin(true);
     setShowConfetti(true);
-    notifyLevelCompleted();
+    if (firstClearRef.current) notifyLevelCompleted();
     clearConfettiTimer();
     confettiTimerRef.current = setTimeout(() => setShowConfetti(false), 1300);
   }

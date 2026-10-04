@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "name": "Arrows",
+    "tag": "Slide every arrow off the board"
+  },
+  "hub": {
+    "tagline": "Tap an arrow to send it flying the way it points. Clear the board without crashing into the others."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Tap an arrow to launch it",
+        "desc": "An arrow slides out the way its head points, its body following every bend. If nothing is in its way, it leaves the board."
+      },
+      {
+        "title": "Blocked arrows bounce back",
+        "desc": "If another arrow is in the way, yours bumps into it and slides back -- costing one of your 3 hearts. Lose them all and the board restarts."
+      },
+      {
+        "title": "Clear the way, then clear the board",
+        "desc": "Launching one arrow can free the ones behind it. Pinch to zoom and drag to move around big boards. Clear every arrow to win."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Level {{number}}",
+    "livesA11y_one": "{{count}} heart left",
+    "livesA11y_other": "{{count}} hearts left",
+    "fitBoard": "Fit board to screen",
+    "hintFailToast": "No arrow can be launched right now.",
+    "winTitle": "Board cleared",
+    "winSubtitle": "Every arrow found its way out — next board unlocked.",
+    "failTitle": "Out of hearts",
+    "failSubtitle": "Too many crashes. Restart the board and try a new route.",
+    "retry": "Try again"
+  }
+}

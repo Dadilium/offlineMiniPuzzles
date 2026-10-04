@@ -1,7 +1,7 @@
 import React from 'react';
 import Svg, { ClipPath, Defs, G, Rect, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../../../theme/ThemeProvider';
-import { paletteForClue } from '../palette';
+import { gridLineColor, paletteForClue } from '../palette';
 
 const BOARD_RADIUS = 10;
 
@@ -38,7 +38,7 @@ export function ShikakuMiniGrid({ spec, size }: { spec: MiniGridSpec; size: numb
   const cells: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      cells.push(<Rect key={`bg-${r}-${c}`} x={c * cw} y={r * ch} width={cw} height={ch} fill={colors.surface2} stroke={colors.borderSoft} strokeWidth={1} />);
+      cells.push(<Rect key={`bg-${r}-${c}`} x={c * cw} y={r * ch} width={cw} height={ch} fill={colors.surface2} stroke={gridLineColor(colors)} strokeWidth={1} />);
     }
   }
 

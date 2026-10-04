@@ -1,117 +1,58 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect } from 'react';
-import { useInterstitialAd } from 'react-native-google-mobile-ads';
-import { posthog } from '../config/posthog';
-import {
-  adUnitIds,
-  DEFAULT_INTERSTITIAL_STATE,
-  interstitialScheduleFor,
-  nextInterstitialDecision,
-  type GameId,
-  type InterstitialSchedule,
-  type InterstitialState,
-} from '../config/ads';
+import { useCallback, useEffect, useMemo } from 'react';
+import { interstitialScheduleFor, type GameId } from '../config/ads';
+import type { InterstitialSchedule } from './interstitialRules';
+import { useInterstitials } from './InterstitialProvider';
 
 const STORAGE_KEY_PREFIX = '@signal-arcade/ads/interstitial-state/';
 
-async function readState(storageKey: string): Promise<InterstitialState> {
-  const raw = await AsyncStorage.getItem(storageKey);
-  if (!raw) return DEFAULT_INTERSTITIAL_STATE;
-  try {
-    return { ...DEFAULT_INTERSTITIAL_STATE, ...JSON.parse(raw) };
-  } catch {
-    return DEFAULT_INTERSTITIAL_STATE;
-  }
-}
-
-function writeState(storageKey: string, state: InterstitialState): Promise<void> {
-  return AsyncStorage.setItem(storageKey, JSON.stringify(state));
-}
-
 /**
- * Shared plumbing behind useInterstitialOnComplete and useInterstitialOnAction:
- * shows an interstitial on the cadence from `schedule` (a grace period of
- * genuine trigger events, then a fixed interval after that), tracked against
- * its own `storageKey` -- so two different triggers on the same game (e.g.
- * level completions vs. an in-level assist action) never share, or fight
- * over, the same counter.
+ * Counts level completions against `interstitialScheduleFor(gameId)`. A win
+ * only *decides* the ad -- when due it's recorded as owed (persisted), and
+ * shown at the start of the next level by `useInterstitialAtLevelStart`, so
+ * it never covers the win celebration and closing the app in between only
+ * defers it.
  *
- * An ad attempt only counts once it's actually watched through to close --
- * if it wasn't loaded, or the app is killed mid-ad, the very next trigger
- * retries immediately rather than waiting for the schedule to come back
- * around.
+ * Call `notifyLevelCompleted` once per first clear only -- never on skip
+ * (Skip Level already costs a rewarded ad) or on replays. Pass
+ * `{ forceDue: true }` to make it due regardless of the count-based
+ * schedule (e.g. Matching Numbers when a level took unusually long).
+ * `notifyLevelCompleted` has a stable identity.
  */
-function useInterstitialCadence(storageKey: string, schedule: InterstitialSchedule, analyticsContext: Record<string, string>) {
-  const { isLoaded, isClosed, load, show } = useInterstitialAd(adUnitIds.interstitial);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  useEffect(() => {
-    if (!isClosed) return;
-    readState(storageKey).then((state) => {
-      if (!state.pendingRetry) return;
-      return writeState(storageKey, { sinceLastAd: 0, everShownAd: true, pendingRetry: false });
-    });
-    load();
-  }, [isClosed, storageKey, load]);
-
-  const notify = useCallback(
-    (opts?: { forceDue?: boolean }) => {
-      readState(storageKey).then(async (state) => {
-        const { due, sinceLastAd } = nextInterstitialDecision(state, schedule, opts?.forceDue ?? false);
-
-        if (!due) {
-          await writeState(storageKey, { ...state, sinceLastAd });
-          return;
-        }
-
-        // Mark the attempt in-flight before showing -- whether or not it was
-        // actually loaded -- so a kill mid-ad or a no-fill both force a retry
-        // on the next trigger instead of silently resuming the schedule.
-        await writeState(storageKey, { sinceLastAd, everShownAd: state.everShownAd, pendingRetry: true });
-        if (isLoaded) {
-          posthog?.capture('ad_interstitial_shown', analyticsContext);
-          show();
-        } else {
-          // Due per the schedule, but nothing was ready to show -- without
-          // this there's no way to tell "cadence never triggered" apart from
-          // "triggered but AdMob had no fill" from product data alone.
-          posthog?.capture('ad_interstitial_no_fill', analyticsContext);
-        }
-      });
-    },
-    [storageKey, schedule, isLoaded, show, analyticsContext]
-  );
-
-  return { notify };
-}
-
-/** Shows an interstitial on the cadence from `interstitialScheduleFor(gameId)`.
- * Call `notifyLevelCompleted` once per win only -- never on skip, since Skip
- * Level already costs the player a rewarded ad. Pass `{ forceDue: true }` to
- * short-circuit straight to due regardless of the count-based schedule (e.g.
- * Matching Numbers uses this when a level took unusually long to solve). */
 export function useInterstitialOnComplete(gameId: GameId) {
-  const { notify } = useInterstitialCadence(STORAGE_KEY_PREFIX + gameId, interstitialScheduleFor(gameId), {
-    game_id: gameId,
-    trigger: 'level_complete',
-  });
-  const notifyLevelCompleted = useCallback((opts?: { forceDue?: boolean }) => notify(opts), [notify]);
+  const { recordTrigger } = useInterstitials();
+  const schedule = useMemo(() => interstitialScheduleFor(gameId), [gameId]);
+  const notifyLevelCompleted = useCallback(
+    (opts?: { forceDue?: boolean }) => {
+      recordTrigger(STORAGE_KEY_PREFIX + gameId, schedule, { game_id: gameId, trigger: 'level_complete' }, opts);
+    },
+    [recordTrigger, schedule, gameId]
+  );
   return { notifyLevelCompleted };
 }
 
-/** Same idea as useInterstitialOnComplete, but for any other cadence-tracked
- * in-level action (i.e. anything besides "completed a level") -- e.g.
- * Matching Numbers' Add Numbers assist, shown every other press. `actionKey`
- * namespaces the counter so it never shares state with the level-completion
- * cadence or any other action on the same game. */
+/**
+ * Shows any owed interstitial when a level starts -- the natural break
+ * between levels. Owed ads are app-wide, so one earned in another game (or
+ * in a session that ended before the next level) shows here too. Pass a key
+ * that changes per level (e.g. the level index).
+ */
+export function useInterstitialAtLevelStart(levelKey: string | number | null) {
+  const { presentOwed } = useInterstitials();
+  useEffect(() => {
+    if (levelKey === null) return;
+    presentOwed();
+  }, [levelKey, presentOwed]);
+}
+
+/** Same cadence idea as useInterstitialOnComplete, but for an in-level
+ * action (e.g. Matching Numbers' Add Numbers assist, shown every other
+ * press). The player chose to pause play here, so a due ad shows right away
+ * rather than waiting for the next level. `actionKey` namespaces the
+ * counter so it never shares state with level completions. */
 export function useInterstitialOnAction(gameId: GameId, actionKey: string, schedule: InterstitialSchedule) {
-  const { notify } = useInterstitialCadence(`${STORAGE_KEY_PREFIX}${gameId}:${actionKey}`, schedule, {
-    game_id: gameId,
-    trigger: actionKey,
-  });
-  const notifyAction = useCallback(() => notify(), [notify]);
+  const { recordTrigger, presentOwed } = useInterstitials();
+  const notifyAction = useCallback(() => {
+    recordTrigger(`${STORAGE_KEY_PREFIX}${gameId}:${actionKey}`, schedule, { game_id: gameId, trigger: actionKey }).then(presentOwed);
+  }, [recordTrigger, presentOwed, gameId, actionKey, schedule]);
   return { notifyAction };
 }

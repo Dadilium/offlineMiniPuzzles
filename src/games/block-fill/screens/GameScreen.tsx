@@ -11,7 +11,7 @@ import WinOverlay from '../../../components/WinOverlay';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
-import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import BlockFillGrid from '../components/BlockFillGrid';
 import { computeWin } from '../engine';
@@ -75,6 +75,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const palette = useMemo(() => paletteForLevel(levelIndex), [levelIndex]);
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('block-fill');
+  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
+  useInterstitialAtLevelStart(level ? levelIndex : null);
 
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {

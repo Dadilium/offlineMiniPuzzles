@@ -11,7 +11,7 @@ import WinOverlay from '../../../components/WinOverlay';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
-import { useInterstitialOnAction, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useInterstitialAtLevelStart, useInterstitialOnAction, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import { MATCHING_NUMBERS_ADD_NUMBERS_AD_SCHEDULE } from '../../../config/ads';
 import MatchingNumbersGrid, { type PendingMatch } from '../components/MatchingNumbersGrid';
@@ -163,6 +163,8 @@ export default function GameScreen({ route, navigation }: Props) {
   const showFail = stuck && addNumbersRemaining <= 0 && !pendingMatch && !rejectedPair;
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('matching-numbers');
+  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
+  useInterstitialAtLevelStart(level ? levelIndex : null);
 
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {

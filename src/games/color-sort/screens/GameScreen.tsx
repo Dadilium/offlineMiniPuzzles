@@ -11,7 +11,8 @@ import WinOverlay from '../../../components/WinOverlay';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
-import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useLatestRef } from '../../../utils/useLatestRef';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import ColorSortBoard from '../components/ColorSortBoard';
 import { ACCENT_PALETTE } from '../components/TutorialDiagram';
@@ -98,6 +99,11 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('color-sort');
+  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
+  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // Replays of an already-cleared level never count toward the interstitial
+  // schedule -- read at win time, before `markLevelComplete` adds it.
+  const levelsCompletedRef = useLatestRef(levelsCompleted);
 
   useEffect(() => {
     if (!level) return;
@@ -115,15 +121,16 @@ export default function GameScreen({ route, navigation }: Props) {
     if (!win) return;
     if (celebratedForLevel.current === levelIndex) return;
     celebratedForLevel.current = levelIndex;
+    const isFirstClear = !levelsCompletedRef.current.has(levelIndex);
 
     markLevelComplete(levelIndex);
     posthog?.capture('puzzle_level_completed', { game_id: 'color_sort', level_index: levelIndex + 1, move_count: moveCount });
     setCelebrate(true);
     setShowConfetti(true);
-    notifyLevelCompleted();
+    if (isFirstClear) notifyLevelCompleted();
     const confettiTimer = setTimeout(() => setShowConfetti(false), 1300);
     return () => clearTimeout(confettiTimer);
-  }, [win, level, tubes, levelIndex, markLevelComplete, notifyLevelCompleted]);
+  }, [win, level, tubes, levelIndex, markLevelComplete, notifyLevelCompleted, levelsCompletedRef]);
 
   function clearHint() {
     if (hintTimer.current) clearTimeout(hintTimer.current);

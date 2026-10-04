@@ -6,7 +6,7 @@ import { fonts } from '../../../theme/tokens';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { placeRect, rectFromCorners } from '../engine';
-import { paletteForClue } from '../palette';
+import { gridLineColor, paletteForClue } from '../palette';
 import type { PlacedRect, RectBounds, ShikakuLevel, ShikakuPlayerState } from '../types';
 
 const MIN_CELL = 24;
@@ -25,6 +25,13 @@ function cellSizeFor(rows: number, cols: number): number {
 
 /** Diagonal-wave win celebration stagger -- same shape as Tents & Trees' grid. How long each bounce takes to settle is derived from the animation's own completion callback (see `onCelebrationSettled` below), not a guessed duration. */
 const WAVE_STAGGER_MS = 45;
+
+const GRID_LINE_WIDTH = 1;
+
+/** Offsets of the interior grid lines (between cells) along one axis -- pure so it can be reused or tested. */
+function interiorLineOffsets(count: number, size: number): number[] {
+  return Array.from({ length: Math.max(0, count - 1) }, (_, i) => (i + 1) * size - GRID_LINE_WIDTH / 2);
+}
 
 /** Below this raw pixel movement, a release counts as a tap rather than a drawn rectangle. */
 function tapThresholdFor(size: number): number {
@@ -316,6 +323,16 @@ export default function ShikakuGrid({
     );
   }
 
+  const lineColor = gridLineColor(colors);
+  const gridLines = [
+    ...interiorLineOffsets(cols, size).map((x) => (
+      <View key={`v-${x}`} style={[styles.gridLine, { left: x, top: 0, width: GRID_LINE_WIDTH, height: boardHeight, backgroundColor: lineColor }]} />
+    )),
+    ...interiorLineOffsets(rows, size).map((y) => (
+      <View key={`h-${y}`} style={[styles.gridLine, { top: y, left: 0, height: GRID_LINE_WIDTH, width: boardWidth, backgroundColor: lineColor }]} />
+    )),
+  ];
+
   const clueLabels = clues.map((clue, index) => {
     const celebrateDelay = celebrate ? (clue.r + clue.c) * WAVE_STAGGER_MS : null;
     return (
@@ -336,6 +353,11 @@ export default function ShikakuGrid({
   return (
     <View style={[styles.wrap, { width: boardWidth, height: boardHeight }]}>
       <View>{gridRows}</View>
+
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {gridLines}
+        <View style={[StyleSheet.absoluteFill, { borderWidth: GRID_LINE_WIDTH, borderColor: lineColor }]} />
+      </View>
 
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {placed.map((rect) => {
@@ -417,8 +439,9 @@ const useStyles = createThemedStyles((colors) => ({
   row: { flexDirection: 'row' },
   cell: {
     backgroundColor: colors.surface2,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
+  },
+  gridLine: {
+    position: 'absolute',
   },
   placedRect: {
     position: 'absolute',

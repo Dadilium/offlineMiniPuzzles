@@ -22,6 +22,8 @@ import shikakuEn from '../games/shikaku/locales/en.json';
 import shikakuFr from '../games/shikaku/locales/fr.json';
 import findWordsEn from '../games/find-words/locales/en.json';
 import findWordsFr from '../games/find-words/locales/fr.json';
+import arrowsEn from '../games/arrows/locales/en.json';
+import arrowsFr from '../games/arrows/locales/fr.json';
 import relayEn from '../games/relay/locales/en.json';
 import relayFr from '../games/relay/locales/fr.json';
 
@@ -45,6 +47,7 @@ export const resources = {
     'tents-and-trees': tentsAndTreesEn,
     shikaku: shikakuEn,
     'find-words': findWordsEn,
+    arrows: arrowsEn,
     relay: relayEn,
   },
   fr: {
@@ -57,6 +60,7 @@ export const resources = {
     'tents-and-trees': tentsAndTreesFr,
     shikaku: shikakuFr,
     'find-words': findWordsFr,
+    arrows: arrowsFr,
     relay: relayFr,
   },
 } as const;

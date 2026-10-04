@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "name": "Flèches",
+    "tag": "Faites sortir toutes les flèches"
+  },
+  "hub": {
+    "tagline": "Touchez une flèche pour l'envoyer dans la direction qu'elle indique. Videz le plateau sans percuter les autres."
+  },
+  "tutorial": {
+    "all": [
+      {
+        "title": "Touchez une flèche pour la lancer",
+        "desc": "La flèche glisse dans la direction de sa pointe, son corps suivant chaque virage. Si rien ne la gêne, elle quitte le plateau."
+      },
+      {
+        "title": "Les flèches bloquées rebondissent",
+        "desc": "Si une autre flèche est sur le chemin, la vôtre la percute et revient en place -- vous perdez un de vos 3 cœurs. Perdez-les tous et le plateau recommence."
+      },
+      {
+        "title": "Libérez le passage, puis videz le plateau",
+        "desc": "Lancer une flèche peut libérer celles qui sont derrière. Pincez pour zoomer et faites glisser pour vous déplacer sur les grands plateaux. Faites sortir toutes les flèches pour gagner."
+      }
+    ]
+  },
+  "game": {
+    "levelTitle": "Niveau {{number}}",
+    "livesA11y_one": "{{count}} cœur restant",
+    "livesA11y_other": "{{count}} cœurs restants",
+    "fitBoard": "Ajuster le plateau à l'écran",
+    "hintFailToast": "Aucune flèche ne peut être lancée pour le moment.",
+    "winTitle": "Plateau vidé",
+    "winSubtitle": "Chaque flèche a trouvé la sortie — prochain plateau débloqué.",
+    "failTitle": "Plus de cœurs",
+    "failSubtitle": "Trop de collisions. Recommencez le plateau et essayez un autre chemin.",
+    "retry": "Réessayer"
+  }
+}

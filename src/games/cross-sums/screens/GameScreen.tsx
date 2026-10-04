@@ -11,7 +11,8 @@ import WinOverlay from '../../../components/WinOverlay';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
-import { useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
+import { useLatestRef } from '../../../utils/useLatestRef';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import CrossSumsGrid, { waveDurationMs } from '../components/CrossSumsGrid';
 import ToolToggle from '../components/ToolToggle';
@@ -84,6 +85,11 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('cross-sums');
+  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
+  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // Replays of an already-cleared level never count toward the interstitial
+  // schedule -- read at win time, before `markLevelComplete` adds it.
+  const levelsCompletedRef = useLatestRef(levelsCompleted);
 
   // Boards persist forever, so reopening an already-completed level would
   // otherwise land straight on the solved board with the win popup showing.
@@ -107,6 +113,7 @@ export default function GameScreen({ route, navigation }: Props) {
     if (!win) return;
     if (celebratedForLevel.current === levelIndex) return;
     celebratedForLevel.current = levelIndex;
+    const isFirstClear = !levelsCompletedRef.current.has(levelIndex);
 
     markLevelComplete(levelIndex);
     posthog?.capture('puzzle_level_completed', { game_id: 'cross_sums', level_index: levelIndex + 1 });
@@ -115,20 +122,16 @@ export default function GameScreen({ route, navigation }: Props) {
     const revealTimer = setTimeout(() => {
       setRevealWin(true);
       setShowConfetti(true);
-      notifyLevelCompleted();
+      if (isFirstClear) notifyLevelCompleted();
     }, waveMs);
     const confettiTimer = setTimeout(() => setShowConfetti(false), waveMs + 1300);
     return () => {
       clearTimeout(revealTimer);
       clearTimeout(confettiTimer);
     };
-    // notifyLevelCompleted deliberately excluded -- its identity changes
-    // whenever the interstitial ad hook's loaded state changes, which would
-    // re-run this effect, cancel the pending reveal timer in cleanup, and
-    // then the celebratedForLevel guard above would block it from ever
-    // rescheduling -- leaving the wave played but the win popup never shown.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [win, level, marks, levelIndex, markLevelComplete]);
+    // notifyLevelCompleted and levelsCompletedRef are both stable, so they
+    // can't re-run this effect and cancel the pending reveal timer.
+  }, [win, level, marks, levelIndex, markLevelComplete, notifyLevelCompleted, levelsCompletedRef]);
 
   function onCellPress(r: number, c: number) {
     toggleCellAt(levelIndex, r, c, tool);
