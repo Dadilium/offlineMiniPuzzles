@@ -5,17 +5,23 @@
  * Cross Sums' `SIZE_TIERS`), so a tier always maps onto a coherent set of
  * generation params. Everything here is pure.
  */
-export type DifficultyTier = 'easy' | 'medium' | 'hard' | 'expert';
+export type DifficultyTier = 'easy' | 'medium' | 'hard' | 'expert' | 'infernal';
 
-/** Ordered easiest -> hardest; index doubles as the tier's rank. */
-export const DIFFICULTY_TIERS: readonly DifficultyTier[] = ['easy', 'medium', 'hard', 'expert'];
+/** Every tier, ordered easiest -> hardest; index doubles as the tier's rank. */
+export const DIFFICULTY_TIERS: readonly DifficultyTier[] = ['easy', 'medium', 'hard', 'expert', 'infernal'];
 
-/** Inclusive `[min, max]` rating band per tier. */
+/** The tiers a game offers unless it opts into more (see `ProgressStoreConfig.tiers`). */
+export const STANDARD_TIERS: readonly DifficultyTier[] = ['easy', 'medium', 'hard', 'expert'];
+
+/** Inclusive `[min, max]` rating band per tier. Infernal sits past the
+ * standard 0-100 scale, so only a game whose skill reducer climbs above 100
+ * (Arrows) can ever reach it -- every other game tops out at Expert. */
 export const TIER_BANDS: Readonly<Record<DifficultyTier, readonly [number, number]>> = {
   easy: [0, 39],
   medium: [40, 59],
   hard: [60, 79],
   expert: [80, 100],
+  infernal: [101, 150],
 };
 
 export function tierRank(tier: DifficultyTier): number {
@@ -53,9 +59,9 @@ export function isTierUnlocked(tier: DifficultyTier, unlocked: DifficultyTier): 
   return tierRank(tier) <= tierRank(unlocked);
 }
 
-/** The tier directly above `tier`, or null at the top. */
-export function nextTier(tier: DifficultyTier): DifficultyTier | null {
-  return DIFFICULTY_TIERS[tierRank(tier) + 1] ?? null;
+/** The tier directly above `tier` among the ones a game offers, or null at its top. */
+export function nextTier(tier: DifficultyTier, tiers: readonly DifficultyTier[] = STANDARD_TIERS): DifficultyTier | null {
+  return tiers.find((candidate) => tierRank(candidate) > tierRank(tier)) ?? null;
 }
 
 /** Rating actually fed to generation and to the skill reducer: the adaptive

@@ -1,4 +1,4 @@
-export { difficultyParams, nextSkillRating, INITIAL_SKILL_RATING, MAX_ATTEMPTS } from './difficulty';
+export { ARROWS_TIERS, difficultyParams, nextSkillRating, INITIAL_SKILL_RATING, MAX_ATTEMPTS } from './difficulty';
 export type { GenerationParams, LevelResult, SkillRating } from './difficulty';
 export { fingerprintArrows } from './fingerprint';
 export { constructArrows, generateArrowsLevel, generateArrowsLevelAsync, passesGates } from './generator';

@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { composeProviders, dailyFromRobust, toDailyStoreConfig } from '../../../daily/dailyStore';
 import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import { buildOwnerGrid, freeArrowIds, launchOutcome, MAX_LIVES, sanitizeRemoved } from '../engine';
-import { createLevelForIndexRobustAsync, fingerprintArrows, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
+import { ARROWS_TIERS, createLevelForIndexRobustAsync, fingerprintArrows, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { ArrowsLevel, ArrowsPlayerState, LaunchOutcome } from '../types';
 
 // v2: boards are now 100% full and arrow ids are in removal order -- any v1
@@ -47,6 +47,7 @@ function withBoard(custom: ArrowsCustom, levelIndex: number, board: ArrowsPlayer
 const config: ProgressStoreConfig<ArrowsLevel, ArrowsCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
+  tiers: ARROWS_TIERS,
   nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean; livesLost?: number }),
   extraSkillInputs: (levelIndex, state, phase) => ({ livesLost: phase === 'complete' ? (state.custom.livesLostByLevel[levelIndex] ?? 0) : 0 }),
   isValidLevel,

@@ -79,7 +79,8 @@
       "easy": "Easy",
       "medium": "Medium",
       "hard": "Hard",
-      "expert": "Expert"
+      "expert": "Expert",
+      "infernal": "Infernal"
     },
     "lockedToast": "Clear levels on {{current}} to unlock {{tier}}",
     "unlockedA11y": "{{tier}}, unlocked",
@@ -102,7 +103,7 @@
     "done": "Done",
     "winTitle": "Daily solved!",
     "building": "Building today's puzzle…",
-    "shareFooter": "Play today's puzzle in Puzzle Den",
+    "shareFooter": "Can you beat my time? Play today's puzzle in Puzzle Den 👇",
     "todaySection": "Today",
     "todayProgress": "{{solved}}/{{total}} solved",
     "chipSolvedA11y": "{{game}} daily, solved",

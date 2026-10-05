@@ -344,8 +344,8 @@ function extendHeadInto(state: BoardState, paths: CellIndex[][], hole: CellIndex
 
 /**
  * Threads a detour through two adjacent holes: a body step a->b running
- * alongside them becomes a->x->y->b. The head doesn't move, so the arrow's
- * own ray is unchanged.
+ * alongside them becomes a->x->y->b. Never the neck->head step, so the head
+ * keeps its direction and the arrow's own ray is unchanged.
  */
 function detourThroughPair(state: BoardState, paths: CellIndex[][], hole: CellIndex): boolean {
   const { rows, cols, owner } = state;
@@ -373,6 +373,9 @@ function detourThroughPair(state: BoardState, paths: CellIndex[][], hole: CellIn
       const ia = path.indexOf(a);
       const ib = path.indexOf(b);
       if (Math.abs(ia - ib) !== 1) continue;
+      // Detouring the neck->head step would swap the neck, re-aiming the
+      // head along an unchecked ray -- possibly back across its own body.
+      if (Math.max(ia, ib) === path.length - 1) continue;
       const [first, second] = ia < ib ? [hole, pair] : [pair, hole];
       path.splice(Math.max(ia, ib), 0, first, second);
       owner[hole] = id;

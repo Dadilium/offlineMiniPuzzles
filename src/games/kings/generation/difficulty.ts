@@ -87,6 +87,9 @@ export function difficultyParams(rating: SkillRating): GenerationParams {
     case 'hard':
       return { nRange: rating < 70 ? [7, 8] : [8, 9], allowedTiers: ['medium', 'hard'], styleWeights: STYLE_WEIGHTS };
     case 'expert':
+    // Kings' rating tops out at 100, so Infernal is unreachable here -- it
+    // shares Expert's params only to keep this switch exhaustive.
+    case 'infernal':
       return {
         nRange: rating < 90 ? [10, 10] : [10, 11],
         allowedTiers: ['medium', 'hard'],

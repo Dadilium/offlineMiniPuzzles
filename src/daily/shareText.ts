@@ -12,7 +12,8 @@ export function formatDuration(ms: number): string {
 
 export interface ShareInput {
   gameName: string;
-  dayNumber: number;
+  /** Already-localized short date, e.g. "Oct 5" / "5 oct." (see dailyDate.ts). */
+  dateLabel: string;
   /** Already-localized tier name, e.g. "Hard". */
   tierLabel: string;
   elapsedMs: number;
@@ -20,9 +21,9 @@ export interface ShareInput {
   streak: number;
 }
 
-/** e.g. `Kings #142 · Hard ✅ 2:31 💡1 🔥7` -- hints/streak only shown when non-trivial. */
-export function formatShareLine({ gameName, dayNumber, tierLabel, elapsedMs, hintsUsed, streak }: ShareInput): string {
-  const parts = [`${gameName} #${dayNumber} · ${tierLabel}`, `✅ ${formatDuration(elapsedMs)}`];
+/** e.g. `Kings · Oct 5 · Hard ✅ 2:31 💡1 🔥7` -- hints/streak only shown when non-trivial. */
+export function formatShareLine({ gameName, dateLabel, tierLabel, elapsedMs, hintsUsed, streak }: ShareInput): string {
+  const parts = [`${gameName} · ${dateLabel} · ${tierLabel}`, `✅ ${formatDuration(elapsedMs)}`];
   if (hintsUsed > 0) parts.push(`💡${hintsUsed}`);
   if (streak > 1) parts.push(`🔥${streak}`);
   return parts.join(' ');

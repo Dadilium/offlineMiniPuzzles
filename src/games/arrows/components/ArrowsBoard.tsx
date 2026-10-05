@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
-import { arrowNearPoint, buildOwnerGrid } from '../engine';
+import { arrowNearPoint, buildOwnerGrid, COMBO_IDLE, nextCombo, sparkleCountFor } from '../engine';
 import { arrowsPalette } from '../palette';
 import type { ArrowsLevel, LaunchOutcome } from '../types';
 import { arrowGeometry, strokeWidthFor, type ArrowGeometry } from './arrowGeometry';
@@ -183,6 +183,7 @@ const ArrowsBoard = forwardRef<ArrowsBoardHandle, Props>(function ArrowsBoard(
   disabledRef.current = disabled;
   const motionsRef = useRef(motions);
   motionsRef.current = motions;
+  const comboRef = useRef(COMBO_IDLE);
 
   useEffect(() => {
     const timers = dangerTimers.current;
@@ -193,6 +194,7 @@ const ArrowsBoard = forwardRef<ArrowsBoardHandle, Props>(function ArrowsBoard(
   useEffect(() => {
     setMotions({});
     setDanger(new Set());
+    comboRef.current = COMBO_IDLE;
   }, [level]);
 
   const flashDanger = useCallback((ids: number[]) => {
@@ -214,11 +216,12 @@ const ArrowsBoard = forwardRef<ArrowsBoardHandle, Props>(function ArrowsBoard(
     }
   }, []);
 
-  const play = useCallback((outcome: LaunchOutcome, opts?: { hint?: boolean }) => {
+  const play = useCallback((outcome: LaunchOutcome, opts?: { hint?: boolean; sparkles?: number }) => {
     motionKey.current += 1;
     const motion: ActiveMotion = {
       kind: outcome.kind === 'exit' ? 'exit' : 'bump',
       clearCells: outcome.clearCells,
+      sparkles: opts?.sparkles ?? 0,
       key: motionKey.current,
       hint: !!opts?.hint,
       blockerId: outcome.kind === 'blocked' ? outcome.blockerId : null,
@@ -229,11 +232,15 @@ const ArrowsBoard = forwardRef<ArrowsBoardHandle, Props>(function ArrowsBoard(
   const handleTap = useCallback(
     (x: number, y: number) => {
       if (disabledRef.current) return;
-      const arrowId = arrowNearPoint(level, owner, x, y);
-      // Mid-bump arrows are still on the board but already busy.
-      if (arrowId < 0 || motionsRef.current[arrowId]) return;
+      // Arrows mid-flight or mid-bump are busy: a tap on one is swallowed, never passed to a neighbor.
+      const busy = new Set(Object.keys(motionsRef.current).map(Number));
+      const arrowId = arrowNearPoint(level, owner, x, y, busy);
+      if (arrowId < 0) return;
       const outcome = onTapArrow(arrowId);
-      if (outcome) play(outcome);
+      if (!outcome) return;
+      const exits = outcome.kind === 'exit';
+      comboRef.current = nextCombo(comboRef.current, exits ? 'exit' : 'bump', Date.now());
+      play(outcome, { sparkles: exits ? sparkleCountFor(comboRef.current.count) : 0 });
     },
     [level, owner, onTapArrow, play]
   );
@@ -399,7 +406,8 @@ const ArrowsBoard = forwardRef<ArrowsBoardHandle, Props>(function ArrowsBoard(
                     motion={motion}
                     cell={fit.cell}
                     strokeWidth={strokeWidth}
-                    color={motion.hint ? palette.hint : danger.has(id) ? palette.danger : palette.line}
+                    color={motion.hint ? palette.hint : danger.has(id) ? palette.danger : motion.kind === 'exit' ? palette.success : palette.line}
+                    sparkleColor={palette.sparkle}
                     onImpact={() => handleImpact(id, motion.blockerId)}
                     onDone={() => handleMotionDone(id)}
                   />

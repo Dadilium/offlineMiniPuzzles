@@ -11,7 +11,8 @@ import { analyzeClearing, headDirection, toRowCol } from '../../engine';
 import type { ArrowsLevel } from '../../types';
 import { createLevelForIndex, createLevelForIndexRobust, difficultyParams, type SkillRating } from '../index';
 
-const RATINGS: SkillRating[] = [20, 50, 70, 90];
+// Each tier's floor, middle and ceiling -- params ease across a band (see difficultyParams).
+const RATINGS: SkillRating[] = [0, 20, 39, 40, 50, 59, 60, 70, 79, 80, 90, 100, 101, 125, 150];
 const argv = (globalThis as unknown as { process: { argv: string[] } }).process.argv;
 
 function argValue(flag: string, fallback: number): number {

@@ -201,9 +201,9 @@ const checks: Array<[string, () => void]> = [
   [
     'share line omits zero hints and single-day streaks',
     () => {
-      const base = { gameName: 'Kings', dayNumber: 142, tierLabel: 'Hard', elapsedMs: 151_000 };
-      assert.equal(formatShareLine({ ...base, hintsUsed: 0, streak: 1 }), 'Kings #142 · Hard ✅ 2:31');
-      assert.equal(formatShareLine({ ...base, hintsUsed: 2, streak: 7 }), 'Kings #142 · Hard ✅ 2:31 💡2 🔥7');
+      const base = { gameName: 'Kings', dateLabel: 'Oct 5', tierLabel: 'Hard', elapsedMs: 151_000 };
+      assert.equal(formatShareLine({ ...base, hintsUsed: 0, streak: 1 }), 'Kings · Oct 5 · Hard ✅ 2:31');
+      assert.equal(formatShareLine({ ...base, hintsUsed: 2, streak: 7 }), 'Kings · Oct 5 · Hard ✅ 2:31 💡2 🔥7');
     },
   ],
 ];

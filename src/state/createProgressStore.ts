@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { type DifficultyTier, effectiveRating, isTierUnlocked, tierForRating, tierRank } from './difficultyTiers';
+import { type DifficultyTier, effectiveRating, isTierUnlocked, STANDARD_TIERS, tierForRating, tierRank } from './difficultyTiers';
 import { emitLevelCompleted } from './levelEvents';
 import { isLevelTouched, resolvePersistedTiers, withRating, withRatingAndAutoSwitch, withTierSwitch } from './progressTransitions';
 
@@ -44,6 +44,9 @@ export interface ProgressStoreConfig<TLevel, TCustom> {
    * rather than needing a migration. */
   storageKey: string;
   initialSkillRating: number;
+  /** Tiers the hub offers, easiest first. Default `STANDARD_TIERS`; Arrows
+   * adds Infernal, which its skill reducer can climb past 100 to reach. */
+  tiers?: readonly DifficultyTier[];
   nextSkillRating: (prev: number, input: { hintsUsed: number; skipped: boolean; [extra: string]: unknown }) => number;
   /** Extra fields folded into the `nextSkillRating` input beyond the default
    * `{hintsUsed, skipped}` -- e.g. Matching Numbers' `addNumbersUsed`. Called
@@ -119,6 +122,8 @@ export interface ProgressStore<TLevel, TCustom> {
 /** Everything the hub's difficulty selector needs -- grouped so each game's
  * progress hook can pass it straight through untouched. */
 export interface DifficultyControls {
+  /** Tiers this game offers, easiest first. */
+  tiers: readonly DifficultyTier[];
   selectedTier: DifficultyTier;
   unlockedTier: DifficultyTier;
   /** True while a tier has been unlocked that the hub hasn't shown yet. */
@@ -426,6 +431,7 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
 
     const difficulty = useMemo<DifficultyControls>(
       () => ({
+        tiers: config.tiers ?? STANDARD_TIERS,
         selectedTier: state.selectedTier,
         unlockedTier: state.unlockedTier,
         hasNewUnlock: tierRank(state.unlockedTier) > tierRank(state.seenUnlockedTier),

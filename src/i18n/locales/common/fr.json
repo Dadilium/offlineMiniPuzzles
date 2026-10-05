@@ -79,7 +79,8 @@
       "easy": "Facile",
       "medium": "Moyen",
       "hard": "Difficile",
-      "expert": "Expert"
+      "expert": "Expert",
+      "infernal": "Infernal"
     },
     "lockedToast": "Terminez des niveaux en {{current}} pour débloquer {{tier}}",
     "unlockedA11y": "{{tier}}, débloqué",
@@ -102,7 +103,7 @@
     "done": "Terminé",
     "winTitle": "Défi du jour résolu !",
     "building": "Création du puzzle du jour…",
-    "shareFooter": "Jouez au puzzle du jour sur Puzzle Den",
+    "shareFooter": "Saurez-vous battre mon temps ? Jouez au puzzle du jour sur Puzzle Den 👇",
     "todaySection": "Aujourd'hui",
     "todayProgress": "{{solved}}/{{total}} résolus",
     "chipSolvedA11y": "Défi {{game}}, résolu",

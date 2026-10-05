@@ -12,7 +12,7 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
-import { DIFFICULTY_TIERS, isTierUnlocked, tierRank, type DifficultyTier } from '../state/difficultyTiers';
+import { isTierUnlocked, type DifficultyTier } from '../state/difficultyTiers';
 import { fonts, radii } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
 import { useTheme } from '../theme/ThemeProvider';
@@ -20,12 +20,16 @@ import { useTheme } from '../theme/ThemeProvider';
 const TRACK_PADDING = 3;
 const BAR_WIDTH = 5;
 const BAR_GAP = 3;
-const BAR_HEIGHTS = [7, 11, 15, 19];
+/** Shortest bar; each one after it grows by `BAR_STEP` -- one bar per tier the game offers. */
+const BAR_MIN_HEIGHT = 7;
+const BAR_STEP = 4;
 const SPRING = { duration: 260, dampingRatio: 0.8 };
 /** Time the fresh-unlock pulse plays before it's marked as seen. */
 const UNLOCK_PULSE_MS = 1400;
 
 export interface DifficultySelectorProps {
+  /** Tiers to show, easiest first. */
+  tiers: readonly DifficultyTier[];
   selectedTier: DifficultyTier;
   unlockedTier: DifficultyTier;
   hasNewUnlock: boolean;
@@ -49,7 +53,7 @@ function SignalBar({ index, progress, accentColor, idleColor }: { index: number;
       transform: [{ scaleY: 0.8 + lit * 0.2 }],
     };
   });
-  return <Animated.View style={[{ width: BAR_WIDTH, height: BAR_HEIGHTS[index], borderRadius: 2 }, style]} />;
+  return <Animated.View style={[{ width: BAR_WIDTH, height: BAR_MIN_HEIGHT + index * BAR_STEP, borderRadius: 2 }, style]} />;
 }
 
 interface SegmentProps {
@@ -85,7 +89,13 @@ function Segment({ selected, locked, pulse, label, a11yLabel, onPress }: Segment
     >
       <Animated.View style={[styles.segmentInner, animatedStyle]}>
         {locked && <Ionicons name="lock-closed" size={11} color={textColor} style={styles.lockIcon} />}
-        <Text style={[styles.segmentText, { color: textColor }, selected && styles.segmentTextSelected]} numberOfLines={1}>
+        {/* Five tiers (Arrows) leave narrow segments -- shrink long labels rather than truncate them. */}
+        <Text
+          style={[styles.segmentText, { color: textColor }, selected && styles.segmentTextSelected]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
           {label}
         </Text>
       </Animated.View>
@@ -94,10 +104,11 @@ function Segment({ selected, locked, pulse, label, a11yLabel, onPress }: Segment
 }
 
 /** Hub difficulty picker: a signal-bars icon + tier name on top of a
- * four-step segmented track whose highlight springs to the selected step.
+ * segmented track (one step per tier the game offers) whose highlight springs to the selected step.
  * Locked steps stay visible (dimmed, with a lock) so there's always a next
  * goal in sight; a freshly unlocked step pulses once. */
 export default function DifficultySelector({
+  tiers,
   selectedTier,
   unlockedTier,
   hasNewUnlock,
@@ -110,7 +121,7 @@ export default function DifficultySelector({
   const styles = useStyles();
   const { t } = useTranslation('common');
   const [trackWidth, setTrackWidth] = useState(0);
-  const selectedRank = tierRank(selectedTier);
+  const selectedRank = Math.max(0, tiers.indexOf(selectedTier));
   const progress = useSharedValue(selectedRank);
   const iconBounce = useSharedValue(1);
 
@@ -125,7 +136,7 @@ export default function DifficultySelector({
     return () => clearTimeout(timer);
   }, [hasNewUnlock, onUnlockSeen]);
 
-  const segmentWidth = trackWidth > 0 ? (trackWidth - TRACK_PADDING * 2) / DIFFICULTY_TIERS.length : 0;
+  const segmentWidth = trackWidth > 0 ? (trackWidth - TRACK_PADDING * 2) / tiers.length : 0;
   const thumbStyle = useAnimatedStyle(() => ({
     width: segmentWidth,
     transform: [{ translateX: progress.value * segmentWidth }],
@@ -147,7 +158,7 @@ export default function DifficultySelector({
     <View style={styles.container}>
       <View style={styles.header}>
         <Animated.View style={[styles.bars, iconStyle]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          {BAR_HEIGHTS.map((_, i) => (
+          {tiers.map((_, i) => (
             <SignalBar key={i} index={i} progress={progress} accentColor={accentColor} idleColor={colors.surface3} />
           ))}
         </Animated.View>
@@ -163,7 +174,7 @@ export default function DifficultySelector({
         {segmentWidth > 0 && (
           <Animated.View style={[styles.thumb, { borderColor: accentColor, backgroundColor: `${accentColor}26` }, thumbStyle]} />
         )}
-        {DIFFICULTY_TIERS.map((tier) => {
+        {tiers.map((tier) => {
           const locked = !isTierUnlocked(tier, unlockedTier);
           const label = t(`difficulty.tiers.${tier}`);
           return (
@@ -186,7 +197,7 @@ export default function DifficultySelector({
 const useStyles = createThemedStyles((colors) => ({
   container: { marginHorizontal: 20, marginBottom: 14 },
   header: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 8, gap: 8 },
-  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: BAR_GAP, height: BAR_HEIGHTS[BAR_HEIGHTS.length - 1] },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: BAR_GAP },
   headerLabel: { fontSize: 12.5, color: colors.textDim, fontWeight: '500' },
   headerTier: { fontFamily: fonts.display, fontSize: 13, fontWeight: '700' },
   track: {
@@ -208,6 +219,6 @@ const useStyles = createThemedStyles((colors) => ({
   segment: { flex: 1, paddingVertical: 9 },
   segmentInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   lockIcon: { marginRight: 4 },
-  segmentText: { fontSize: 13, fontWeight: '500' },
+  segmentText: { flexShrink: 1, fontSize: 13, fontWeight: '500' },
   segmentTextSelected: { fontWeight: '700' },
 }));

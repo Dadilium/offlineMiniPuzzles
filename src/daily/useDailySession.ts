@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { AppState, Share } from 'react-native';
+import { AppState, Platform, Share } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { SHARE_LANDING_URL } from '../config/links';
 import { posthog } from '../config/posthog';
 import { emitLevelCompleted } from '../state/levelEvents';
 import { translateDynamic } from '../i18n/dynamicKey';
@@ -118,14 +119,20 @@ export function useDailySession({ gameId, dayNumber, ready, won }: Options): Dai
     if (dayNumber === null) return;
     const line = formatShareLine({
       gameName: translateDynamic(t, `${gameId}:meta.name`),
-      dayNumber,
+      dateLabel: formatDailyDate(t, dayNumber),
       tierLabel,
       elapsedMs,
       hintsUsed,
       streak,
     });
     posthog?.capture('daily_shared', { game_id: gameId, day_number: dayNumber });
-    Share.share({ message: `${line}\n${t('daily.shareFooter')}` }).catch(() => {});
+    const text = `${line}\n${t('daily.shareFooter')}`;
+    // iOS takes the link as its own field, so iMessage renders it as a
+    // preview card (title + image from legal/play.html) instead of a raw
+    // address. Android has no such field -- there it goes on its own line,
+    // which every messenger still turns into a tappable link.
+    const content = Platform.OS === 'ios' ? { message: text, url: SHARE_LANDING_URL } : { message: `${text}\n${SHARE_LANDING_URL}` };
+    Share.share(content).catch(() => {});
   }, [t, gameId, dayNumber, tierLabel, elapsedMs, hintsUsed, streak]);
 
   return { isDaily, title, noteHint, recordWin, winSubtitle, share };

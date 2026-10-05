@@ -2,16 +2,23 @@ import React, { useEffect, useMemo } from 'react';
 import { Path } from 'react-native-svg';
 import Animated, { Easing, interpolate, runOnJS, useAnimatedProps, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { headTriangleD, launchTrackD, type ArrowGeometry } from './arrowGeometry';
+import ComboSparkles from './ComboSparkles';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 /** How far into the blocker's cell the tip pushes before bouncing back, in cells. */
 const BUMP_OVERSHOOT = 0.14;
 
+/** Ease-in that leaves at half speed rather than from rest (as `Easing.in`
+ * does), so a launch reacts the instant it's tapped, then still accelerates. */
+const LAUNCH_EASING = Easing.bezier(0.4, 0.2, 0.8, 0.6);
+
 export interface Motion {
   kind: 'exit' | 'bump';
   /** Empty cells straight ahead of the head before the edge / the blocker. */
   clearCells: number;
+  /** Combo-trail sparkles to shed on the way out -- 0 for none. */
+  sparkles: number;
 }
 
 interface Props {
@@ -20,6 +27,7 @@ interface Props {
   cell: number;
   strokeWidth: number;
   color: string;
+  sparkleColor: string;
   /** Fires the instant a bumping arrow touches its blocker -- heart + haptic land here. */
   onImpact?: () => void;
   /** Fires once the arrow has fully left the board, or settled back home after a bump. */
@@ -28,7 +36,7 @@ interface Props {
 
 function exitDuration(cellsTravelled: number): number {
   'worklet';
-  return Math.min(720, Math.max(280, 200 + cellsTravelled * 26));
+  return Math.min(540, Math.max(220, 150 + cellsTravelled * 20));
 }
 
 /**
@@ -38,7 +46,7 @@ function exitDuration(cellsTravelled: number): number {
  * arrow `progress` pt along that track -- the tail follows every bend the
  * head took -- while the head triangle is redrawn at the dash's front.
  */
-function MovingArrow({ geometry, motion, cell, strokeWidth, color, onImpact, onDone }: Props) {
+function MovingArrow({ geometry, motion, cell, strokeWidth, color, sparkleColor, onImpact, onDone }: Props) {
   const progress = useSharedValue(0);
   const { bodyLength, head, dir } = geometry;
 
@@ -49,16 +57,16 @@ function MovingArrow({ geometry, motion, cell, strokeWidth, color, onImpact, onD
 
   useEffect(() => {
     if (motion.kind === 'exit') {
-      progress.value = withTiming(travel, { duration: exitDuration(travel / cell), easing: Easing.in(Easing.quad) }, (finished) => {
+      progress.value = withTiming(travel, { duration: exitDuration(travel / cell), easing: LAUNCH_EASING }, (finished) => {
         if (finished) runOnJS(onDone)();
       });
       return;
     }
     progress.value = withSequence(
-      withTiming(travel, { duration: Math.min(300, 90 + motion.clearCells * 30), easing: Easing.in(Easing.quad) }, (finished) => {
+      withTiming(travel, { duration: Math.min(230, 70 + motion.clearCells * 24), easing: LAUNCH_EASING }, (finished) => {
         if (finished && onImpact) runOnJS(onImpact)();
       }),
-      withSpring(0, { duration: 420, dampingRatio: 0.45 }, (finished) => {
+      withSpring(0, { duration: 360, dampingRatio: 0.45 }, (finished) => {
         if (finished) runOnJS(onDone)();
       })
     );
@@ -80,6 +88,9 @@ function MovingArrow({ geometry, motion, cell, strokeWidth, color, onImpact, onD
 
   return (
     <>
+      {motion.kind === 'exit' && motion.sparkles > 0 && (
+        <ComboSparkles progress={progress} travel={travel} count={motion.sparkles} head={head} dir={dir} cell={cell} color={sparkleColor} />
+      )}
       <AnimatedPath
         d={trackD}
         stroke={color}

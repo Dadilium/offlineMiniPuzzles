@@ -2,7 +2,7 @@
 // prototype (signal-arcade-prototype.html). No React/RN dependencies in this
 // file on purpose -- keeps it trivially unit-testable and reusable by the
 // Python-style level generator/solver logic if that ever gets ported too.
-import type { DifficultyTier } from '../../state/difficultyTiers';
+import { tierRank, type DifficultyTier } from '../../state/difficultyTiers';
 import type { CellState, KingPos, KingsLevel, KingsStateResult } from './types';
 
 export function makeEmptyBoard(n: number): CellState[][] {
@@ -83,7 +83,7 @@ export function computeAutoUnavailable(level: KingsLevel, board: CellState[][]):
  * `fallbackTier` -- the player's currently selected difficulty. */
 export function showsAutoMarks(level: KingsLevel, fallbackTier?: DifficultyTier): boolean {
   const tier = level.difficulty ?? fallbackTier;
-  return tier !== 'hard' && tier !== 'expert';
+  return tier === undefined || tierRank(tier) < tierRank('hard');
 }
 
 export type MarkStrokeMode = 'mark' | 'erase';

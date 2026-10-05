@@ -4,8 +4,8 @@
  *
  * Run with: npx tsx src/games/arrows/__scripts__/engine.check.ts
  */
-import { analyzeClearing, arrowNearPoint, buildOwnerGrid, freeArrowIds, isCleared, launchOutcome, sanitizeRemoved, toCellIndex } from '../engine';
-import { createLevelForIndexRobust, difficultyParams } from '../generation';
+import { aimsAtItself, analyzeClearing, arrowNearPoint, buildOwnerGrid, COMBO_IDLE, COMBO_WINDOW_MS, freeArrowIds, isCleared, launchOutcome, nextCombo, sanitizeRemoved, sparkleCountFor, toCellIndex } from '../engine';
+import { createLevelForIndexRobust, difficultyParams, nextSkillRating } from '../generation';
 import type { ArrowsLevel } from '../types';
 
 function check(name: string, ok: boolean): boolean {
@@ -66,10 +66,55 @@ for (const rating of [20, 50, 70, 90]) {
       });
     }
     if (seen.size !== generated.rows * generated.cols) ok = false;
+    if (generated.arrows.some((arrow) => aimsAtItself(generated, arrow))) ok = false;
     if (!analyzeClearing(generated).solvable || generated.tier !== difficultyParams(rating).tier) ok = false;
   }
-  results.push(check(`rating ${rating} boards are well-formed, full, and solvable`, ok));
+  results.push(check(`rating ${rating} boards are well-formed, full, solvable, and never self-aimed`, ok));
 }
+
+// Hit-testing against the drawn lines, and busy (animating) arrows.
+const removedTwo = buildOwnerGrid(level, new Set([2]));
+results.push(
+  check('tap on a flying arrow is swallowed, not handed to a neighbor', arrowNearPoint(level, removedTwo, 0.5, 2.2, new Set([2])) === -1),
+  check('tap on a bumping arrow is swallowed', arrowNearPoint(level, owner, 0.5, 1.5, new Set([0])) === -1),
+  check('tap near the head tip hits that arrow', arrowNearPoint(level, owner, 2.5, 1.85) === 1),
+  check('tap beside the end of a line still hits that arrow', arrowNearPoint(level, owner, 0.15, 2.3) === 2)
+);
+
+// Combo streak.
+const t0 = 10_000;
+const two = nextCombo(nextCombo(COMBO_IDLE, 'exit', t0), 'exit', t0 + 400);
+const three = nextCombo(two, 'exit', t0 + 800);
+results.push(
+  check('quick exits build a streak', three.count === 3 && sparkleCountFor(three.count) > 0),
+  check('two in a row is not a combo yet', sparkleCountFor(two.count) === 0),
+  check('a slow exit restarts the streak', nextCombo(two, 'exit', t0 + 400 + COMBO_WINDOW_MS + 1).count === 1),
+  check('a bump breaks the streak', nextCombo(three, 'bump', t0 + 900).count === 0),
+  check('long streaks sparkle harder', sparkleCountFor(6) > sparkleCountFor(3))
+);
+
+// Skill reducer: clean clear up, last-heart clear holds, running out down.
+const clear = (hintsUsed: number, livesLost: number) => nextSkillRating(50, { hintsUsed, skipped: false, livesLost });
+results.push(
+  check('clean clear (0 hints, <=1 heart lost) earns +3', clear(0, 0) === 53 && clear(0, 1) === 53),
+  check('clear after losing 2 hearts holds', clear(0, 2) === 50),
+  check('running out of hearts (3+ lost) costs -3', clear(0, 3) === 47),
+  check('two hints cost -3', clear(2, 0) === 47),
+  check('skip costs -6', nextSkillRating(50, { hintsUsed: 0, skipped: true }) === 44),
+  check('rating climbs past 100 into Infernal', nextSkillRating(100, { hintsUsed: 0, skipped: false }) === 103 && difficultyParams(103).tier === 'infernal'),
+  check('rating caps at 150', nextSkillRating(149, { hintsUsed: 0, skipped: false }) === 150)
+);
+
+// Smoothing: board area and gates never ease off as the rating climbs.
+let monotonic = true;
+for (let rating = 1; rating <= 150; rating++) {
+  const prev = difficultyParams(rating - 1);
+  const cur = difficultyParams(rating);
+  if (cur.rowsRange[0] < prev.rowsRange[0] || cur.colsRange[0] < prev.colsRange[0]) monotonic = false;
+  if (cur.minRounds < prev.minRounds || cur.maxFreeRatio > prev.maxFreeRatio) monotonic = false;
+}
+results.push(check('difficulty params rise monotonically with rating', monotonic));
+results.push(check('a tier floor keeps its tuned params', difficultyParams(60).rowsRange[0] === 27 && difficultyParams(60).minRounds === 11));
 
 const failed = results.filter((ok) => !ok).length;
 console.log(`\n${results.length - failed}/${results.length} checks passed`);

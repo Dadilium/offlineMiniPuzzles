@@ -7,6 +7,7 @@
  */
 import type { ProgressState } from '../createProgressStore';
 import {
+  DIFFICULTY_TIERS,
   clampToTier,
   effectiveRating,
   isTierUnlocked,
@@ -69,6 +70,27 @@ const checks: Array<[string, () => void]> = [
       assert.equal(tierForRating(79), 'hard');
       assert.equal(tierForRating(80), 'expert');
       assert.equal(tierForRating(100), 'expert');
+      assert.equal(tierForRating(101), 'infernal');
+      assert.equal(tierForRating(150), 'infernal');
+    },
+  ],
+  [
+    'Infernal is only next for a game that offers it',
+    () => {
+      assert.equal(nextTier('expert'), null);
+      assert.equal(nextTier('expert', DIFFICULTY_TIERS), 'infernal');
+      assert.equal(nextTier('infernal', DIFFICULTY_TIERS), null);
+    },
+  ],
+  [
+    'clearing past 100 on Expert unlocks and switches to Infernal',
+    () => {
+      const expert = baseState({ skillRating: 100, selectedTier: 'expert', unlockedTier: 'expert', seenUnlockedTier: 'expert' });
+      const { state, switched } = withRatingAndAutoSwitch(expert, 103, resetLevelCustom);
+      assert.ok(switched);
+      assert.equal(state.unlockedTier, 'infernal');
+      assert.equal(state.selectedTier, 'infernal');
+      assert.equal(effectiveRating(150, 'expert'), 100);
     },
   ],
   [

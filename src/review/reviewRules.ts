@@ -7,7 +7,7 @@
 //  - an overall daily streak reaching 7 / 30 / 100 days.
 // A milestone makes the ask "owed"; it's presented on the next win screen.
 // Never after a failure, a skip or an ad -- those never produce an event.
-import type { DifficultyTier } from '../state/difficultyTiers';
+import { tierRank, type DifficultyTier } from '../state/difficultyTiers';
 
 export const CLEAN_HARD_WIN_MILESTONES: readonly number[] = [3, 15, 40];
 export const DAILY_STREAK_MILESTONES: readonly number[] = [7, 30, 100];
@@ -71,7 +71,7 @@ export function applyReviewEvent(state: ReviewState, event: ReviewEvent, now: nu
   let milestone = false;
   let next = state;
   if (event.type === 'levelWin') {
-    if ((event.tier !== 'hard' && event.tier !== 'expert') || event.hintsUsed > 0) return state;
+    if (tierRank(event.tier) < tierRank('hard') || event.hintsUsed > 0) return state;
     const cleanHardWins = state.cleanHardWins + 1;
     milestone = CLEAN_HARD_WIN_MILESTONES.includes(cleanHardWins);
     next = { ...state, cleanHardWins };

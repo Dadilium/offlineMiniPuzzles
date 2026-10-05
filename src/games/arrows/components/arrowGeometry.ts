@@ -2,11 +2,9 @@
 // `cell` pt, origin at the board's top-left). Arrows are lines through cell
 // centers with a triangular head; the worklet-tagged helpers also run on the
 // UI thread to draw a moving arrow's head every frame.
-import { headDirection, toRowCol } from '../engine';
+import { HEAD_TIP, headDirection, toRowCol } from '../engine';
 import type { Arrow, Vec } from '../types';
 
-/** How far the head's tip pokes past the head cell's center, in cells. */
-export const HEAD_TIP = 0.38;
 const HEAD_HALF_WIDTH = 0.22;
 const HEAD_BACK = 0.04;
 

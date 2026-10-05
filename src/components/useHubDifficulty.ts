@@ -12,7 +12,7 @@ import { useToast } from './Toast';
 export function useHubDifficulty(difficulty: DifficultyControls, resumeIdx: number): DifficultySelectorProps {
   const { t } = useTranslation('common');
   const { showToast } = useToast();
-  const { selectedTier, unlockedTier, hasNewUnlock, setSelectedTier, isLevelStarted, markUnlockSeen } = difficulty;
+  const { tiers, selectedTier, unlockedTier, hasNewUnlock, setSelectedTier, isLevelStarted, markUnlockSeen } = difficulty;
 
   const onSelect = useCallback(
     (tier: DifficultyTier) => {
@@ -31,13 +31,13 @@ export function useHubDifficulty(difficulty: DifficultyControls, resumeIdx: numb
   // Always names the very next tier to earn, even when a further one was
   // tapped -- tiers unlock one at a time, so that's the honest next goal.
   const onLockedPress = useCallback(() => {
-    const target = nextTier(unlockedTier);
+    const target = nextTier(unlockedTier, tiers);
     if (!target) return;
     showToast(t('difficulty.lockedToast', { current: t(`difficulty.tiers.${unlockedTier}`), tier: t(`difficulty.tiers.${target}`) }));
-  }, [showToast, t, unlockedTier]);
+  }, [showToast, t, tiers, unlockedTier]);
 
   return useMemo(
-    () => ({ selectedTier, unlockedTier, hasNewUnlock, onSelect, onLockedPress, onUnlockSeen: markUnlockSeen }),
-    [selectedTier, unlockedTier, hasNewUnlock, onSelect, onLockedPress, markUnlockSeen]
+    () => ({ tiers, selectedTier, unlockedTier, hasNewUnlock, onSelect, onLockedPress, onUnlockSeen: markUnlockSeen }),
+    [tiers, selectedTier, unlockedTier, hasNewUnlock, onSelect, onLockedPress, markUnlockSeen]
   );
 }

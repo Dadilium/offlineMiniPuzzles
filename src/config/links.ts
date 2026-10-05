@@ -1,4 +1,8 @@
-export const PRIVACY_POLICY_URL = 'https://dadilium.github.io/offlineMiniPuzzles/privacy.html';
+const SITE_URL = 'https://dadilium.github.io/offlineMiniPuzzles';
+
+export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy.html`;
+/** Link appended to shared daily results -- legal/play.html, which sends each visitor to the right store. */
+export const SHARE_LANDING_URL = `${SITE_URL}/play.html`;
 
 /** Numeric App Store id (same as eas.json's `submit.production.ios.ascAppId`). */
 export const APP_STORE_ID = '6802090640';
