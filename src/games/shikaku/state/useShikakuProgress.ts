@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
-import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
+import { composeProviders, dailyFromRobust, toDailyStoreConfig } from '../../../daily/dailyStore';
+import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import { applyHint, clueIndicesIn, containsCell, placeRect, removeRectAt } from '../engine';
 import {
   createLevelForIndexRobust,
@@ -44,7 +45,7 @@ function sanitizePlaced(placed: unknown): ShikakuPlayerState {
   );
 }
 
-const store = createProgressStore<ShikakuLevel, ShikakuCustom>({
+const config: ProgressStoreConfig<ShikakuLevel, ShikakuCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
   nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
@@ -74,7 +75,13 @@ const store = createProgressStore<ShikakuLevel, ShikakuCustom>({
     placedByLevel: { ...custom.placedByLevel, [levelIndex]: [] },
     hintedClueIndicesByLevel: { ...custom.hintedClueIndicesByLevel, [levelIndex]: [] },
   }),
-});
+};
+
+const store = createProgressStore(config);
+// Daily Puzzle boards: same shape and board logic, keyed by day number.
+const dailyStore = createProgressStore(
+  toDailyStoreConfig(config, 'shikaku', dailyFromRobust((idx, rating, recent) => createLevelForIndexRobust(idx, rating as SkillRating, recent)))
+);
 
 interface ShikakuProgressContextValue {
   ready: boolean;
@@ -110,10 +117,18 @@ interface ShikakuProgressContextValue {
   difficulty: DifficultyControls;
 }
 
-export const ShikakuProgressProvider = store.Provider;
+export const ShikakuProgressProvider = composeProviders(store.Provider, dailyStore.Provider);
 
 export function useShikakuProgress(): ShikakuProgressContextValue {
-  const s = store.useProgress();
+  return useBoundProgress(store.useProgress());
+}
+
+/** Same API, backed by the Daily Puzzle store -- `levelIndex` is the day number. */
+export function useShikakuDailyProgress(): ShikakuProgressContextValue {
+  return useBoundProgress(dailyStore.useProgress());
+}
+
+function useBoundProgress(s: ProgressStore<ShikakuLevel, ShikakuCustom>): ShikakuProgressContextValue {
   const { getCurrent, commit } = s;
 
   const hintedClueIndicesByLevel = useMemo(() => {

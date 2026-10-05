@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
-import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
+import { composeProviders, dailyFromRobust, toDailyStoreConfig } from '../../../daily/dailyStore';
+import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import i18n from '../../../i18n';
 import { matchPlacement, pickHintPlacement } from '../engine';
 import {
@@ -42,7 +43,7 @@ function sanitizeFoundIndices(found: unknown): number[] {
   return found.filter((i): i is number => typeof i === 'number');
 }
 
-const store = createProgressStore<FindWordsLevel, FindWordsCustom>({
+const config: ProgressStoreConfig<FindWordsLevel, FindWordsCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
   nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
@@ -74,7 +75,19 @@ const store = createProgressStore<FindWordsLevel, FindWordsCustom>({
     ...custom,
     foundIndicesByLevel: { ...custom.foundIndicesByLevel, [levelIndex]: [] },
   }),
-});
+};
+
+const store = createProgressStore(config);
+// Daily Puzzle boards: same shape and board logic, keyed by day number. No
+// per-player recentWords here, so every player of the same language gets the
+// same board for the day (intended -- that's what makes results comparable).
+const dailyStore = createProgressStore(
+  toDailyStoreConfig(
+    config,
+    'find-words',
+    dailyFromRobust((idx, rating, recent) => createLevelForIndexRobust(idx, rating as SkillRating, currentLanguage(), recent, []))
+  )
+);
 
 interface FindWordsProgressContextValue {
   ready: boolean;
@@ -108,10 +121,18 @@ interface FindWordsProgressContextValue {
   difficulty: DifficultyControls;
 }
 
-export const FindWordsProgressProvider = store.Provider;
+export const FindWordsProgressProvider = composeProviders(store.Provider, dailyStore.Provider);
 
 export function useFindWordsProgress(): FindWordsProgressContextValue {
-  const s = store.useProgress();
+  return useBoundProgress(store.useProgress());
+}
+
+/** Same API, backed by the Daily Puzzle store -- `levelIndex` is the day number. */
+export function useFindWordsDailyProgress(): FindWordsProgressContextValue {
+  return useBoundProgress(dailyStore.useProgress());
+}
+
+function useBoundProgress(s: ProgressStore<FindWordsLevel, FindWordsCustom>): FindWordsProgressContextValue {
   const { getCurrent, commit } = s;
 
   const attemptWord = useCallback(

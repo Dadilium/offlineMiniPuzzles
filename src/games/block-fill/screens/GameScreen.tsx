@@ -13,18 +13,25 @@ import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
+import DailyLoading from '../../../daily/DailyLoading';
+import { useExitToOrigin } from '../../../daily/navigation';
+import { useDailySession } from '../../../daily/useDailySession';
 import BlockFillGrid from '../components/BlockFillGrid';
 import { computeWin } from '../engine';
 import type { BlockFillStackParamList } from '../navigation';
 import { paletteForLevel } from '../palette';
-import { useBlockFillProgress } from '../state/useBlockFillProgress';
+import { useBlockFillDailyProgress, useBlockFillProgress } from '../state/useBlockFillProgress';
 import type { Cell } from '../types';
 
 type Props = NativeStackScreenProps<BlockFillStackParamList, 'BlockFillGame'>;
 
 export default function GameScreen({ route, navigation }: Props) {
   const { colors } = useTheme();
-  const { levelIndex } = route.params;
+  // In daily mode `levelIndex` is the day number and everything reads/writes the daily store.
+  const { levelIndex, daily } = route.params;
+  const exitToOrigin = useExitToOrigin(daily, 'BlockFillHub');
+  const regularProgress = useBlockFillProgress();
+  const dailyProgress = useBlockFillDailyProgress();
   const {
     levelFor,
     ensureLevel,
@@ -37,7 +44,7 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelSkipped,
     levelsCompleted,
     difficulty,
-  } = useBlockFillProgress();
+  } = daily ? dailyProgress : regularProgress;
   const { showToast } = useToast();
   const confettiPalette = useMemo(
     () => [colors.purple, colors.gold, colors.cyan, colors.pink, colors.success, colors.signalBlue],
@@ -49,10 +56,12 @@ export default function GameScreen({ route, navigation }: Props) {
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect. Prefetch the next
   // one the moment this level opens, same rationale as Kings/Matching Numbers.
+  // Not on a daily: there's no "next" one to play, and tomorrow's board is
+  // prepared by the daily store itself once that day comes.
   useEffect(() => {
     ensureLevel(levelIndex);
-    InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
-  }, [levelIndex, ensureLevel]);
+    if (!daily) InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
+  }, [levelIndex, ensureLevel, daily]);
 
   const level = levelFor(levelIndex);
   const path = pathsByLevel[levelIndex];
@@ -74,22 +83,27 @@ export default function GameScreen({ route, navigation }: Props) {
   const win = useMemo(() => (level && path ? computeWin(level, path) : false), [level, path]);
   const palette = useMemo(() => paletteForLevel(levelIndex), [levelIndex]);
 
+  const session = useDailySession({ gameId: 'block-fill', dayNumber: daily ? levelIndex : null, ready: !!level, won: win });
+
   const { notifyLevelCompleted } = useInterstitialOnComplete('block-fill');
-  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
-  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // An ad owed from an earlier win shows here, between levels -- never over
+  // the celebration, and never at the start of a daily (its first solve still
+  // counts toward the schedule; the ad waits for the next regular level).
+  useInterstitialAtLevelStart(level && !daily ? levelIndex : null);
 
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {
     if (!path) return;
     if (win && !levelsCompleted.has(levelIndex)) {
       markLevelComplete(levelIndex);
-      posthog?.capture('puzzle_level_completed', { game_id: 'block_fill', level_index: levelIndex + 1 });
+      if (daily) session.recordWin();
+      else posthog?.capture('puzzle_level_completed', { game_id: 'block_fill', level_index: levelIndex + 1 });
       setShowConfetti(true);
       notifyLevelCompleted();
       const t = setTimeout(() => setShowConfetti(false), 1300);
       return () => clearTimeout(t);
     }
-  }, [win, path, levelIndex, levelsCompleted, markLevelComplete, notifyLevelCompleted]);
+  }, [win, path, levelIndex, levelsCompleted, markLevelComplete, notifyLevelCompleted, daily, session.recordWin]);
 
   useEffect(() => {
     return () => {
@@ -118,7 +132,8 @@ export default function GameScreen({ route, navigation }: Props) {
       showToast(t('game.hintFailToast'));
       return false;
     }
-    posthog?.capture('puzzle_hint_requested', { game_id: 'block_fill', level_index: levelIndex + 1 });
+    session.noteHint();
+    posthog?.capture('puzzle_hint_requested', { game_id: 'block_fill', level_index: levelIndex + 1, daily: !!daily });
     if (hintTimer.current) clearTimeout(hintTimer.current);
     setHintCell(cell);
     hintTimer.current = setTimeout(() => setHintCell(null), 1500);
@@ -128,7 +143,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   function replayTutorial() {
-    navigation.navigate('BlockFillTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
+    navigation.navigate('BlockFillTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex, pendingDaily: daily });
   }
 
   function nextLevel() {
@@ -143,7 +158,7 @@ export default function GameScreen({ route, navigation }: Props) {
   });
 
   function onSkipPress() {
-    if (win) return;
+    if (win || daily) return;
     if (!isSkipAdReady) {
       showToast(tc('actions.skipAdNotReady'));
       return;
@@ -157,14 +172,14 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   if (!level || !path) {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
+    return daily ? <DailyLoading accentColor={colors.signalBlue} onBack={exitToOrigin} /> : <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.popTo('BlockFillHub')}
+      onBack={exitToOrigin}
       backAccessibilityLabel={tc('actions.backToHub')}
-      title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
+      title={session.title ?? level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
         <>
           <IconButton name="help" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
@@ -174,7 +189,7 @@ export default function GameScreen({ route, navigation }: Props) {
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
           <GameActionButton.Hint onPress={onHintPress} accentColor={colors.signalBlue} hintCount={hintCount} />
-          {!win && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.signalBlue} />}
+          {!win && !daily && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.signalBlue} />}
         </View>
       }
       winOverlay={
@@ -183,11 +198,13 @@ export default function GameScreen({ route, navigation }: Props) {
           badge="👑"
           showConfetti={showConfetti}
           confettiPalette={confettiPalette}
-          title={t('game.winTitle')}
-          subtitle={t('game.winSubtitle')}
-          nextLabel={tc('actions.nextLevel')}
-          onNext={nextLevel}
-          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          title={daily ? tc('daily.winTitle') : t('game.winTitle')}
+          subtitle={daily ? session.winSubtitle : t('game.winSubtitle')}
+          nextLabel={daily ? tc('daily.share') : tc('actions.nextLevel')}
+          onNext={daily ? session.share : nextLevel}
+          secondaryLabel={daily ? tc('daily.done') : undefined}
+          onSecondary={exitToOrigin}
+          unlockedTier={!daily && difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
           onUnlockSeen={difficulty.markUnlockSeen}
         />
       }

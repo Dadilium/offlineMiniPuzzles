@@ -87,5 +87,39 @@
     "confirmAction": "Switch",
     "cancelAction": "Keep playing",
     "unlockedBanner": "{{tier}} unlocked — your next level is {{tier}}"
+  },
+  "daily": {
+    "eyebrow": "Daily · {{date}}",
+    "gameTitle": "Daily · {{date}} · {{tier}}",
+    "solvedIn": "Solved in {{time}}",
+    "streakDays_one": "🔥 {{count}} day",
+    "streakDays_other": "🔥 {{count}} days",
+    "keepStreak": "Keep your streak going",
+    "newEveryDay": "A new puzzle every day",
+    "share": "Share",
+    "done": "Done",
+    "winTitle": "Daily solved!",
+    "building": "Building today's puzzle…",
+    "shareFooter": "Play today's puzzle in Puzzle Den",
+    "todaySection": "Today",
+    "todayProgress": "{{solved}}/{{total}} solved",
+    "chipSolvedA11y": "{{game}} daily, solved",
+    "chipOpenA11y": "{{game}} daily, not solved yet",
+    "date": "{{month}} {{day}}",
+    "dateFirstOfMonth": "{{month}} 1",
+    "months": {
+      "1": "Jan",
+      "2": "Feb",
+      "3": "Mar",
+      "4": "Apr",
+      "5": "May",
+      "6": "Jun",
+      "7": "Jul",
+      "8": "Aug",
+      "9": "Sep",
+      "10": "Oct",
+      "11": "Nov",
+      "12": "Dec"
+    }
   }
 }

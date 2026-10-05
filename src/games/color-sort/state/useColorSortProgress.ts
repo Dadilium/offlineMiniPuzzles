@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
-import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
+import { composeProviders, dailyFromRobust, toDailyStoreConfig } from '../../../daily/dailyStore';
+import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import { findBestMove, isTubeFilledSolid } from '../engine';
 import { createLevelForIndexRobust, fingerprintColorSort, INITIAL_SKILL_RATING, nextSkillRating, pourMove, type Move, type SkillRating } from '../generation';
 import type { ColorSortLevel, Tube } from '../types';
@@ -32,7 +33,7 @@ function sanitizeTubes(tubes: unknown, level: ColorSortLevel): Tube[] {
   return tubes as Tube[];
 }
 
-const store = createProgressStore<ColorSortLevel, ColorSortCustom>({
+const config: ProgressStoreConfig<ColorSortLevel, ColorSortCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
   nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
@@ -64,7 +65,13 @@ const store = createProgressStore<ColorSortLevel, ColorSortCustom>({
     tubesByLevel: { ...custom.tubesByLevel, [levelIndex]: level.tubes.map((t) => t.slice()) },
     moveCountByLevel: { ...custom.moveCountByLevel, [levelIndex]: 0 },
   }),
-});
+};
+
+const store = createProgressStore(config);
+// Daily Puzzle boards: same shape and board logic, keyed by day number.
+const dailyStore = createProgressStore(
+  toDailyStoreConfig(config, 'color-sort', dailyFromRobust((idx, rating, recent) => createLevelForIndexRobust(idx, rating as SkillRating, recent)))
+);
 
 interface ColorSortProgressContextValue {
   ready: boolean;
@@ -101,10 +108,20 @@ interface ColorSortProgressContextValue {
   setShowColorblindIcons: (value: boolean) => void;
 }
 
-export const ColorSortProgressProvider = store.Provider;
+export const ColorSortProgressProvider = composeProviders(store.Provider, dailyStore.Provider);
 
 export function useColorSortProgress(): ColorSortProgressContextValue {
-  const s = store.useProgress();
+  return useBoundProgress(store.useProgress());
+}
+
+/** Same API, backed by the Daily Puzzle store -- `levelIndex` is the day number.
+ * Its `showColorblindIcons` is the daily store's own copy and never toggled --
+ * read the player's preference from `useColorSortProgress` instead. */
+export function useColorSortDailyProgress(): ColorSortProgressContextValue {
+  return useBoundProgress(dailyStore.useProgress());
+}
+
+function useBoundProgress(s: ProgressStore<ColorSortLevel, ColorSortCustom>): ColorSortProgressContextValue {
   const { getCurrent, commit } = s;
 
   const pourAt = useCallback(

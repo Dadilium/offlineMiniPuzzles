@@ -14,7 +14,7 @@ import { useMatchingNumbersProgress } from '../state/useMatchingNumbersProgress'
 type Props = NativeStackScreenProps<MatchingNumbersStackParamList, 'MatchingNumbersTutorial'>;
 
 export default function TutorialScreen({ route, navigation }: Props) {
-  const { tutorialKey, pendingLevelIndex } = route.params;
+  const { tutorialKey, pendingLevelIndex, pendingDaily } = route.params;
   const { markTutorialSeen } = useMatchingNumbersProgress();
   const { t } = useTranslation('matching-numbers');
   const { t: tc } = useTranslation('common');
@@ -32,7 +32,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
     if (pendingLevelIndex === null) {
       navigation.goBack();
     } else {
-      navigation.replace('MatchingNumbersGame', { levelIndex: pendingLevelIndex });
+      navigation.replace('MatchingNumbersGame', { levelIndex: pendingLevelIndex, daily: pendingDaily });
     }
   }
 

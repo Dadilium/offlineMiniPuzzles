@@ -26,6 +26,7 @@ export const colorSortGame: GameModule = {
     { name: 'ColorSortGame', component: GameScreen },
   ],
   entryScreen: 'ColorSortHub',
+  supportsDaily: true,
   useProgress: () => {
     const { levelsCompleted, resetAllProgress } = useColorSortProgress();
     return { completed: levelsCompleted.size, reset: resetAllProgress };

@@ -100,3 +100,29 @@ export async function createLevelForIndexRobust(
   if ('level' in lastResort) return tagged(lastResort.level);
   throw new Error(`Kings level generation failed for index ${levelIndex}`);
 }
+
+/** Seeds tried at the requested rating, then at its tier floor, before the Daily Puzzle gives up. */
+const DAILY_SALTS_PER_RUNG = 3;
+
+/**
+ * Daily Puzzle board for `seedIndex` (see src/daily/calendar's
+ * `dailySeedIndex`): every player must get the identical board, so unlike
+ * `createLevelForIndexRobust` there is no wall-clock deadline (a slow phone
+ * would bail on a different attempt than a fast one) and no per-player
+ * de-dup history. Fallbacks only re-seed -- first at `skillRating`, then at
+ * its tier floor -- so a daily is never easier than its tier. Run in the
+ * background ahead of need (see the daily store's bootstrap), since an
+ * Expert board can take a while to find.
+ */
+export async function createDailyLevel(seedIndex: number, skillRating: SkillRating): Promise<KingsLevel> {
+  const rungs = [skillRating, tierFloor(skillRating)];
+  for (const rating of rungs) {
+    const params = difficultyParams(rating);
+    for (let salt = 0; salt < DAILY_SALTS_PER_RUNG; salt++) {
+      const rng = mulberry32(seedFromLevelIndex(seedIndex, 100 + salt));
+      const result = await generateKingsLevelAsync(rng, params, [], maxAttemptsFor(params));
+      if ('level' in result) return { ...result.level, difficulty: tierForRating(skillRating) };
+    }
+  }
+  throw new Error(`Kings daily generation failed for seed index ${seedIndex} at rating ${skillRating}`);
+}

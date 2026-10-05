@@ -26,6 +26,7 @@ export const kingsGame: GameModule = {
     { name: 'KingsGame', component: GameScreen, options: { gestureEnabled: false } },
   ],
   entryScreen: 'KingsHub',
+  supportsDaily: true,
   useProgress: () => {
     const { levelsCompleted, resetAllProgress } = useKingsProgress();
     return { completed: levelsCompleted.size, reset: resetAllProgress };

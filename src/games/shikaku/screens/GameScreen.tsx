@@ -14,10 +14,13 @@ import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useLatestRef } from '../../../utils/useLatestRef';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
+import DailyLoading from '../../../daily/DailyLoading';
+import { useExitToOrigin } from '../../../daily/navigation';
+import { useDailySession } from '../../../daily/useDailySession';
 import ShikakuGrid from '../components/ShikakuGrid';
 import { computeConflicts, computeWin } from '../engine';
 import type { ShikakuStackParamList } from '../navigation';
-import { useShikakuProgress } from '../state/useShikakuProgress';
+import { useShikakuDailyProgress, useShikakuProgress } from '../state/useShikakuProgress';
 import type { RectBounds, ShikakuPlayerState } from '../types';
 
 type Props = NativeStackScreenProps<ShikakuStackParamList, 'ShikakuGame'>;
@@ -27,12 +30,16 @@ const EMPTY_HINTED = new Set<number>();
 const EMPTY_CONFLICTS = new Set<number>();
 
 export default function GameScreen({ route, navigation }: Props) {
-  const { levelIndex } = route.params;
+  // In daily mode `levelIndex` is the day number and everything reads/writes the daily store.
+  const { levelIndex, daily } = route.params;
+  const exitToOrigin = useExitToOrigin(daily, 'ShikakuHub');
   const { colors } = useTheme();
   const confettiPalette = useMemo(
     () => [colors.success, colors.signalBlue, colors.warn, colors.purple, colors.cyan, colors.gold],
     [colors]
   );
+  const regularProgress = useShikakuProgress();
+  const dailyProgress = useShikakuDailyProgress();
   const {
     levelFor,
     ensureLevel,
@@ -46,7 +53,7 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelSkipped,
     levelsCompleted,
     difficulty,
-  } = useShikakuProgress();
+  } = daily ? dailyProgress : regularProgress;
   const { showToast } = useToast();
   const { t } = useTranslation('shikaku');
   const { t: tc } = useTranslation('common');
@@ -57,8 +64,9 @@ export default function GameScreen({ route, navigation }: Props) {
   // pattern as every other game here.
   useEffect(() => {
     ensureLevel(levelIndex);
-    InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
-  }, [levelIndex, ensureLevel]);
+    // Not on a daily: "next" would be tomorrow's board, and nothing leads to it.
+    if (!daily) InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
+  }, [levelIndex, ensureLevel, daily]);
 
   const level = levelFor(levelIndex);
   const placed = level ? (placedByLevel[levelIndex] ?? EMPTY_PLACED) : EMPTY_PLACED;
@@ -66,6 +74,8 @@ export default function GameScreen({ route, navigation }: Props) {
 
   const conflicts = useMemo(() => (level ? computeConflicts(level, placed) : EMPTY_CONFLICTS), [level, placed]);
   const win = useMemo(() => (level ? computeWin(level, placed) : false), [level, placed]);
+
+  const session = useDailySession({ gameId: 'shikaku', dayNumber: daily ? levelIndex : null, ready: !!level, won: win });
 
   const [celebrate, setCelebrate] = useState(false);
   const [revealWin, setRevealWin] = useState(false);
@@ -98,8 +108,10 @@ export default function GameScreen({ route, navigation }: Props) {
   useEffect(() => clearConfettiTimer, []);
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('shikaku');
-  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
-  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // An ad owed from an earlier win shows here, between levels -- never over
+  // the celebration, and never at the start of a daily (its first solve still
+  // counts toward the schedule; the ad waits for the next regular level).
+  useInterstitialAtLevelStart(level && !daily ? levelIndex : null);
   // Replays of an already-cleared level never count toward the interstitial
   // schedule -- read at win time, before `markLevelComplete` adds it.
   const levelsCompletedRef = useLatestRef(levelsCompleted);
@@ -131,9 +143,10 @@ export default function GameScreen({ route, navigation }: Props) {
     firstClearRef.current = !levelsCompletedRef.current.has(levelIndex);
 
     markLevelComplete(levelIndex);
-    posthog?.capture('puzzle_level_completed', { game_id: 'shikaku', level_index: levelIndex + 1 });
+    if (daily) session.recordWin();
+    else posthog?.capture('puzzle_level_completed', { game_id: 'shikaku', level_index: levelIndex + 1 });
     setCelebrate(true);
-  }, [win, level, levelIndex, markLevelComplete]);
+  }, [win, level, levelIndex, markLevelComplete, daily, session.recordWin]);
 
   function handleCelebrationDone() {
     setRevealWin(true);
@@ -158,15 +171,17 @@ export default function GameScreen({ route, navigation }: Props) {
 
   function attemptHint(): boolean {
     const gaveHint = giveHint(levelIndex);
-    if (gaveHint) posthog?.capture('puzzle_hint_requested', { game_id: 'shikaku', level_index: levelIndex + 1 });
-    else showToast(t('game.hintFailToast'));
+    if (gaveHint) {
+      session.noteHint();
+      posthog?.capture('puzzle_hint_requested', { game_id: 'shikaku', level_index: levelIndex + 1, daily: !!daily });
+    } else showToast(t('game.hintFailToast'));
     return gaveHint;
   }
 
   const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   function replayTutorial() {
-    navigation.navigate('ShikakuTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
+    navigation.navigate('ShikakuTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex, pendingDaily: daily });
   }
 
   function nextLevel() {
@@ -190,14 +205,14 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   if (!level) {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
+    return daily ? <DailyLoading accentColor={colors.signalRed} onBack={exitToOrigin} /> : <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.popTo('ShikakuHub')}
+      onBack={exitToOrigin}
       backAccessibilityLabel={tc('actions.backToHub')}
-      title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
+      title={session.title ?? level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
         <>
           <IconButton name="help" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
@@ -207,7 +222,7 @@ export default function GameScreen({ route, navigation }: Props) {
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
           <GameActionButton.Hint onPress={onHintPress} accentColor={colors.signalRed} hintCount={hintCount} />
-          {!revealWin && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.signalRed} />}
+          {!revealWin && !daily && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.signalRed} />}
         </View>
       }
       winOverlay={
@@ -216,11 +231,13 @@ export default function GameScreen({ route, navigation }: Props) {
           badge="👑"
           showConfetti={showConfetti}
           confettiPalette={confettiPalette}
-          title={t('game.winTitle')}
-          subtitle={t('game.winSubtitle')}
-          nextLabel={tc('actions.nextLevel')}
-          onNext={nextLevel}
-          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          title={daily ? tc('daily.winTitle') : t('game.winTitle')}
+          subtitle={daily ? session.winSubtitle : t('game.winSubtitle')}
+          nextLabel={daily ? tc('daily.share') : tc('actions.nextLevel')}
+          onNext={daily ? session.share : nextLevel}
+          secondaryLabel={daily ? tc('daily.done') : undefined}
+          onSecondary={exitToOrigin}
+          unlockedTier={!daily && difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
           onUnlockSeen={difficulty.markUnlockSeen}
         />
       }

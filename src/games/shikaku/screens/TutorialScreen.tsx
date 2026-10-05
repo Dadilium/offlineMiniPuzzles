@@ -13,7 +13,7 @@ import { useShikakuProgress } from '../state/useShikakuProgress';
 type Props = NativeStackScreenProps<ShikakuStackParamList, 'ShikakuTutorial'>;
 
 export default function TutorialScreen({ route, navigation }: Props) {
-  const { tutorialKey, pendingLevelIndex } = route.params;
+  const { tutorialKey, pendingLevelIndex, pendingDaily } = route.params;
   const { markTutorialSeen } = useShikakuProgress();
   const { t } = useTranslation('shikaku');
   const { t: tc } = useTranslation('common');
@@ -30,7 +30,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
     if (pendingLevelIndex === null) {
       navigation.goBack();
     } else {
-      navigation.replace('ShikakuGame', { levelIndex: pendingLevelIndex });
+      navigation.replace('ShikakuGame', { levelIndex: pendingLevelIndex, daily: pendingDaily });
     }
   }
 

@@ -13,7 +13,7 @@ import { useArrowsProgress } from '../state/useArrowsProgress';
 type Props = NativeStackScreenProps<ArrowsStackParamList, 'ArrowsTutorial'>;
 
 export default function TutorialScreen({ route, navigation }: Props) {
-  const { tutorialKey, pendingLevelIndex } = route.params;
+  const { tutorialKey, pendingLevelIndex, pendingDaily } = route.params;
   const { markTutorialSeen } = useArrowsProgress();
   const { t } = useTranslation('arrows');
   const { t: tc } = useTranslation('common');
@@ -30,7 +30,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
     if (pendingLevelIndex === null) {
       navigation.goBack();
     } else {
-      navigation.replace('ArrowsGame', { levelIndex: pendingLevelIndex });
+      navigation.replace('ArrowsGame', { levelIndex: pendingLevelIndex, daily: pendingDaily });
     }
   }
 

@@ -14,7 +14,7 @@ type Props = NativeStackScreenProps<BlockFillStackParamList, 'BlockFillTutorial'
 
 export default function TutorialScreen({ route, navigation }: Props) {
   const styles = useStyles();
-  const { tutorialKey, pendingLevelIndex } = route.params;
+  const { tutorialKey, pendingLevelIndex, pendingDaily } = route.params;
   const { markTutorialSeen } = useBlockFillProgress();
   const { t } = useTranslation('block-fill');
   const { t: tc } = useTranslation('common');
@@ -30,7 +30,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
     if (pendingLevelIndex === null) {
       navigation.goBack();
     } else {
-      navigation.replace('BlockFillGame', { levelIndex: pendingLevelIndex });
+      navigation.replace('BlockFillGame', { levelIndex: pendingLevelIndex, daily: pendingDaily });
     }
   }
 

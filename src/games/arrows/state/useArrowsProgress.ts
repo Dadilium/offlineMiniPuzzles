@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
-import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
+import { composeProviders, dailyFromRobust, toDailyStoreConfig } from '../../../daily/dailyStore';
+import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import { buildOwnerGrid, freeArrowIds, launchOutcome, MAX_LIVES, sanitizeRemoved } from '../engine';
 import { createLevelForIndexRobustAsync, fingerprintArrows, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { ArrowsLevel, ArrowsPlayerState, LaunchOutcome } from '../types';
@@ -43,7 +44,7 @@ function withBoard(custom: ArrowsCustom, levelIndex: number, board: ArrowsPlayer
   return { ...custom, boardByLevel: { ...custom.boardByLevel, [levelIndex]: board } };
 }
 
-const store = createProgressStore<ArrowsLevel, ArrowsCustom>({
+const config: ProgressStoreConfig<ArrowsLevel, ArrowsCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
   nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean; livesLost?: number }),
@@ -76,7 +77,17 @@ const store = createProgressStore<ArrowsLevel, ArrowsCustom>({
     boardByLevel: { ...custom.boardByLevel, [levelIndex]: freshBoard() },
     livesLostByLevel: { ...custom.livesLostByLevel, [levelIndex]: 0 },
   }),
-});
+};
+
+const store = createProgressStore(config);
+// Daily Puzzle boards: same shape and board logic, keyed by day number.
+const dailyStore = createProgressStore(
+  toDailyStoreConfig(
+    config,
+    'arrows',
+    dailyFromRobust((idx, rating, recent) => createLevelForIndexRobustAsync(idx, rating as SkillRating, recent))
+  )
+);
 
 interface ArrowsProgressContextValue {
   ready: boolean;
@@ -115,10 +126,18 @@ interface ArrowsProgressContextValue {
   difficulty: DifficultyControls;
 }
 
-export const ArrowsProgressProvider = store.Provider;
+export const ArrowsProgressProvider = composeProviders(store.Provider, dailyStore.Provider);
 
 export function useArrowsProgress(): ArrowsProgressContextValue {
-  const s = store.useProgress();
+  return useBoundProgress(store.useProgress());
+}
+
+/** Same API, backed by the Daily Puzzle store -- `levelIndex` is the day number. */
+export function useArrowsDailyProgress(): ArrowsProgressContextValue {
+  return useBoundProgress(dailyStore.useProgress());
+}
+
+function useBoundProgress(s: ProgressStore<ArrowsLevel, ArrowsCustom>): ArrowsProgressContextValue {
   const { getCurrent, commit } = s;
 
   /** Shared by tap and hint: validate against fresh state, commit an exit. */

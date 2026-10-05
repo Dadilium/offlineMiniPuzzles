@@ -29,6 +29,7 @@ export const arrowsGame: GameModule = {
     { name: 'ArrowsGame', component: GameScreen, options: { gestureEnabled: false } },
   ],
   entryScreen: 'ArrowsHub',
+  supportsDaily: true,
   useProgress: () => {
     const { levelsCompleted, resetAllProgress } = useArrowsProgress();
     return { completed: levelsCompleted.size, reset: resetAllProgress };

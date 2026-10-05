@@ -16,11 +16,14 @@ import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialAtLevelStart, useInterstitialOnAction, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useLatestRef } from '../../../utils/useLatestRef';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
+import DailyLoading from '../../../daily/DailyLoading';
+import { useExitToOrigin } from '../../../daily/navigation';
+import { useDailySession } from '../../../daily/useDailySession';
 import ArrowsBoard, { type ArrowsBoardHandle } from '../components/ArrowsBoard';
 import LivesBar from '../components/LivesBar';
 import { isCleared, MAX_LIVES } from '../engine';
 import type { ArrowsStackParamList } from '../navigation';
-import { useArrowsProgress } from '../state/useArrowsProgress';
+import { useArrowsDailyProgress, useArrowsProgress } from '../state/useArrowsProgress';
 import type { ArrowsPlayerState } from '../types';
 
 type Props = NativeStackScreenProps<ArrowsStackParamList, 'ArrowsGame'>;
@@ -28,10 +31,14 @@ type Props = NativeStackScreenProps<ArrowsStackParamList, 'ArrowsGame'>;
 const FRESH_BOARD: ArrowsPlayerState = { removed: [], livesLeft: MAX_LIVES };
 
 export default function GameScreen({ route, navigation }: Props) {
-  const { levelIndex } = route.params;
+  // In daily mode `levelIndex` is the day number and everything reads/writes the daily store.
+  const { levelIndex, daily } = route.params;
+  const exitToOrigin = useExitToOrigin(daily, 'ArrowsHub');
   const { colors } = useTheme();
   const accent = colors.indigo;
   const confettiPalette = useMemo(() => [colors.indigo, colors.signalBlue, colors.gold, colors.purple, colors.cyan, colors.pink], [colors]);
+  const regularProgress = useArrowsProgress();
+  const dailyProgress = useArrowsDailyProgress();
   const {
     levelFor,
     ensureLevel,
@@ -46,24 +53,27 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelSkipped,
     levelsCompleted,
     difficulty,
-  } = useArrowsProgress();
+  } = daily ? dailyProgress : regularProgress;
   const { showToast } = useToast();
   const { t } = useTranslation('arrows');
   const { t: tc } = useTranslation('common');
   const boardRef = useRef<ArrowsBoardHandle>(null);
 
   // Levels are generated on demand and the next one is prefetched once this
-  // one has opened -- same pattern as every other game here.
+  // one has opened -- same pattern as every other game here. A daily has no
+  // "next", so it skips the (expensive) background build of tomorrow's board.
   useEffect(() => {
     ensureLevel(levelIndex);
-    InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
-  }, [levelIndex, ensureLevel]);
+    if (!daily) InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
+  }, [levelIndex, ensureLevel, daily]);
 
   const level = levelFor(levelIndex);
   const board = (level && boardByLevel[levelIndex]) || FRESH_BOARD;
   const removedSet = useMemo(() => new Set(board.removed), [board.removed]);
   const win = level ? isCleared(level, removedSet) : false;
   const outOfLives = !win && board.livesLeft <= 0;
+
+  const session = useDailySession({ gameId: 'arrows', dayNumber: daily ? levelIndex : null, ready: !!level, won: win });
 
   const [celebrate, setCelebrate] = useState(false);
   const [revealWin, setRevealWin] = useState(false);
@@ -91,10 +101,12 @@ export default function GameScreen({ route, navigation }: Props) {
   useEffect(() => clearConfettiTimer, []);
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('arrows');
-  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
-  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // An ad owed from an earlier win shows here, between levels -- never over
+  // the celebration, and never at the start of a daily (its first solve still
+  // counts toward the schedule; the ad waits for the next regular level).
+  useInterstitialAtLevelStart(level && !daily ? levelIndex : null);
   // Retrying after running out of hearts is a break the player chose, so a
-  // due ad shows right away -- over the freshly reset board.
+  // due ad shows right away -- over the freshly reset board (not on a daily).
   const { notifyAction: notifyRetry } = useInterstitialOnAction('arrows', 'retry', ARROWS_RETRY_AD_SCHEDULE);
   // Replays of an already-cleared level never count toward the interstitial
   // schedule -- read at win time, before `markLevelComplete` adds it.
@@ -120,13 +132,14 @@ export default function GameScreen({ route, navigation }: Props) {
     celebratedForLevel.current = levelIndex;
     firstClearRef.current = !levelsCompletedRef.current.has(levelIndex);
     markLevelComplete(levelIndex);
-    posthog?.capture('puzzle_level_completed', { game_id: 'arrows', level_index: levelIndex + 1 });
+    if (daily) session.recordWin();
+    else posthog?.capture('puzzle_level_completed', { game_id: 'arrows', level_index: levelIndex + 1 });
     setCelebrate(true);
-  }, [win, level, levelIndex, markLevelComplete]);
+  }, [win, level, levelIndex, markLevelComplete, daily, session.recordWin]);
 
   useEffect(() => {
-    if (outOfLives) posthog?.capture('puzzle_level_failed', { game_id: 'arrows', level_index: levelIndex + 1 });
-  }, [outOfLives, levelIndex]);
+    if (outOfLives) posthog?.capture('puzzle_level_failed', { game_id: 'arrows', level_index: levelIndex + 1, daily: !!daily });
+  }, [outOfLives, levelIndex, daily]);
 
   const handleCelebrationDone = useCallback(() => {
     setRevealWin(true);
@@ -134,7 +147,7 @@ export default function GameScreen({ route, navigation }: Props) {
     if (firstClearRef.current) notifyLevelCompleted();
     clearConfettiTimer();
     confettiTimerRef.current = setTimeout(() => setShowConfetti(false), 1300);
-  }, [notifyLevelCompleted]);
+  }, [notifyLevelCompleted, daily]);
 
   const onTapArrow = useCallback((arrowId: number) => launchArrow(levelIndex, arrowId), [launchArrow, levelIndex]);
   const onBumpImpact = useCallback(() => {
@@ -146,9 +159,11 @@ export default function GameScreen({ route, navigation }: Props) {
     resetLevel(levelIndex);
   }
 
+  // Out of hearts only ever retries the same board -- a daily can't be
+  // skipped past, and its retries stay ad-free.
   function onRetry() {
     retryLevel(levelIndex);
-    notifyRetry();
+    if (!daily) notifyRetry();
   }
 
   function attemptHint(): boolean {
@@ -164,14 +179,15 @@ export default function GameScreen({ route, navigation }: Props) {
       return false;
     }
     boardRef.current?.play(outcome, { hint: true });
-    posthog?.capture('puzzle_hint_requested', { game_id: 'arrows', level_index: levelIndex + 1 });
+    session.noteHint();
+    posthog?.capture('puzzle_hint_requested', { game_id: 'arrows', level_index: levelIndex + 1, daily: !!daily });
     return true;
   }
 
   const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   function replayTutorial() {
-    navigation.navigate('ArrowsTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
+    navigation.navigate('ArrowsTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex, pendingDaily: daily });
   }
 
   function nextLevel() {
@@ -197,6 +213,7 @@ export default function GameScreen({ route, navigation }: Props) {
   // Boards are generated in the background (time-sliced); a cold start on a
   // big tier can take a moment before the first one lands.
   if (!level) {
+    if (daily) return <DailyLoading accentColor={accent} onBack={exitToOrigin} />;
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={accent} />
@@ -206,10 +223,10 @@ export default function GameScreen({ route, navigation }: Props) {
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.popTo('ArrowsHub')}
+      onBack={exitToOrigin}
       backAccessibilityLabel={tc('actions.backToHub')}
       eyebrow={tc(`difficulty.tiers.${level.tier}`).toUpperCase()}
-      title={t('game.levelTitle', { number: levelIndex + 1 })}
+      title={session.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
         <>
           <IconButton name="help" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
@@ -219,7 +236,7 @@ export default function GameScreen({ route, navigation }: Props) {
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
           <GameActionButton.Hint onPress={onHintPress} accentColor={accent} hintCount={hintCount} />
-          {!revealWin && <GameActionButton.Skip onPress={onSkipPress} accentColor={accent} />}
+          {!revealWin && !daily && <GameActionButton.Skip onPress={onSkipPress} accentColor={accent} />}
         </View>
       }
       winOverlay={
@@ -229,11 +246,13 @@ export default function GameScreen({ route, navigation }: Props) {
             badge="🎯"
             showConfetti={showConfetti}
             confettiPalette={confettiPalette}
-            title={t('game.winTitle')}
-            subtitle={t('game.winSubtitle')}
-            nextLabel={tc('actions.nextLevel')}
-            onNext={nextLevel}
-            unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+            title={daily ? tc('daily.winTitle') : t('game.winTitle')}
+            subtitle={daily ? session.winSubtitle : t('game.winSubtitle')}
+            nextLabel={daily ? tc('daily.share') : tc('actions.nextLevel')}
+            onNext={daily ? session.share : nextLevel}
+            secondaryLabel={daily ? tc('daily.done') : undefined}
+            onSecondary={exitToOrigin}
+            unlockedTier={!daily && difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
             onUnlockSeen={difficulty.markUnlockSeen}
           />
           <LevelFailedOverlay

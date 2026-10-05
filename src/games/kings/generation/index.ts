@@ -5,7 +5,7 @@ export type { EliminationResult } from './eliminationSolver';
 export { fingerprintRegions } from './fingerprint';
 export { generateKingsLevel } from './generator';
 export type { GenerateFailure, GenerateSuccess } from './generator';
-export { BACKGROUND_DEADLINES, createLevelForIndex, createLevelForIndexRobust, URGENT_DEADLINES } from './levelSource';
+export { BACKGROUND_DEADLINES, createDailyLevel, createLevelForIndex, createLevelForIndexRobust, URGENT_DEADLINES } from './levelSource';
 export type { GenerationDeadlines } from './levelSource';
 export { generatePlantedRegions, generateRegions, randomKingPlacement } from './regionGrowth';
 export type { RegionStyle } from './regionGrowth';

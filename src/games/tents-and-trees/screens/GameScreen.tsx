@@ -14,10 +14,13 @@ import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useLatestRef } from '../../../utils/useLatestRef';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
+import DailyLoading from '../../../daily/DailyLoading';
+import { useExitToOrigin } from '../../../daily/navigation';
+import { useDailySession } from '../../../daily/useDailySession';
 import TentsAndTreesGrid, { waveDurationMs } from '../components/TentsAndTreesGrid';
 import { computeCounts, computeWin } from '../engine';
 import type { TentsAndTreesStackParamList } from '../navigation';
-import { useTentsAndTreesProgress } from '../state/useTentsAndTreesProgress';
+import { useTentsAndTreesDailyProgress, useTentsAndTreesProgress } from '../state/useTentsAndTreesProgress';
 
 type Props = NativeStackScreenProps<TentsAndTreesStackParamList, 'TentsAndTreesGame'>;
 
@@ -25,12 +28,16 @@ const EMPTY_COUNTS = { rowCounts: [] as number[], colCounts: [] as number[] };
 const EMPTY_HINTED = new Set<string>();
 
 export default function GameScreen({ route, navigation }: Props) {
-  const { levelIndex } = route.params;
+  // In daily mode `levelIndex` is the day number and everything reads/writes the daily store.
+  const { levelIndex, daily } = route.params;
+  const exitToOrigin = useExitToOrigin(daily, 'TentsAndTreesHub');
   const { colors } = useTheme();
   const confettiPalette = useMemo(
     () => [colors.success, colors.signalBlue, colors.warn, colors.purple, colors.cyan, colors.gold],
     [colors]
   );
+  const regularProgress = useTentsAndTreesProgress();
+  const dailyProgress = useTentsAndTreesDailyProgress();
   const {
     levelFor,
     ensureLevel,
@@ -43,7 +50,7 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelSkipped,
     levelsCompleted,
     difficulty,
-  } = useTentsAndTreesProgress();
+  } = daily ? dailyProgress : regularProgress;
   const { showToast } = useToast();
   const { t } = useTranslation('tents-and-trees');
   const { t: tc } = useTranslation('common');
@@ -52,11 +59,12 @@ export default function GameScreen({ route, navigation }: Props) {
   // generation (and persists the result) as a side effect, never during
   // render. Generation is essentially instant at these sizes (see the
   // checkpoint sweep), but the next level is still prefetched the moment
-  // this one opens, same pattern as every other game here.
+  // this one opens, same pattern as every other game here -- except on a
+  // daily, where "next" would be tomorrow's board and nothing leads to it.
   useEffect(() => {
     ensureLevel(levelIndex);
-    InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
-  }, [levelIndex, ensureLevel]);
+    if (!daily) InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
+  }, [levelIndex, ensureLevel, daily]);
 
   const level = levelFor(levelIndex);
   const tents = level ? tentsByLevel[levelIndex] : undefined;
@@ -64,6 +72,8 @@ export default function GameScreen({ route, navigation }: Props) {
 
   const counts = useMemo(() => (level && tents ? computeCounts(tents) : EMPTY_COUNTS), [level, tents]);
   const win = useMemo(() => (level && tents ? computeWin(level, tents) : false), [level, tents]);
+
+  const session = useDailySession({ gameId: 'tents-and-trees', dayNumber: daily ? levelIndex : null, ready: !!level && !!tents, won: win });
 
   const [celebrate, setCelebrate] = useState(false);
   const [revealWin, setRevealWin] = useState(false);
@@ -85,8 +95,10 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('tents-and-trees');
-  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
-  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // An ad owed from an earlier win shows here, between levels -- never over
+  // the celebration, and never at the start of a daily (its first solve still
+  // counts toward the schedule; the ad waits for the next regular level).
+  useInterstitialAtLevelStart(level && !daily ? levelIndex : null);
   // Replays of an already-cleared level never count toward the interstitial
   // schedule -- read at win time, before `markLevelComplete` adds it.
   const levelsCompletedRef = useLatestRef(levelsCompleted);
@@ -116,7 +128,8 @@ export default function GameScreen({ route, navigation }: Props) {
     const isFirstClear = !levelsCompletedRef.current.has(levelIndex);
 
     markLevelComplete(levelIndex);
-    posthog?.capture('puzzle_level_completed', { game_id: 'tents_and_trees', level_index: levelIndex + 1 });
+    if (daily) session.recordWin();
+    else posthog?.capture('puzzle_level_completed', { game_id: 'tents_and_trees', level_index: levelIndex + 1 });
     setCelebrate(true);
     const waveMs = waveDurationMs(level.rows, level.cols);
     const revealTimer = setTimeout(() => {
@@ -129,9 +142,9 @@ export default function GameScreen({ route, navigation }: Props) {
       clearTimeout(revealTimer);
       clearTimeout(confettiTimer);
     };
-    // notifyLevelCompleted and levelsCompletedRef are both stable, so they
-    // can't re-run this effect and cancel the pending reveal timer.
-  }, [win, level, tents, levelIndex, markLevelComplete, notifyLevelCompleted, levelsCompletedRef]);
+    // notifyLevelCompleted, levelsCompletedRef and session.recordWin are all
+    // stable, so they can't re-run this effect and cancel the pending reveal timer.
+  }, [win, level, tents, levelIndex, markLevelComplete, notifyLevelCompleted, levelsCompletedRef, daily, session.recordWin]);
 
   function onCellPress(r: number, c: number) {
     toggleTentAt(levelIndex, r, c);
@@ -144,15 +157,17 @@ export default function GameScreen({ route, navigation }: Props) {
 
   function attemptHint(): boolean {
     const gaveHint = giveHint(levelIndex);
-    if (gaveHint) posthog?.capture('puzzle_hint_requested', { game_id: 'tents_and_trees', level_index: levelIndex + 1 });
-    else showToast(t('game.hintFailToast'));
+    if (gaveHint) {
+      session.noteHint();
+      posthog?.capture('puzzle_hint_requested', { game_id: 'tents_and_trees', level_index: levelIndex + 1, daily: !!daily });
+    } else showToast(t('game.hintFailToast'));
     return gaveHint;
   }
 
   const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   function replayTutorial() {
-    navigation.navigate('TentsAndTreesTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
+    navigation.navigate('TentsAndTreesTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex, pendingDaily: daily });
   }
 
   function nextLevel() {
@@ -176,14 +191,14 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   if (!level || !tents) {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
+    return daily ? <DailyLoading accentColor={colors.pink} onBack={exitToOrigin} /> : <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.popTo('TentsAndTreesHub')}
+      onBack={exitToOrigin}
       backAccessibilityLabel={tc('actions.backToHub')}
-      title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
+      title={session.title ?? level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
         <>
           <IconButton name="help" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
@@ -193,7 +208,7 @@ export default function GameScreen({ route, navigation }: Props) {
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
           <GameActionButton.Hint onPress={onHintPress} accentColor={colors.pink} hintCount={hintCount} />
-          {!revealWin && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.pink} />}
+          {!revealWin && !daily && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.pink} />}
         </View>
       }
       winOverlay={
@@ -202,11 +217,13 @@ export default function GameScreen({ route, navigation }: Props) {
           badge="👑"
           showConfetti={showConfetti}
           confettiPalette={confettiPalette}
-          title={t('game.winTitle')}
-          subtitle={t('game.winSubtitle')}
-          nextLabel={tc('actions.nextLevel')}
-          onNext={nextLevel}
-          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          title={daily ? tc('daily.winTitle') : t('game.winTitle')}
+          subtitle={daily ? session.winSubtitle : t('game.winSubtitle')}
+          nextLabel={daily ? tc('daily.share') : tc('actions.nextLevel')}
+          onNext={daily ? session.share : nextLevel}
+          secondaryLabel={daily ? tc('daily.done') : undefined}
+          onSecondary={exitToOrigin}
+          unlockedTier={!daily && difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
           onUnlockSeen={difficulty.markUnlockSeen}
         />
       }

@@ -13,7 +13,7 @@ import { useTentsAndTreesProgress } from '../state/useTentsAndTreesProgress';
 type Props = NativeStackScreenProps<TentsAndTreesStackParamList, 'TentsAndTreesTutorial'>;
 
 export default function TutorialScreen({ route, navigation }: Props) {
-  const { tutorialKey, pendingLevelIndex } = route.params;
+  const { tutorialKey, pendingLevelIndex, pendingDaily } = route.params;
   const { markTutorialSeen } = useTentsAndTreesProgress();
   const { t } = useTranslation('tents-and-trees');
   const { t: tc } = useTranslation('common');
@@ -30,7 +30,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
     if (pendingLevelIndex === null) {
       navigation.goBack();
     } else {
-      navigation.replace('TentsAndTreesGame', { levelIndex: pendingLevelIndex });
+      navigation.replace('TentsAndTreesGame', { levelIndex: pendingLevelIndex, daily: pendingDaily });
     }
   }
 

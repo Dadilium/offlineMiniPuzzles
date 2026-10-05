@@ -14,11 +14,14 @@ import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialAtLevelStart, useInterstitialOnAction, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
 import { MATCHING_NUMBERS_ADD_NUMBERS_AD_SCHEDULE } from '../../../config/ads';
+import DailyLoading from '../../../daily/DailyLoading';
+import { useExitToOrigin } from '../../../daily/navigation';
+import { useDailySession } from '../../../daily/useDailySession';
 import MatchingNumbersGrid, { type PendingMatch } from '../components/MatchingNumbersGrid';
 import FailOverlay from '../components/FailOverlay';
 import { attemptMatch, computeWin, findFullyEmptyRows, hasLegalMove, MAX_ADD_NUMBERS } from '../engine';
 import type { MatchingNumbersStackParamList } from '../navigation';
-import { useMatchingNumbersProgress } from '../state/useMatchingNumbersProgress';
+import { useMatchingNumbersDailyProgress, useMatchingNumbersProgress } from '../state/useMatchingNumbersProgress';
 import type { Cell } from '../types';
 
 type Props = NativeStackScreenProps<MatchingNumbersStackParamList, 'MatchingNumbersGame'>;
@@ -31,7 +34,11 @@ function cellKey(cell: Cell): string {
 }
 
 export default function GameScreen({ route, navigation }: Props) {
-  const { levelIndex } = route.params;
+  // In daily mode `levelIndex` is the day number and everything reads/writes the daily store.
+  const { levelIndex, daily } = route.params;
+  const exitToOrigin = useExitToOrigin(daily, 'MatchingNumbersHub');
+  const regularProgress = useMatchingNumbersProgress();
+  const dailyProgress = useMatchingNumbersDailyProgress();
   const {
     levelFor,
     ensureLevel,
@@ -46,7 +53,7 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelSkipped,
     levelsCompleted,
     difficulty,
-  } = useMatchingNumbersProgress();
+  } = daily ? dailyProgress : regularProgress;
   const { showToast } = useToast();
   const { t } = useTranslation('matching-numbers');
   const { t: tc } = useTranslation('common');
@@ -58,11 +65,12 @@ export default function GameScreen({ route, navigation }: Props) {
 
   // Levels are generated on demand, not bundled -- ensureLevel triggers that
   // generation (and persists the result) as a side effect. Prefetch the next
-  // one the moment this level opens, same rationale as Kings.
+  // one the moment this level opens, same rationale as Kings. A daily has no
+  // "next" to prefetch -- tomorrow's board is built when tomorrow comes.
   useEffect(() => {
     ensureLevel(levelIndex);
-    InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
-  }, [levelIndex, ensureLevel]);
+    if (!daily) InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
+  }, [levelIndex, ensureLevel, daily]);
 
   const level = levelFor(levelIndex);
   const board = boardsByLevel[levelIndex];
@@ -162,23 +170,28 @@ export default function GameScreen({ route, navigation }: Props) {
   const addNumbersRemaining = MAX_ADD_NUMBERS - addNumbersUsed;
   const showFail = stuck && addNumbersRemaining <= 0 && !pendingMatch && !rejectedPair;
 
+  const session = useDailySession({ gameId: 'matching-numbers', dayNumber: daily ? levelIndex : null, ready: !!level && !!board, won: win });
+
   const { notifyLevelCompleted } = useInterstitialOnComplete('matching-numbers');
-  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
-  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // An ad owed from an earlier win shows here, between levels -- never over
+  // the celebration, and never at the start of a daily (its first solve still
+  // counts toward the schedule; the ad waits for the next regular level).
+  useInterstitialAtLevelStart(level && !daily ? levelIndex : null);
 
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {
     if (!board) return;
     if (win && !levelsCompleted.has(levelIndex)) {
       markLevelComplete(levelIndex);
-      posthog?.capture('puzzle_level_completed', { game_id: 'matching_numbers', level_index: levelIndex + 1 });
       setShowConfetti(true);
+      if (daily) session.recordWin();
+      else posthog?.capture('puzzle_level_completed', { game_id: 'matching_numbers', level_index: levelIndex + 1 });
       const tookLong = Date.now() - levelStartRef.current >= SLOW_LEVEL_MS;
       notifyLevelCompleted({ forceDue: tookLong });
       const t = setTimeout(() => setShowConfetti(false), 1300);
       return () => clearTimeout(t);
     }
-  }, [win, board, levelIndex, levelsCompleted, markLevelComplete, notifyLevelCompleted]);
+  }, [win, board, levelIndex, levelsCompleted, markLevelComplete, notifyLevelCompleted, daily, session.recordWin]);
 
   useEffect(() => {
     return () => {
@@ -229,7 +242,8 @@ export default function GameScreen({ route, navigation }: Props) {
       showToast(t('game.hintFailToast'));
       return false;
     }
-    posthog?.capture('puzzle_hint_requested', { game_id: 'matching_numbers', level_index: levelIndex + 1 });
+    session.noteHint();
+    posthog?.capture('puzzle_hint_requested', { game_id: 'matching_numbers', level_index: levelIndex + 1, daily: !!daily });
     if (hintTimer.current) clearTimeout(hintTimer.current);
     setHintPair(pair);
     hintTimer.current = setTimeout(() => setHintPair(null), 1500);
@@ -250,11 +264,12 @@ export default function GameScreen({ route, navigation }: Props) {
       showToast(t('game.addNumbersFailToast'));
       return;
     }
-    notifyAddNumbersUsed();
+    // Dailies stay ad-free -- Add Numbers itself still works the same.
+    if (!daily) notifyAddNumbersUsed();
   }
 
   function replayTutorial() {
-    navigation.navigate('MatchingNumbersTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
+    navigation.navigate('MatchingNumbersTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex, pendingDaily: daily });
   }
 
   function nextLevel() {
@@ -269,7 +284,8 @@ export default function GameScreen({ route, navigation }: Props) {
   });
 
   function onSkipPress() {
-    if (win) return;
+    // A daily is never skipped -- its only exits are a solve or Done (see FailOverlay below).
+    if (win || daily) return;
     if (!isSkipAdReady) {
       showToast(tc('actions.skipAdNotReady'));
       return;
@@ -293,7 +309,7 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   if (!level || !board) {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
+    return daily ? <DailyLoading accentColor={colors.purple} onBack={exitToOrigin} /> : <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
   const highlightedCells = new Set<string>();
@@ -305,9 +321,9 @@ export default function GameScreen({ route, navigation }: Props) {
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.popTo('MatchingNumbersHub')}
+      onBack={exitToOrigin}
       backAccessibilityLabel={tc('actions.backToHub')}
-      title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
+      title={session.title ?? level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
         <>
           <IconButton name="help" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
@@ -327,7 +343,7 @@ export default function GameScreen({ route, navigation }: Props) {
             accessibilityLabel={t('game.addNumbersActionWithCount', { count: addNumbersRemaining })}
           />
           <GameActionButton.Hint onPress={onHintPress} accentColor={colors.purple} hintCount={hintCount} />
-          {!win && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.purple} />}
+          {!win && !daily && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.purple} />}
         </View>
       }
       winOverlay={
@@ -337,21 +353,24 @@ export default function GameScreen({ route, navigation }: Props) {
             badge="👑"
             showConfetti={showConfetti}
             confettiPalette={confettiPalette}
-            title={t('game.winTitle')}
-            subtitle={t('game.winSubtitle')}
-            nextLabel={tc('actions.nextLevel')}
-            onNext={nextLevel}
-            unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+            title={daily ? tc('daily.winTitle') : t('game.winTitle')}
+            subtitle={daily ? session.winSubtitle : t('game.winSubtitle')}
+            nextLabel={daily ? tc('daily.share') : tc('actions.nextLevel')}
+            onNext={daily ? session.share : nextLevel}
+            secondaryLabel={daily ? tc('daily.done') : undefined}
+            onSecondary={exitToOrigin}
+            unlockedTier={!daily && difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
             onUnlockSeen={difficulty.markUnlockSeen}
           />
+          {/* Out of moves on a daily: retry the same board, or Done back to the hub -- never a skip. */}
           <FailOverlay
             visible={showFail}
             title={t('game.failTitle')}
             subtitle={t('game.failSubtitle')}
             retryLabel={t('game.retryLevel')}
-            skipLabel={tc('actions.skipLevelAd')}
+            skipLabel={daily ? tc('daily.done') : tc('actions.skipLevelAd')}
             onRetry={onRetryPress}
-            onSkip={onSkipPress}
+            onSkip={daily ? exitToOrigin : onSkipPress}
           />
         </>
       }

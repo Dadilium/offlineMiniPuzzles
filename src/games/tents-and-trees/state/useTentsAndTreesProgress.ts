@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
-import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
+import { composeProviders, dailyFromRobust, toDailyStoreConfig } from '../../../daily/dailyStore';
+import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import { applyHint, computeCounts, makeInitialTents, toggleTent } from '../engine';
 import {
   createLevelForIndexRobust,
@@ -38,7 +39,7 @@ function sanitizeTents(tents: unknown, rows: number, cols: number): boolean[][] 
   return tents as boolean[][];
 }
 
-const store = createProgressStore<TentsAndTreesLevel, TentsAndTreesCustom>({
+const config: ProgressStoreConfig<TentsAndTreesLevel, TentsAndTreesCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
   nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
@@ -68,7 +69,17 @@ const store = createProgressStore<TentsAndTreesLevel, TentsAndTreesCustom>({
     tentsByLevel: { ...custom.tentsByLevel, [levelIndex]: makeInitialTents(level.rows, level.cols) },
     hintedCellsByLevel: { ...custom.hintedCellsByLevel, [levelIndex]: [] },
   }),
-});
+};
+
+const store = createProgressStore(config);
+// Daily Puzzle boards: same shape and board logic, keyed by day number.
+const dailyStore = createProgressStore(
+  toDailyStoreConfig(
+    config,
+    'tents-and-trees',
+    dailyFromRobust((idx, rating, recent) => createLevelForIndexRobust(idx, rating as SkillRating, recent))
+  )
+);
 
 interface TentsAndTreesProgressContextValue {
   ready: boolean;
@@ -98,10 +109,18 @@ interface TentsAndTreesProgressContextValue {
   difficulty: DifficultyControls;
 }
 
-export const TentsAndTreesProgressProvider = store.Provider;
+export const TentsAndTreesProgressProvider = composeProviders(store.Provider, dailyStore.Provider);
 
 export function useTentsAndTreesProgress(): TentsAndTreesProgressContextValue {
-  const s = store.useProgress();
+  return useBoundProgress(store.useProgress());
+}
+
+/** Same API, backed by the Daily Puzzle store -- `levelIndex` is the day number. */
+export function useTentsAndTreesDailyProgress(): TentsAndTreesProgressContextValue {
+  return useBoundProgress(dailyStore.useProgress());
+}
+
+function useBoundProgress(s: ProgressStore<TentsAndTreesLevel, TentsAndTreesCustom>): TentsAndTreesProgressContextValue {
   const { getCurrent, commit } = s;
 
   const hintedCellsByLevel = useMemo(() => {

@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
-import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
+import { composeProviders, dailyFromRobust, toDailyStoreConfig } from '../../../daily/dailyStore';
+import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import { applyHint, applyTool, computeSums, makeInitialMarks, type CellMark, type Tool } from '../engine';
 import { createLevelForIndexRobust, fingerprintCrossSums, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { CrossSumsLevel } from '../types';
@@ -34,7 +35,7 @@ function sanitizeMarks(marks: unknown, rows: number, cols: number): CellMark[][]
   return marks as CellMark[][];
 }
 
-const store = createProgressStore<CrossSumsLevel, CrossSumsCustom>({
+const config: ProgressStoreConfig<CrossSumsLevel, CrossSumsCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
   nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
@@ -64,7 +65,13 @@ const store = createProgressStore<CrossSumsLevel, CrossSumsCustom>({
     marksByLevel: { ...custom.marksByLevel, [levelIndex]: makeInitialMarks(level.rows, level.cols) },
     hintedCellsByLevel: { ...custom.hintedCellsByLevel, [levelIndex]: [] },
   }),
-});
+};
+
+const store = createProgressStore(config);
+// Daily Puzzle boards: same shape and board logic, keyed by day number.
+const dailyStore = createProgressStore(
+  toDailyStoreConfig(config, 'cross-sums', dailyFromRobust((idx, rating, recent) => createLevelForIndexRobust(idx, rating as SkillRating, recent)))
+);
 
 interface CrossSumsProgressContextValue {
   ready: boolean;
@@ -94,10 +101,18 @@ interface CrossSumsProgressContextValue {
   difficulty: DifficultyControls;
 }
 
-export const CrossSumsProgressProvider = store.Provider;
+export const CrossSumsProgressProvider = composeProviders(store.Provider, dailyStore.Provider);
 
 export function useCrossSumsProgress(): CrossSumsProgressContextValue {
-  const s = store.useProgress();
+  return useBoundProgress(store.useProgress());
+}
+
+/** Same API, backed by the Daily Puzzle store -- `levelIndex` is the day number. */
+export function useCrossSumsDailyProgress(): CrossSumsProgressContextValue {
+  return useBoundProgress(dailyStore.useProgress());
+}
+
+function useBoundProgress(s: ProgressStore<CrossSumsLevel, CrossSumsCustom>): CrossSumsProgressContextValue {
   const { getCurrent, commit } = s;
 
   const hintedCellsByLevel = useMemo(() => {

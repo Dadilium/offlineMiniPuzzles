@@ -30,6 +30,7 @@ export const shikakuGame: GameModule = {
     { name: 'ShikakuGame', component: GameScreen, options: { gestureEnabled: false } },
   ],
   entryScreen: 'ShikakuHub',
+  supportsDaily: true,
   useProgress: () => {
     const { levelsCompleted, resetAllProgress } = useShikakuProgress();
     return { completed: levelsCompleted.size, reset: resetAllProgress };

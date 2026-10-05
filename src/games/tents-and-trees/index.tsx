@@ -26,6 +26,7 @@ export const tentsAndTreesGame: GameModule = {
     { name: 'TentsAndTreesGame', component: GameScreen },
   ],
   entryScreen: 'TentsAndTreesHub',
+  supportsDaily: true,
   useProgress: () => {
     const { levelsCompleted, resetAllProgress } = useTentsAndTreesProgress();
     return { completed: levelsCompleted.size, reset: resetAllProgress };

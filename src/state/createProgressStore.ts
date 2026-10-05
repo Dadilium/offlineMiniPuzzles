@@ -76,6 +76,9 @@ export interface ProgressStoreConfig<TLevel, TCustom> {
    * call only -- e.g. Kings' `{urgent: true}`, since the player is actively
    * waiting on it. Omit for games with no such distinction. */
   initialEnsureOpts?: Record<string, unknown>;
+  /** Level the "always keep one ready" bootstrap generates once progress has
+   * loaded. Default 0; the Daily Puzzle store returns today's day number. */
+  initialLevelIndex?: () => number;
   maxRecentFingerprints?: number;
   maxGeneratedLevels?: number;
   /** Debounces the persistence write by this many ms after the last state
@@ -316,7 +319,7 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
     // generating on demand: as soon as the app has loaded progress, make
     // sure the very first level exists.
     useEffect(() => {
-      if (ready) ensureLevel(0, config.initialEnsureOpts);
+      if (ready) ensureLevel(config.initialLevelIndex?.() ?? 0, config.initialEnsureOpts);
     }, [ready, ensureLevel]);
 
     const markLevelComplete = useCallback(

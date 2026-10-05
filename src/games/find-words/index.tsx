@@ -29,6 +29,7 @@ export const findWordsGame: GameModule = {
     { name: 'FindWordsGame', component: GameScreen, options: { gestureEnabled: false } },
   ],
   entryScreen: 'FindWordsHub',
+  supportsDaily: true,
   useProgress: () => {
     const { levelsCompleted, resetAllProgress } = useFindWordsProgress();
     return { completed: levelsCompleted.size, reset: resetAllProgress };

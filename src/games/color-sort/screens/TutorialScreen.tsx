@@ -14,7 +14,7 @@ import { useColorSortProgress } from '../state/useColorSortProgress';
 type Props = NativeStackScreenProps<ColorSortStackParamList, 'ColorSortTutorial'>;
 
 export default function TutorialScreen({ route, navigation }: Props) {
-  const { tutorialKey, pendingLevelIndex } = route.params;
+  const { tutorialKey, pendingLevelIndex, pendingDaily } = route.params;
   const { markTutorialSeen } = useColorSortProgress();
   const styles = useStyles();
   const { t } = useTranslation('color-sort');
@@ -31,7 +31,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
     if (pendingLevelIndex === null) {
       navigation.goBack();
     } else {
-      navigation.replace('ColorSortGame', { levelIndex: pendingLevelIndex });
+      navigation.replace('ColorSortGame', { levelIndex: pendingLevelIndex, daily: pendingDaily });
     }
   }
 

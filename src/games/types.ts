@@ -31,6 +31,10 @@ export interface GameModule {
    * Provider mounted above the whole app, so it's safe to call from any
    * screen. Omitted for a game with nothing worth resetting. */
   useProgress?: () => { completed: number; reset: () => void };
+  /** Has a Daily Puzzle -- listed in the Library's Today strip. Tapping its
+   * chip opens `entryScreen` with `{ startDaily: true }`, so the hub (which
+   * owns tutorial gating) starts today's daily. */
+  supportsDaily?: boolean;
 }
 
 export interface ComingSoonEntry {

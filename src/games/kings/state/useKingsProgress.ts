@@ -1,9 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
-import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
+import { dailyRating, dailySeedIndex, tierForDayNumber } from '../../../daily/calendar';
+import { composeProviders, toDailyStoreConfig } from '../../../daily/dailyStore';
+import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import { applyHint, applyMarkStroke, cycleCellState, makeEmptyBoard, type MarkStrokeMode } from '../engine';
 import {
   BACKGROUND_DEADLINES,
+  createDailyLevel,
   createLevelForIndexRobust,
   fingerprintRegions,
   INITIAL_SKILL_RATING,
@@ -36,7 +39,7 @@ function sanitizeBoard(board: unknown, n: number): CellState[][] {
   return board as CellState[][];
 }
 
-const store = createProgressStore<KingsLevel, KingsCustom>({
+const config: ProgressStoreConfig<KingsLevel, KingsCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
   nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
@@ -71,7 +74,15 @@ const store = createProgressStore<KingsLevel, KingsCustom>({
   // to find. Only the very first level (this bootstrap call) needs urgent
   // deadlines; prefetch calls elsewhere omit it.
   initialEnsureOpts: { urgent: true },
-});
+};
+
+const store = createProgressStore(config);
+// Daily Puzzle boards: same shape and board logic, keyed by day number. Built
+// by the deadline-free `createDailyLevel` (not the robust ladder), so every
+// device lands on the identical board regardless of phone speed.
+const dailyStore = createProgressStore(
+  toDailyStoreConfig(config, 'kings', (day) => createDailyLevel(dailySeedIndex(day), dailyRating(tierForDayNumber(day)) as SkillRating))
+);
 
 interface KingsProgressContextValue {
   ready: boolean;
@@ -105,10 +116,18 @@ interface KingsProgressContextValue {
   difficulty: DifficultyControls;
 }
 
-export const KingsProgressProvider = store.Provider;
+export const KingsProgressProvider = composeProviders(store.Provider, dailyStore.Provider);
 
 export function useKingsProgress(): KingsProgressContextValue {
-  const s = store.useProgress();
+  return useBoundProgress(store.useProgress());
+}
+
+/** Same API, backed by the Daily Puzzle store -- `levelIndex` is the day number. */
+export function useKingsDailyProgress(): KingsProgressContextValue {
+  return useBoundProgress(dailyStore.useProgress());
+}
+
+function useBoundProgress(s: ProgressStore<KingsLevel, KingsCustom>): KingsProgressContextValue {
   const { getCurrent, commit } = s;
 
   const cycleCell = useCallback(

@@ -14,12 +14,15 @@ import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useLatestRef } from '../../../utils/useLatestRef';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
+import DailyLoading from '../../../daily/DailyLoading';
+import { useExitToOrigin } from '../../../daily/navigation';
+import { useDailySession } from '../../../daily/useDailySession';
 import ColorSortBoard from '../components/ColorSortBoard';
 import { ACCENT_PALETTE } from '../components/TutorialDiagram';
 import { computeWin } from '../engine';
 import type { Move } from '../generation';
 import type { ColorSortStackParamList } from '../navigation';
-import { useColorSortProgress } from '../state/useColorSortProgress';
+import { useColorSortDailyProgress, useColorSortProgress } from '../state/useColorSortProgress';
 import type { Tube } from '../types';
 
 type Props = NativeStackScreenProps<ColorSortStackParamList, 'ColorSortGame'>;
@@ -30,7 +33,11 @@ const POUR_DURATION_MS = 380;
 
 export default function GameScreen({ route, navigation }: Props) {
   const { colors } = useTheme();
-  const { levelIndex } = route.params;
+  // In daily mode `levelIndex` is the day number and everything reads/writes the daily store.
+  const { levelIndex, daily } = route.params;
+  const exitToOrigin = useExitToOrigin(daily, 'ColorSortHub');
+  const regularProgress = useColorSortProgress();
+  const dailyProgress = useColorSortDailyProgress();
   const {
     levelFor,
     ensureLevel,
@@ -43,9 +50,10 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelComplete,
     markLevelSkipped,
     levelsCompleted,
-    showColorblindIcons,
     difficulty,
-  } = useColorSortProgress();
+  } = daily ? dailyProgress : regularProgress;
+  // A per-player preference, not per-level -- always the regular store's copy, daily or not.
+  const { showColorblindIcons } = regularProgress;
   const { showToast } = useToast();
   const { t } = useTranslation('color-sort');
   const { t: tc } = useTranslation('common');
@@ -55,8 +63,9 @@ export default function GameScreen({ route, navigation }: Props) {
   // next one the moment this level opens, same rationale as every other game.
   useEffect(() => {
     ensureLevel(levelIndex);
-    InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
-  }, [levelIndex, ensureLevel]);
+    // Not on a daily: "next" would be tomorrow's board, and nothing leads to it.
+    if (!daily) InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
+  }, [levelIndex, ensureLevel, daily]);
 
   const level = levelFor(levelIndex);
   const tubes = level ? tubesByLevel[levelIndex] : undefined;
@@ -84,6 +93,8 @@ export default function GameScreen({ route, navigation }: Props) {
 
   const win = useMemo(() => (level && tubes ? computeWin(tubes, level.capacity) : false), [level, tubes]);
 
+  const session = useDailySession({ gameId: 'color-sort', dayNumber: daily ? levelIndex : null, ready: !!(level && tubes), won: win });
+
   // Tubes persist forever, so reopening an already-completed level would
   // otherwise land straight on the solved board with the win popup showing.
   // Auto-restart it once per mount so there's always a fresh board to play.
@@ -99,8 +110,10 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('color-sort');
-  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
-  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // An ad owed from an earlier win shows here, between levels -- never over
+  // the celebration, and never at the start of a daily (its first solve still
+  // counts toward the schedule; the ad waits for the next regular level).
+  useInterstitialAtLevelStart(level && !daily ? levelIndex : null);
   // Replays of an already-cleared level never count toward the interstitial
   // schedule -- read at win time, before `markLevelComplete` adds it.
   const levelsCompletedRef = useLatestRef(levelsCompleted);
@@ -124,13 +137,14 @@ export default function GameScreen({ route, navigation }: Props) {
     const isFirstClear = !levelsCompletedRef.current.has(levelIndex);
 
     markLevelComplete(levelIndex);
-    posthog?.capture('puzzle_level_completed', { game_id: 'color_sort', level_index: levelIndex + 1, move_count: moveCount });
+    if (daily) session.recordWin();
+    else posthog?.capture('puzzle_level_completed', { game_id: 'color_sort', level_index: levelIndex + 1, move_count: moveCount });
     setCelebrate(true);
     setShowConfetti(true);
     if (isFirstClear) notifyLevelCompleted();
     const confettiTimer = setTimeout(() => setShowConfetti(false), 1300);
     return () => clearTimeout(confettiTimer);
-  }, [win, level, tubes, levelIndex, markLevelComplete, notifyLevelCompleted, levelsCompletedRef]);
+  }, [win, level, tubes, levelIndex, markLevelComplete, notifyLevelCompleted, levelsCompletedRef, daily, session.recordWin]);
 
   function clearHint() {
     if (hintTimer.current) clearTimeout(hintTimer.current);
@@ -196,7 +210,8 @@ export default function GameScreen({ route, navigation }: Props) {
       return false;
     }
     setSelected(null);
-    posthog?.capture('puzzle_hint_requested', { game_id: 'color_sort', level_index: levelIndex + 1 });
+    session.noteHint();
+    posthog?.capture('puzzle_hint_requested', { game_id: 'color_sort', level_index: levelIndex + 1, daily: !!daily });
     if (hintTimer.current) clearTimeout(hintTimer.current);
     setHint(move);
     hintTimer.current = setTimeout(() => setHint(null), HINT_DURATION_MS);
@@ -206,7 +221,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   function replayTutorial() {
-    navigation.navigate('ColorSortTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
+    navigation.navigate('ColorSortTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex, pendingDaily: daily });
   }
 
   function nextLevel() {
@@ -230,14 +245,14 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   if (!level || !tubes) {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
+    return daily ? <DailyLoading accentColor={colors.cyan} onBack={exitToOrigin} /> : <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.popTo('ColorSortHub')}
+      onBack={exitToOrigin}
       backAccessibilityLabel={tc('actions.backToHub')}
-      title={level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
+      title={session.title ?? level.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
         <>
           <IconButton name="help" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
@@ -250,7 +265,7 @@ export default function GameScreen({ route, navigation }: Props) {
           {!celebrate && (
             <GameActionButton.Undo onPress={onUndoPress} accentColor={colors.cyan} disabled={history.length === 0} />
           )}
-          {!celebrate && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.cyan} />}
+          {!celebrate && !daily && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.cyan} />}
         </View>
       }
       winOverlay={
@@ -259,11 +274,13 @@ export default function GameScreen({ route, navigation }: Props) {
           badge="👑"
           showConfetti={showConfetti}
           confettiPalette={ACCENT_PALETTE}
-          title={t('game.winTitle')}
-          subtitle={t('game.winSubtitle', { count: moveCount, par: level.parMoves })}
-          nextLabel={tc('actions.nextLevel')}
-          onNext={nextLevel}
-          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          title={daily ? tc('daily.winTitle') : t('game.winTitle')}
+          subtitle={daily ? session.winSubtitle : t('game.winSubtitle', { count: moveCount, par: level.parMoves })}
+          nextLabel={daily ? tc('daily.share') : tc('actions.nextLevel')}
+          onNext={daily ? session.share : nextLevel}
+          secondaryLabel={daily ? tc('daily.done') : undefined}
+          onSecondary={exitToOrigin}
+          unlockedTier={!daily && difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
           onUnlockSeen={difficulty.markUnlockSeen}
         />
       }

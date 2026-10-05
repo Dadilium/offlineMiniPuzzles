@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
-import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
+import { composeProviders, dailyFromRobust, toDailyStoreConfig } from '../../../daily/dailyStore';
+import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import { applyAddNumbers, applyMatch, findLegalMove, MAX_ADD_NUMBERS, removeRows } from '../engine';
 import { createLevelForIndexRobust, fingerprintGrid, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { Cell, GridValue, MatchingNumbersLevel } from '../types';
@@ -45,7 +46,7 @@ function sanitizeBoard(board: unknown, level: MatchingNumbersLevel): GridValue[]
   return withoutEmptyRows.length > 0 ? withoutEmptyRows : (board as GridValue[][]);
 }
 
-const store = createProgressStore<MatchingNumbersLevel, MatchingNumbersCustom>({
+const config: ProgressStoreConfig<MatchingNumbersLevel, MatchingNumbersCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
   nextSkillRating: (prev, input) =>
@@ -82,7 +83,17 @@ const store = createProgressStore<MatchingNumbersLevel, MatchingNumbersCustom>({
     boardsByLevel: { ...custom.boardsByLevel, [levelIndex]: cloneGrid(level.grid) },
     addNumbersUsedByLevel: { ...custom.addNumbersUsedByLevel, [levelIndex]: 0 },
   }),
-});
+};
+
+const store = createProgressStore(config);
+// Daily Puzzle boards: same shape and board logic, keyed by day number.
+const dailyStore = createProgressStore(
+  toDailyStoreConfig(
+    config,
+    'matching-numbers',
+    dailyFromRobust((idx, rating, recent) => createLevelForIndexRobust(idx, rating as SkillRating, recent))
+  )
+);
 
 interface MatchingNumbersProgressContextValue {
   ready: boolean;
@@ -117,10 +128,18 @@ interface MatchingNumbersProgressContextValue {
   difficulty: DifficultyControls;
 }
 
-export const MatchingNumbersProgressProvider = store.Provider;
+export const MatchingNumbersProgressProvider = composeProviders(store.Provider, dailyStore.Provider);
 
 export function useMatchingNumbersProgress(): MatchingNumbersProgressContextValue {
-  const s = store.useProgress();
+  return useBoundProgress(store.useProgress());
+}
+
+/** Same API, backed by the Daily Puzzle store -- `levelIndex` is the day number. */
+export function useMatchingNumbersDailyProgress(): MatchingNumbersProgressContextValue {
+  return useBoundProgress(dailyStore.useProgress());
+}
+
+function useBoundProgress(s: ProgressStore<MatchingNumbersLevel, MatchingNumbersCustom>): MatchingNumbersProgressContextValue {
   const { getCurrent, commit } = s;
 
   const commitMatch = useCallback(

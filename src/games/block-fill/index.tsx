@@ -29,6 +29,7 @@ export const blockFillGame: GameModule = {
     { name: 'BlockFillGame', component: GameScreen, options: { gestureEnabled: false } },
   ],
   entryScreen: 'BlockFillHub',
+  supportsDaily: true,
   useProgress: () => {
     const { levelsCompleted, resetAllProgress } = useBlockFillProgress();
     return { completed: levelsCompleted.size, reset: resetAllProgress };

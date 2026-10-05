@@ -25,6 +25,7 @@ export const matchingNumbersGame: GameModule = {
     { name: 'MatchingNumbersGame', component: GameScreen },
   ],
   entryScreen: 'MatchingNumbersHub',
+  supportsDaily: true,
   useProgress: () => {
     const { levelsCompleted, resetAllProgress } = useMatchingNumbersProgress();
     return { completed: levelsCompleted.size, reset: resetAllProgress };

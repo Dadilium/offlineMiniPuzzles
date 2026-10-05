@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import DailyGiftModal from '../components/DailyGiftModal';
 import GameCard from '../components/GameCard';
+import TodayStrip from '../daily/TodayStrip';
 import IconButton from '../components/IconButton';
 import { translateDynamic } from '../i18n/dynamicKey';
 import { games, comingSoon } from '../games/registry';
@@ -13,6 +14,8 @@ import { fonts } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
 import type { RootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
+
+const dailyGames = games.filter((game) => game.supportsDaily);
 
 export default function LibraryScreen({ navigation }: Props) {
   const { t } = useTranslation();
@@ -50,6 +53,10 @@ export default function LibraryScreen({ navigation }: Props) {
             />
           </View>
         </View>
+
+        {dailyGames.length > 0 && (
+          <TodayStrip games={dailyGames} onOpen={(game) => navigation.navigate(game.entryScreen as any, { startDaily: true })} />
+        )}
 
         <Text style={styles.sectionLabel}>{t('library.readySection')}</Text>
         <View style={styles.grid}>

@@ -14,11 +14,14 @@ import { useHintGate } from '../../../ads/useHintGate';
 import { useInterstitialAtLevelStart, useInterstitialOnComplete } from '../../../ads/useInterstitialOnComplete';
 import { useLatestRef } from '../../../utils/useLatestRef';
 import { useRewardedSkip } from '../../../ads/useRewardedSkip';
+import DailyLoading from '../../../daily/DailyLoading';
+import { useExitToOrigin } from '../../../daily/navigation';
+import { useDailySession } from '../../../daily/useDailySession';
 import FindWordsGrid from '../components/FindWordsGrid';
 import WordList from '../components/WordList';
 import { isLevelComplete } from '../engine';
 import type { FindWordsStackParamList } from '../navigation';
-import { useFindWordsProgress } from '../state/useFindWordsProgress';
+import { useFindWordsDailyProgress, useFindWordsProgress } from '../state/useFindWordsProgress';
 import type { Cell, FindWordsPlayerState } from '../types';
 
 type Props = NativeStackScreenProps<FindWordsStackParamList, 'FindWordsGame'>;
@@ -26,12 +29,16 @@ type Props = NativeStackScreenProps<FindWordsStackParamList, 'FindWordsGame'>;
 const EMPTY_FOUND: FindWordsPlayerState = [];
 
 export default function GameScreen({ route, navigation }: Props) {
-  const { levelIndex } = route.params;
+  // In daily mode `levelIndex` is the day number and everything reads/writes the daily store.
+  const { levelIndex, daily } = route.params;
+  const exitToOrigin = useExitToOrigin(daily, 'FindWordsHub');
   const { colors } = useTheme();
   const confettiPalette = useMemo(
     () => [colors.teal, colors.signalBlue, colors.warn, colors.purple, colors.cyan, colors.gold],
     [colors]
   );
+  const regularProgress = useFindWordsProgress();
+  const dailyProgress = useFindWordsDailyProgress();
   const {
     levelFor,
     ensureLevel,
@@ -43,7 +50,7 @@ export default function GameScreen({ route, navigation }: Props) {
     markLevelSkipped,
     levelsCompleted,
     difficulty,
-  } = useFindWordsProgress();
+  } = daily ? dailyProgress : regularProgress;
   const { showToast } = useToast();
   const { t } = useTranslation('find-words');
   const { t: tc } = useTranslation('common');
@@ -54,13 +61,16 @@ export default function GameScreen({ route, navigation }: Props) {
   // pattern as every other game here.
   useEffect(() => {
     ensureLevel(levelIndex);
-    InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
-  }, [levelIndex, ensureLevel]);
+    // Not on a daily: "next" would be tomorrow's board, and nothing leads to it.
+    if (!daily) InteractionManager.runAfterInteractions(() => ensureLevel(levelIndex + 1));
+  }, [levelIndex, ensureLevel, daily]);
 
   const level = levelFor(levelIndex);
   const foundIndices = level ? (foundIndicesByLevel[levelIndex] ?? EMPTY_FOUND) : EMPTY_FOUND;
 
   const win = useMemo(() => (level ? isLevelComplete(foundIndices, level) : false), [level, foundIndices]);
+
+  const session = useDailySession({ gameId: 'find-words', dayNumber: daily ? levelIndex : null, ready: !!level, won: win });
 
   const [celebrate, setCelebrate] = useState(false);
   const [revealWin, setRevealWin] = useState(false);
@@ -90,8 +100,10 @@ export default function GameScreen({ route, navigation }: Props) {
   useEffect(() => clearConfettiTimer, []);
 
   const { notifyLevelCompleted } = useInterstitialOnComplete('find-words');
-  // An ad owed from an earlier win shows here, between levels -- never over the celebration.
-  useInterstitialAtLevelStart(level ? levelIndex : null);
+  // An ad owed from an earlier win shows here, between levels -- never over
+  // the celebration, and never at the start of a daily (its first solve still
+  // counts toward the schedule; the ad waits for the next regular level).
+  useInterstitialAtLevelStart(level && !daily ? levelIndex : null);
   // Replays of an already-cleared level never count toward the interstitial
   // schedule -- read at win time, before `markLevelComplete` adds it.
   const levelsCompletedRef = useLatestRef(levelsCompleted);
@@ -124,9 +136,10 @@ export default function GameScreen({ route, navigation }: Props) {
     firstClearRef.current = !levelsCompletedRef.current.has(levelIndex);
 
     markLevelComplete(levelIndex);
-    posthog?.capture('puzzle_level_completed', { game_id: 'find-words', level_index: levelIndex + 1 });
+    if (daily) session.recordWin();
+    else posthog?.capture('puzzle_level_completed', { game_id: 'find-words', level_index: levelIndex + 1 });
     setCelebrate(true);
-  }, [win, level, levelIndex, markLevelComplete]);
+  }, [win, level, levelIndex, markLevelComplete, daily, session.recordWin]);
 
   function handleCelebrationDone() {
     setRevealWin(true);
@@ -146,7 +159,7 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   function replayTutorial() {
-    navigation.navigate('FindWordsTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex });
+    navigation.navigate('FindWordsTutorial', { tutorialKey: 'all', pendingLevelIndex: levelIndex, pendingDaily: daily });
   }
 
   function nextLevel() {
@@ -171,21 +184,24 @@ export default function GameScreen({ route, navigation }: Props) {
 
   function attemptHint(): boolean {
     const gaveHint = giveHint(levelIndex);
-    if (gaveHint) posthog?.capture('puzzle_hint_requested', { game_id: 'find-words', level_index: levelIndex + 1 });
+    if (gaveHint) {
+      session.noteHint();
+      posthog?.capture('puzzle_hint_requested', { game_id: 'find-words', level_index: levelIndex + 1, daily: !!daily });
+    }
     return gaveHint;
   }
 
   const { hintCount, onHintPress } = useHintGate(attemptHint, () => showToast(tc('actions.hintAdNotReady')));
 
   if (!level) {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
+    return daily ? <DailyLoading accentColor={colors.teal} onBack={exitToOrigin} /> : <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDeep }} />;
   }
 
   return (
     <GameScreenLayout
-      onBack={() => navigation.popTo('FindWordsHub')}
+      onBack={exitToOrigin}
       backAccessibilityLabel={tc('actions.backToHub')}
-      title={t('game.levelTitle', { number: levelIndex + 1 })}
+      title={session.title ?? t('game.levelTitle', { number: levelIndex + 1 })}
       headerRight={
         <>
           <IconButton name="help" onPress={replayTutorial} accessibilityLabel={tc('actions.replayTutorial')} />
@@ -196,7 +212,7 @@ export default function GameScreen({ route, navigation }: Props) {
       controls={
         <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center' }}>
           <GameActionButton.Hint onPress={onHintPress} accentColor={colors.teal} hintCount={hintCount} />
-          {!revealWin && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.teal} />}
+          {!revealWin && !daily && <GameActionButton.Skip onPress={onSkipPress} accentColor={colors.teal} />}
         </View>
       }
       winOverlay={
@@ -205,11 +221,13 @@ export default function GameScreen({ route, navigation }: Props) {
           badge="🔎"
           showConfetti={showConfetti}
           confettiPalette={confettiPalette}
-          title={t('game.winTitle')}
-          subtitle={t('game.winSubtitle')}
-          nextLabel={tc('actions.nextLevel')}
-          onNext={nextLevel}
-          unlockedTier={difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
+          title={daily ? tc('daily.winTitle') : t('game.winTitle')}
+          subtitle={daily ? session.winSubtitle : t('game.winSubtitle')}
+          nextLabel={daily ? tc('daily.share') : tc('actions.nextLevel')}
+          onNext={daily ? session.share : nextLevel}
+          secondaryLabel={daily ? tc('daily.done') : undefined}
+          onSecondary={exitToOrigin}
+          unlockedTier={!daily && difficulty.hasNewUnlock ? difficulty.unlockedTier : null}
           onUnlockSeen={difficulty.markUnlockSeen}
         />
       }

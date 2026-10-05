@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
-import { createProgressStore, type DifficultyControls } from '../../../state/createProgressStore';
+import { composeProviders, dailyFromRobust, toDailyStoreConfig } from '../../../daily/dailyStore';
+import { createProgressStore, type DifficultyControls, type ProgressStore, type ProgressStoreConfig } from '../../../state/createProgressStore';
 import { extendPath, findHintCell, rewindTo } from '../engine';
 import { createLevelForIndexRobust, fingerprintBlockFill, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { BlockFillLevel, Cell } from '../types';
@@ -25,7 +26,7 @@ function sanitizePath(path: unknown, level: BlockFillLevel): Cell[] {
   return path as Cell[];
 }
 
-const store = createProgressStore<BlockFillLevel, BlockFillCustom>({
+const config: ProgressStoreConfig<BlockFillLevel, BlockFillCustom> = {
   storageKey: STORAGE_KEY,
   initialSkillRating: INITIAL_SKILL_RATING,
   nextSkillRating: (prev, input) => nextSkillRating(prev as SkillRating, input as { hintsUsed: number; skipped: boolean }),
@@ -61,7 +62,13 @@ const store = createProgressStore<BlockFillLevel, BlockFillCustom>({
   // mid-gesture. Debouncing means the write only runs once the finger
   // actually pauses or lifts, never while it's still moving.
   saveDebounceMs: 400,
-});
+};
+
+const store = createProgressStore(config);
+// Daily Puzzle boards: same shape and board logic, keyed by day number.
+const dailyStore = createProgressStore(
+  toDailyStoreConfig(config, 'block-fill', dailyFromRobust((idx, rating, recent) => createLevelForIndexRobust(idx, rating as SkillRating, recent)))
+);
 
 interface BlockFillProgressContextValue {
   ready: boolean;
@@ -93,10 +100,18 @@ interface BlockFillProgressContextValue {
   difficulty: DifficultyControls;
 }
 
-export const BlockFillProgressProvider = store.Provider;
+export const BlockFillProgressProvider = composeProviders(store.Provider, dailyStore.Provider);
 
 export function useBlockFillProgress(): BlockFillProgressContextValue {
-  const s = store.useProgress();
+  return useBoundProgress(store.useProgress());
+}
+
+/** Same API, backed by the Daily Puzzle store -- `levelIndex` is the day number. */
+export function useBlockFillDailyProgress(): BlockFillProgressContextValue {
+  return useBoundProgress(dailyStore.useProgress());
+}
+
+function useBoundProgress(s: ProgressStore<BlockFillLevel, BlockFillCustom>): BlockFillProgressContextValue {
   const { getCurrent, commit } = s;
 
   const extend = useCallback(

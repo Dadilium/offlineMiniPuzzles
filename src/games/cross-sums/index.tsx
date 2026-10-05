@@ -26,6 +26,7 @@ export const crossSumsGame: GameModule = {
     { name: 'CrossSumsGame', component: GameScreen },
   ],
   entryScreen: 'CrossSumsHub',
+  supportsDaily: true,
   useProgress: () => {
     const { levelsCompleted, resetAllProgress } = useCrossSumsProgress();
     return { completed: levelsCompleted.size, reset: resetAllProgress };

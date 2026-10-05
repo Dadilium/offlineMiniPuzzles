@@ -14,7 +14,7 @@ import { useFindWordsProgress } from '../state/useFindWordsProgress';
 type Props = NativeStackScreenProps<FindWordsStackParamList, 'FindWordsTutorial'>;
 
 export default function TutorialScreen({ route, navigation }: Props) {
-  const { tutorialKey, pendingLevelIndex } = route.params;
+  const { tutorialKey, pendingLevelIndex, pendingDaily } = route.params;
   const { markTutorialSeen } = useFindWordsProgress();
   const { t } = useTranslation('find-words');
   const { t: tc } = useTranslation('common');
@@ -31,7 +31,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
     if (pendingLevelIndex === null) {
       navigation.goBack();
     } else {
-      navigation.replace('FindWordsGame', { levelIndex: pendingLevelIndex });
+      navigation.replace('FindWordsGame', { levelIndex: pendingLevelIndex, daily: pendingDaily });
     }
   }
 

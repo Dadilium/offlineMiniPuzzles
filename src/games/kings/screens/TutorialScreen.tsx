@@ -14,7 +14,7 @@ type Props = NativeStackScreenProps<KingsStackParamList, 'KingsTutorial'>;
 
 export default function TutorialScreen({ route, navigation }: Props) {
   const styles = useStyles();
-  const { tutorialKey, pendingLevelIndex } = route.params;
+  const { tutorialKey, pendingLevelIndex, pendingDaily } = route.params;
   const { markTutorialSeen } = useKingsProgress();
   const { t } = useTranslation('kings');
   const { t: tc } = useTranslation('common');
@@ -30,7 +30,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
     if (pendingLevelIndex === null) {
       navigation.goBack();
     } else {
-      navigation.replace('KingsGame', { levelIndex: pendingLevelIndex });
+      navigation.replace('KingsGame', { levelIndex: pendingLevelIndex, daily: pendingDaily });
     }
   }
 

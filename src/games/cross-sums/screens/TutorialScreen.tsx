@@ -13,7 +13,7 @@ import { useCrossSumsProgress } from '../state/useCrossSumsProgress';
 type Props = NativeStackScreenProps<CrossSumsStackParamList, 'CrossSumsTutorial'>;
 
 export default function TutorialScreen({ route, navigation }: Props) {
-  const { tutorialKey, pendingLevelIndex } = route.params;
+  const { tutorialKey, pendingLevelIndex, pendingDaily } = route.params;
   const { markTutorialSeen } = useCrossSumsProgress();
   const { t } = useTranslation('cross-sums');
   const { t: tc } = useTranslation('common');
@@ -30,7 +30,7 @@ export default function TutorialScreen({ route, navigation }: Props) {
     if (pendingLevelIndex === null) {
       navigation.goBack();
     } else {
-      navigation.replace('CrossSumsGame', { levelIndex: pendingLevelIndex });
+      navigation.replace('CrossSumsGame', { levelIndex: pendingLevelIndex, daily: pendingDaily });
     }
   }
 

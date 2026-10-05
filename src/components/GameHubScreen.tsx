@@ -6,6 +6,7 @@ import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-nat
 import { fonts, radii } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
 import { useTheme } from '../theme/ThemeProvider';
+import DailyHubCard, { type DailyHubCardProps } from '../daily/DailyHubCard';
 import DifficultySelector, { type DifficultySelectorProps } from './DifficultySelector';
 import TopBar from './TopBar';
 
@@ -67,6 +68,8 @@ interface Props {
   onHowToPlay: () => void;
   /** Difficulty picker shown above the actions (see `useHubDifficulty`); omitted for games without generated levels. */
   difficulty?: DifficultySelectorProps;
+  /** Today's Daily Puzzle card, shown above the difficulty picker (see `useDailyHub`). */
+  daily?: DailyHubCardProps;
   /** Extra content rendered directly above the Play button, e.g. Relay's __DEV__-only tools. */
   aboveActions?: React.ReactNode;
 }
@@ -74,7 +77,7 @@ interface Props {
 /** Shared hub screen used by every game: a full-bleed banner (this game's
  * motif over a soft dot pattern + color glow, name overlaid at the base)
  * that runs up behind the status bar and top bar, a tagline, an optional
- * difficulty picker, a Play/Resume button, and Levels / How-to-play buttons. */
+ * Daily Puzzle card and difficulty picker, a Play/Resume button, and Levels / How-to-play buttons. */
 export default function GameHubScreen({
   onBack,
   backAccessibilityLabel,
@@ -89,6 +92,7 @@ export default function GameHubScreen({
   howToPlayLabel,
   onHowToPlay,
   difficulty,
+  daily,
   aboveActions,
 }: Props) {
   const { colors } = useTheme();
@@ -136,6 +140,8 @@ export default function GameHubScreen({
         <Text style={styles.tagline}>{tagline}</Text>
 
         <View style={styles.spacer} />
+
+        {daily && <DailyHubCard {...daily} accentColor={accentColor} />}
 
         {difficulty && <DifficultySelector {...difficulty} accentColor={accentColor} />}
 

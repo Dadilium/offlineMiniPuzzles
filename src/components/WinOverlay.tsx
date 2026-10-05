@@ -23,6 +23,9 @@ interface Props {
   unlockedTier?: DifficultyTier | null;
   /** Marks the unlock as acknowledged once the player moves on. */
   onUnlockSeen?: () => void;
+  /** Optional second, quieter action under the main button (the Daily Puzzle's "Done"). */
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 }
 
 // Deliberately NOT React Native's <Modal> -- navigation.replace while a
@@ -40,6 +43,8 @@ export default function WinOverlay({
   confettiPalette,
   unlockedTier,
   onUnlockSeen,
+  secondaryLabel,
+  onSecondary,
 }: Props) {
   const { colors } = useTheme();
   const styles = useStyles();
@@ -72,6 +77,11 @@ export default function WinOverlay({
         >
           <Text style={styles.buttonText}>{nextLabel}</Text>
         </TouchableOpacity>
+        {secondaryLabel && onSecondary && (
+          <TouchableOpacity style={styles.secondaryButton} onPress={onSecondary} activeOpacity={0.7}>
+            <Text style={styles.secondaryButtonText}>{secondaryLabel}</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -109,4 +119,6 @@ const useStyles = createThemedStyles((colors) => ({
   unlockText: { flex: 1, fontSize: 12.5, fontWeight: '600', color: colors.text },
   button: { backgroundColor: colors.accent, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 18, alignSelf: 'stretch', alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  secondaryButton: { alignSelf: 'stretch', alignItems: 'center', paddingTop: 12, paddingBottom: 2 },
+  secondaryButtonText: { color: colors.textDim, fontWeight: '600', fontSize: 13.5 },
 }));
