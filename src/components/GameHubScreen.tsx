@@ -7,6 +7,7 @@ import { fonts, radii } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
 import { useTheme } from '../theme/ThemeProvider';
 import DailyHubCard, { type DailyHubCardProps } from '../daily/DailyHubCard';
+import ReminderPrompt from '../reminders/ReminderPrompt';
 import DifficultySelector, { type DifficultySelectorProps } from './DifficultySelector';
 import TopBar from './TopBar';
 
@@ -160,6 +161,9 @@ export default function GameHubScreen({
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Where a hub-launched daily's Done lands -- the moment to offer the streak reminder. */}
+      {daily && <ReminderPrompt />}
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { createThemedStyles } from '../theme/createThemedStyles';
 import { useTheme } from '../theme/ThemeProvider';
 import { darkPalette, lightPalette, type Palette } from '../theme/palettes';
 import { PRIVACY_POLICY_URL } from '../config/links';
+import { useDailyReminders } from '../reminders/DailyRemindersProvider';
 import appConfig from '../../app.json';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -35,6 +36,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
   const { colors, scheme, setMode } = useTheme();
   const styles = useStyles();
+  const reminders = useDailyReminders();
 
   const selectLanguage = (language: string) => {
     if (language === i18n.language) return;
@@ -78,6 +80,30 @@ export default function SettingsScreen({ navigation }: Props) {
             <Text style={styles.chevron}>›</Text>
           </View>
         </TouchableOpacity>
+
+        {reminders.available && (
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={reminders.blockedBySystem ? 0.75 : 1}
+            disabled={!reminders.blockedBySystem}
+            onPress={() => Linking.openSettings()}
+          >
+            <View style={styles.rowBetween}>
+              <View style={styles.flexShrink}>
+                <Text style={styles.label}>{t('reminders.settingsLabel')}</Text>
+                <Text style={[styles.sub, reminders.blockedBySystem && { color: colors.warn }]}>
+                  {reminders.blockedBySystem ? t('reminders.settingsBlocked') : t('reminders.settingsSub')}
+                </Text>
+              </View>
+              <Switch
+                value={reminders.optedIn}
+                onValueChange={reminders.setEnabled}
+                trackColor={{ true: colors.accent, false: colors.surface3 }}
+                accessibilityLabel={t('reminders.settingsLabel')}
+              />
+            </View>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.card}>
           <Text style={styles.label}>{t('settings.themeLabel')}</Text>

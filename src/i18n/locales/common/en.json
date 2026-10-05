@@ -121,5 +121,32 @@
       "11": "Nov",
       "12": "Dec"
     }
+  },
+  "reminders": {
+    "channelName": "Daily reminders",
+    "streakTitle_one": "Your 🔥 {{count}}-day streak ends tonight",
+    "streakTitle_other": "Your 🔥 {{count}}-day streak ends tonight",
+    "streakBody": "Solve one daily puzzle to keep it going.",
+    "generic": {
+      "0": {
+        "title": "Today's puzzles are waiting",
+        "body": "A fresh daily in every game — come keep your streak going 🔥"
+      },
+      "1": {
+        "title": "Got a minute?",
+        "body": "Today's daily puzzle is ready for you."
+      },
+      "2": {
+        "title": "Daily puzzle time 🧩",
+        "body": "New boards are up. How fast can you solve one today?"
+      }
+    },
+    "promptTitle": "Keep your streak alive?",
+    "promptBody": "We'll send one reminder at 8 PM, only on days you haven't played a daily yet.",
+    "promptAccept": "Remind me",
+    "promptDecline": "Not now",
+    "settingsLabel": "Daily reminder",
+    "settingsSub": "8 PM, only if you haven't played a daily yet",
+    "settingsBlocked": "Notifications are off for Puzzle Den — tap to open settings"
   }
 }

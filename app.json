@@ -46,6 +46,13 @@
       "expo-localization",
       "expo-font",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#3563e9"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/adaptive-icon-foreground.png",

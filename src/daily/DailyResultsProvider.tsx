@@ -28,6 +28,8 @@ interface DailyResultsContextValue {
   markSolved: (gameId: string, day: number, finalElapsedMs: number) => void;
   streakFor: (gameId: string) => Streak;
   overallStreak: Streak;
+  /** At least one game's daily is solved today -- what keeps the overall streak alive. */
+  solvedAnyToday: boolean;
 }
 
 const DailyResultsContext = createContext<DailyResultsContextValue | null>(null);
@@ -104,7 +106,8 @@ export function DailyResultsProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const value = useMemo<DailyResultsContextValue>(() => {
-    const overallStreak = computeStreak(unionDays(allSolvedDays(state)), today);
+    const solvedUnion = unionDays(allSolvedDays(state));
+    const overallStreak = computeStreak(solvedUnion, today);
     return {
       ready,
       today,
@@ -116,6 +119,7 @@ export function DailyResultsProvider({ children }: { children: React.ReactNode }
       markSolved: (gameId, day, finalElapsedMs) => apply((s) => markSolved(s, gameId, day, finalElapsedMs)),
       streakFor: (gameId) => computeStreak(solvedDays(state, gameId), today),
       overallStreak,
+      solvedAnyToday: solvedUnion.has(today),
     };
   }, [state, ready, today, apply]);
 

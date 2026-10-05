@@ -121,5 +121,32 @@
       "11": "nov.",
       "12": "déc."
     }
+  },
+  "reminders": {
+    "channelName": "Rappels quotidiens",
+    "streakTitle_one": "Votre série de {{count}} jour 🔥 se termine ce soir",
+    "streakTitle_other": "Votre série de {{count}} jours 🔥 se termine ce soir",
+    "streakBody": "Résolvez un défi du jour pour la garder.",
+    "generic": {
+      "0": {
+        "title": "Les puzzles du jour vous attendent",
+        "body": "Un nouveau défi dans chaque jeu — gardez votre série 🔥"
+      },
+      "1": {
+        "title": "Une minute ?",
+        "body": "Le défi du jour est prêt pour vous."
+      },
+      "2": {
+        "title": "C'est l'heure du défi 🧩",
+        "body": "De nouvelles grilles vous attendent. Combien de temps pour en résoudre une ?"
+      }
+    },
+    "promptTitle": "Garder votre série ?",
+    "promptBody": "Nous vous enverrons un seul rappel à 20 h, uniquement les jours où vous n'avez pas encore joué de défi.",
+    "promptAccept": "Me le rappeler",
+    "promptDecline": "Pas maintenant",
+    "settingsLabel": "Rappel quotidien",
+    "settingsSub": "20 h, seulement si vous n'avez pas encore joué de défi",
+    "settingsBlocked": "Les notifications sont désactivées pour Puzzle Den — touchez pour ouvrir les réglages"
   }
 }

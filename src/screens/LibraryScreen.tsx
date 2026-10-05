@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import DailyGiftModal from '../components/DailyGiftModal';
 import GameCard from '../components/GameCard';
 import TodayStrip from '../daily/TodayStrip';
+import ReminderPrompt from '../reminders/ReminderPrompt';
 import IconButton from '../components/IconButton';
 import { translateDynamic } from '../i18n/dynamicKey';
 import { games, comingSoon } from '../games/registry';
@@ -40,6 +41,8 @@ export default function LibraryScreen({ navigation }: Props) {
         confirmLabel={t('library.dailyHintOk')}
         onConfirm={acknowledgeDailyClaim}
       />
+      {/* Never stacked on top of the hint gift -- it waits until that's acknowledged. */}
+      <ReminderPrompt suppressed={pendingDailyClaim !== null} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.headerRow}>

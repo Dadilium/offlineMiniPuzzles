@@ -17,6 +17,7 @@ import { ToastProvider } from './src/components/Toast';
 import AdBanner from './src/components/AdBanner';
 import { HintWalletProvider } from './src/state/hintWallet';
 import { DailyResultsProvider } from './src/daily/DailyResultsProvider';
+import { DailyRemindersProvider } from './src/reminders/DailyRemindersProvider';
 import { InterstitialProvider } from './src/ads/InterstitialProvider';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import * as Sentry from '@sentry/react-native';
@@ -72,9 +73,11 @@ export default Sentry.wrap(function App() {
           <ToastProvider>
             <HintWalletProvider>
               <DailyResultsProvider>
-                <InterstitialProvider>
-                  <AppContent />
-                </InterstitialProvider>
+                <DailyRemindersProvider>
+                  <InterstitialProvider>
+                    <AppContent />
+                  </InterstitialProvider>
+                </DailyRemindersProvider>
               </DailyResultsProvider>
             </HintWalletProvider>
           </ToastProvider>
