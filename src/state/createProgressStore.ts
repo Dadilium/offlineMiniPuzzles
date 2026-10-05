@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { type DifficultyTier, effectiveRating, isTierUnlocked, tierForRating, tierRank } from './difficultyTiers';
+import { emitLevelCompleted } from './levelEvents';
 import { isLevelTouched, resolvePersistedTiers, withRating, withRatingAndAutoSwitch, withTierSwitch } from './progressTransitions';
 
 const DEFAULT_MAX_RECENT_FINGERPRINTS = 50;
@@ -79,6 +80,10 @@ export interface ProgressStoreConfig<TLevel, TCustom> {
   /** Level the "always keep one ready" bootstrap generates once progress has
    * loaded. Default 0; the Daily Puzzle store returns today's day number. */
   initialLevelIndex?: () => number;
+  /** Emit the app-wide `levelEvents` win signal on a first clear. Default
+   * true; the Daily Puzzle store turns it off because its session emits the
+   * signal itself, with the day's real tier. */
+  emitsLevelEvents?: boolean;
   maxRecentFingerprints?: number;
   maxGeneratedLevels?: number;
   /** Debounces the persistence write by this many ms after the last state
@@ -345,6 +350,7 @@ export function createProgressStore<TLevel, TCustom>(config: ProgressStoreConfig
           pendingGeneration.current.clear();
         }
         commit(next);
+        if (config.emitsLevelEvents !== false) emitLevelCompleted({ tier: current.selectedTier, hintsUsed });
         if (switched) ensureLevel(next.levelsCompleted.length + next.levelsSkipped.length, config.initialEnsureOpts);
       },
       [commit, ensureLevel]

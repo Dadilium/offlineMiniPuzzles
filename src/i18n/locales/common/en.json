@@ -31,7 +31,9 @@
     "gameProgressLabel": "Game Progress",
     "gameProgressSub": "Reset progress for a specific game",
     "privacyPolicyLabel": "Privacy Policy",
-    "privacyPolicySub": "Opens in your browser"
+    "privacyPolicySub": "Opens in your browser",
+    "rateLabel": "Rate Puzzle Den",
+    "rateSub": "Enjoying the puzzles? A quick review helps a lot"
   },
   "gameProgress": {
     "eyebrow": "Settings",

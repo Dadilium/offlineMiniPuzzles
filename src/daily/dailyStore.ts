@@ -42,6 +42,7 @@ export function toDailyStoreConfig<TLevel, TCustom>(
     generate: (dayNumber, _skillRating, _recentFingerprints, custom) => generateDaily(dayNumber, custom),
     initialLevelIndex: todayDayNumber,
     initialEnsureOpts: undefined,
+    emitsLevelEvents: false,
   };
 }
 

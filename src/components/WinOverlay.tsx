@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useReview } from '../review/ReviewProvider';
 import type { DifficultyTier } from '../state/difficultyTiers';
 import { fonts, radii } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
@@ -28,6 +29,9 @@ interface Props {
   onSecondary?: () => void;
 }
 
+/** Lets the confetti and the card land first -- the rating sheet should feel like part of the celebration, not cut it off. */
+const REVIEW_DELAY_MS = 1500;
+
 // Deliberately NOT React Native's <Modal> -- navigation.replace while a
 // native Modal is still presented is a known crash on iOS (UIKit still has
 // the modal on top when react-navigation swaps the screen underneath it).
@@ -49,6 +53,15 @@ export default function WinOverlay({
   const { colors } = useTheme();
   const styles = useStyles();
   const { t } = useTranslation('common');
+  const { presentIfOwed } = useReview();
+  // The win screen is the one place the store-rating ask may appear (see
+  // review/reviewRules.ts). Leaving before the delay just keeps it owed for
+  // the next win.
+  useEffect(() => {
+    if (!visible) return undefined;
+    const timer = setTimeout(presentIfOwed, REVIEW_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [visible, presentIfOwed]);
   const defaultConfettiPalette = useMemo(
     () => [colors.signalBlue, colors.signalRed, colors.gold, colors.purple, colors.cyan, colors.pink, colors.success],
     [colors]

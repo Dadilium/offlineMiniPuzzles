@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { AppState, Share } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { posthog } from '../config/posthog';
+import { emitLevelCompleted } from '../state/levelEvents';
 import { translateDynamic } from '../i18n/dynamicKey';
 import { tierForDayNumber } from './calendar';
 import { formatDailyDate } from './dailyDate';
@@ -92,6 +93,7 @@ export function useDailySession({ gameId, dayNumber, ready, won }: Options): Dai
     segmentStart.current = null;
     const elapsedMs = current.elapsedMs + segment;
     resultsRef.current.markSolved(gameId, dayNumber, elapsedMs);
+    emitLevelCompleted({ tier: tierForDayNumber(dayNumber), hintsUsed: current.hintsUsed });
     posthog?.capture('daily_completed', {
       game_id: gameId,
       day_number: dayNumber,

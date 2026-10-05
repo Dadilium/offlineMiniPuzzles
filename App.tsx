@@ -18,6 +18,7 @@ import AdBanner from './src/components/AdBanner';
 import { HintWalletProvider } from './src/state/hintWallet';
 import { DailyResultsProvider } from './src/daily/DailyResultsProvider';
 import { DailyRemindersProvider } from './src/reminders/DailyRemindersProvider';
+import { ReviewProvider } from './src/review/ReviewProvider';
 import { InterstitialProvider } from './src/ads/InterstitialProvider';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import * as Sentry from '@sentry/react-native';
@@ -74,9 +75,11 @@ export default Sentry.wrap(function App() {
             <HintWalletProvider>
               <DailyResultsProvider>
                 <DailyRemindersProvider>
-                  <InterstitialProvider>
-                    <AppContent />
-                  </InterstitialProvider>
+                  <ReviewProvider>
+                    <InterstitialProvider>
+                      <AppContent />
+                    </InterstitialProvider>
+                  </ReviewProvider>
                 </DailyRemindersProvider>
               </DailyResultsProvider>
             </HintWalletProvider>

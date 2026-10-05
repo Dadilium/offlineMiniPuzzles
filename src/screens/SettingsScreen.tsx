@@ -13,6 +13,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { darkPalette, lightPalette, type Palette } from '../theme/palettes';
 import { PRIVACY_POLICY_URL } from '../config/links';
 import { useDailyReminders } from '../reminders/DailyRemindersProvider';
+import { useReview } from '../review/ReviewProvider';
 import appConfig from '../../app.json';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -37,6 +38,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const { colors, scheme, setMode } = useTheme();
   const styles = useStyles();
   const reminders = useDailyReminders();
+  const { openStoreReviewPage } = useReview();
 
   const selectLanguage = (language: string) => {
     if (language === i18n.language) return;
@@ -121,6 +123,16 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.spacer} />
+
+        <TouchableOpacity style={styles.card} activeOpacity={0.75} onPress={openStoreReviewPage}>
+          <View style={styles.rowBetween}>
+            <View style={styles.flexShrink}>
+              <Text style={styles.label}>{t('settings.rateLabel')}</Text>
+              <Text style={styles.sub}>{t('settings.rateSub')}</Text>
+            </View>
+            <Ionicons name="star-outline" size={18} color={colors.gold} />
+          </View>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.card}

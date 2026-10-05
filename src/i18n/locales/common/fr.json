@@ -31,7 +31,9 @@
     "gameProgressLabel": "Progression des jeux",
     "gameProgressSub": "Réinitialiser la progression d'un jeu",
     "privacyPolicyLabel": "Politique de confidentialité",
-    "privacyPolicySub": "S'ouvre dans votre navigateur"
+    "privacyPolicySub": "S'ouvre dans votre navigateur",
+    "rateLabel": "Noter Puzzle Den",
+    "rateSub": "Vous aimez les puzzles ? Un petit avis aide beaucoup"
   },
   "gameProgress": {
     "eyebrow": "Réglages",
