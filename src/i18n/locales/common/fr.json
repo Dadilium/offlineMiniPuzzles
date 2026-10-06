@@ -29,11 +29,13 @@
     "languageLabel": "Langue",
     "versionLabel": "Version",
     "gameProgressLabel": "Progression des jeux",
-    "gameProgressSub": "Réinitialiser la progression d'un jeu",
+    "gameProgressSub": "Sauvegarder, restaurer ou réinitialiser votre progression",
     "privacyPolicyLabel": "Politique de confidentialité",
     "privacyPolicySub": "S'ouvre dans votre navigateur",
     "rateLabel": "Noter Puzzle Den",
-    "rateSub": "Vous aimez les puzzles ? Un petit avis aide beaucoup"
+    "rateSub": "Vous aimez les puzzles ? Un petit avis aide beaucoup",
+    "soundLabel": "Effets sonores",
+    "soundSub": "Coupés quand votre téléphone est en mode silencieux"
   },
   "gameProgress": {
     "eyebrow": "Réglages",
@@ -44,7 +46,27 @@
     "resetConfirmTitle": "Supprimer la progression de {{game}} ?",
     "resetConfirmMessage": "Cela efface tous les niveaux terminés pour {{game}}. Cette action est irréversible.",
     "cancel": "Annuler",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "resetSection": "Réinitialiser un jeu",
+    "backup": {
+      "title": "Sauvegarder votre progression",
+      "sub": "Enregistrez un fichier de sauvegarde sur iCloud Drive, Google Drive ou ailleurs, puis restaurez-le sur n'importe quel appareil.",
+      "save": "Sauvegarder",
+      "restore": "Restaurer",
+      "shareTitle": "Enregistrer votre sauvegarde Puzzle Den",
+      "saveFailed": "Impossible de créer la sauvegarde. Veuillez réessayer.",
+      "readFailed": "Impossible d'ouvrir ce fichier. Veuillez réessayer.",
+      "invalidTitle": "Ce n'est pas une sauvegarde Puzzle Den",
+      "invalidMessage": "Choisissez un fichier créé avec « Sauvegarder » (puzzle-den-backup-….json).",
+      "newerTitle": "Mise à jour nécessaire",
+      "newerMessage": "Cette sauvegarde a été créée avec une version plus récente de Puzzle Den. Mettez l'app à jour, puis réessayez.",
+      "confirmTitle": "Restaurer cette sauvegarde ?",
+      "confirmSummary": "Enregistrée le {{date}} · {{levels}} niveaux · {{dailies}} puzzles du jour",
+      "confirmMessage": "La progression de la sauvegarde est ajoutée à cet appareil. Tout ce sur quoi cet appareil est plus avancé est conservé. L'app va redémarrer.",
+      "confirm": "Restaurer",
+      "upToDateTitle": "Déjà à jour",
+      "upToDateMessage": "Cet appareil contient déjà tout ce qui se trouve dans cette sauvegarde."
+    }
   },
   "actions": {
     "play": "Jouer",

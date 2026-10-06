@@ -5,6 +5,7 @@ import { createProgressStore, type DifficultyControls, type ProgressStore, type 
 import { findBestMove, isTubeFilledSolid } from '../engine';
 import { createLevelForIndexRobust, fingerprintColorSort, INITIAL_SKILL_RATING, nextSkillRating, pourMove, type Move, type SkillRating } from '../generation';
 import type { ColorSortLevel, Tube } from '../types';
+import { playSound } from '../../../sound/soundEngine';
 
 // v2: internal shape changed when progress moved onto the shared
 // createProgressStore -- old entries just get a clean slate (see that
@@ -137,6 +138,7 @@ function useBoundProgress(s: ProgressStore<ColorSortLevel, ColorSortCustom>): Co
         (i) => !isTubeFilledSolid(tubes[i], level.capacity) && isTubeFilledSolid(result.tubes[i], level.capacity)
       );
       if (justCompleted) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      playSound(justCompleted ? 'match' : 'place');
 
       commit({
         ...current,

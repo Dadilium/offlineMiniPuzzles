@@ -13,6 +13,7 @@ import {
   type WordBankLanguage,
 } from '../generation';
 import type { Cell, FindWordsLevel } from '../types';
+import { playSound } from '../../../sound/soundEngine';
 
 // v2: internal shape changed when progress moved onto the shared
 // createProgressStore -- old entries just get a clean slate (see that
@@ -146,6 +147,7 @@ function useBoundProgress(s: ProgressStore<FindWordsLevel, FindWordsCustom>): Fi
       if (matched === null) return null;
 
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      playSound('match');
 
       commit({
         ...current,

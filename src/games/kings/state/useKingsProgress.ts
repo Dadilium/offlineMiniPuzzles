@@ -15,6 +15,7 @@ import {
   type SkillRating,
 } from '../generation';
 import type { CellState, KingsLevel } from '../types';
+import { playSound } from '../../../sound/soundEngine';
 
 // v3: internal shape changed when progress moved onto the shared
 // createProgressStore -- old entries just get a clean slate (see that
@@ -141,6 +142,9 @@ function useBoundProgress(s: ProgressStore<KingsLevel, KingsCustom>): KingsProgr
 
       if (prevValue === 1 && nextBoard[r][c] === 2) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        playSound('place');
+      } else {
+        playSound('tap');
       }
 
       commit({ ...current, custom: { boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } } });

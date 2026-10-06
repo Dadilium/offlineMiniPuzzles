@@ -29,11 +29,13 @@
     "languageLabel": "Language",
     "versionLabel": "Version",
     "gameProgressLabel": "Game Progress",
-    "gameProgressSub": "Reset progress for a specific game",
+    "gameProgressSub": "Back up, restore or reset your progress",
     "privacyPolicyLabel": "Privacy Policy",
     "privacyPolicySub": "Opens in your browser",
     "rateLabel": "Rate Puzzle Den",
-    "rateSub": "Enjoying the puzzles? A quick review helps a lot"
+    "rateSub": "Enjoying the puzzles? A quick review helps a lot",
+    "soundLabel": "Sound effects",
+    "soundSub": "Muted when your phone is on silent"
   },
   "gameProgress": {
     "eyebrow": "Settings",
@@ -44,7 +46,27 @@
     "resetConfirmTitle": "Delete {{game}} progress?",
     "resetConfirmMessage": "This erases every completed level for {{game}}. This can't be undone.",
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "resetSection": "Reset a game",
+    "backup": {
+      "title": "Back up your progress",
+      "sub": "Save a backup file to iCloud Drive, Google Drive or anywhere you like, then restore it on any device.",
+      "save": "Save backup",
+      "restore": "Restore",
+      "shareTitle": "Save your Puzzle Den backup",
+      "saveFailed": "Couldn't create the backup. Please try again.",
+      "readFailed": "Couldn't open that file. Please try again.",
+      "invalidTitle": "Not a Puzzle Den backup",
+      "invalidMessage": "Pick a file saved with \"Save backup\" (puzzle-den-backup-….json).",
+      "newerTitle": "Update needed",
+      "newerMessage": "This backup was made with a newer version of Puzzle Den. Update the app, then try again.",
+      "confirmTitle": "Restore this backup?",
+      "confirmSummary": "Saved {{date}} · {{levels}} levels · {{dailies}} daily puzzles",
+      "confirmMessage": "Progress from the backup is added to this device. Anything this device is further ahead on is kept. The app will restart.",
+      "confirm": "Restore",
+      "upToDateTitle": "Already up to date",
+      "upToDateMessage": "This device already has everything in this backup."
+    }
   },
   "actions": {
     "play": "Play",

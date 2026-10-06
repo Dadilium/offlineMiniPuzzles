@@ -5,6 +5,7 @@ import { createProgressStore, type DifficultyControls, type ProgressStore, type 
 import { applyHint, applyTool, computeSums, makeInitialMarks, type CellMark, type Tool } from '../engine';
 import { createLevelForIndexRobust, fingerprintCrossSums, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { CrossSumsLevel } from '../types';
+import { playSound } from '../../../sound/soundEngine';
 
 // v3: internal shape changed when progress moved onto the shared
 // createProgressStore -- old entries just get a clean slate (see that
@@ -137,6 +138,7 @@ function useBoundProgress(s: ProgressStore<CrossSumsLevel, CrossSumsCustom>): Cr
       const rowJustMatched = before.rowSums[r] !== level.rowTargets[r] && after.rowSums[r] === level.rowTargets[r];
       const colJustMatched = before.colSums[c] !== level.colTargets[c] && after.colSums[c] === level.colTargets[c];
       if (rowJustMatched || colJustMatched) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      playSound(rowJustMatched || colJustMatched ? 'match' : 'place');
 
       commit({ ...current, custom: { ...current.custom, marksByLevel: { ...current.custom.marksByLevel, [levelIndex]: nextMarks } } });
     },

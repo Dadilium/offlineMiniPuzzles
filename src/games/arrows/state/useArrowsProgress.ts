@@ -5,6 +5,7 @@ import { createProgressStore, type DifficultyControls, type ProgressStore, type 
 import { buildOwnerGrid, freeArrowIds, launchOutcome, MAX_LIVES, sanitizeRemoved } from '../engine';
 import { ARROWS_TIERS, createLevelForIndexRobustAsync, fingerprintArrows, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { ArrowsLevel, ArrowsPlayerState, LaunchOutcome } from '../types';
+import { playSound } from '../../../sound/soundEngine';
 
 // v2: boards are now 100% full and arrow ids are in removal order -- any v1
 // boards (with holes) from pre-release testing get a clean slate.
@@ -160,6 +161,7 @@ function useBoundProgress(s: ProgressStore<ArrowsLevel, ArrowsCustom>): ArrowsPr
         hintsUsedByLevel: asHint ? { ...current.hintsUsedByLevel, [levelIndex]: (current.hintsUsedByLevel[levelIndex] ?? 0) + 1 } : current.hintsUsedByLevel,
       });
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      playSound('place');
       return outcome;
     },
     [getCurrent, commit]
@@ -175,6 +177,7 @@ function useBoundProgress(s: ProgressStore<ArrowsLevel, ArrowsCustom>): ArrowsPr
       if (!board || board.livesLeft <= 0) return 0;
       const livesLeft = board.livesLeft - 1;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      playSound('error');
       commit({
         ...current,
         custom: {

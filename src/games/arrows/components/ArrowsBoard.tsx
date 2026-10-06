@@ -30,6 +30,10 @@ import MovingArrow, { type Motion } from './MovingArrow';
 // x/y/scale/transform), so it's typed in here to be driven straight from the
 // UI thread -- the whole board pans/zooms as one vector transform, redrawn
 // crisp at every zoom level rather than scaling a rasterized snapshot.
+// It must get NO transform props from React: any x/y/transform makes every
+// re-render (each tap) send a static matrix that can override the animated
+// one under Fabric -- the board snaps back to fit on screen while taps keep
+// resolving against the zoomed transform.
 const AnimatedG = Animated.createAnimatedComponent(G as unknown as React.ComponentClass<GProps & { matrix?: number[] }>);
 
 /** Breathing room around the board inside the viewport, in pt. */
@@ -135,21 +139,33 @@ const ArrowsBoard = forwardRef<ArrowsBoardHandle, Props>(function ArrowsBoard(
   const viewW = useSharedValue(0);
   const viewH = useSharedValue(0);
   const maxScale = useSharedValue(MIN_MAX_SCALE);
+  /** 0 until the first transform lands -- the board stays hidden rather than flashing at the origin. */
+  const placed = useSharedValue(0);
   const [zoomed, setZoomed] = useState(false);
+  const lastFit = useRef<{ level: ArrowsLevel; cell: number } | null>(null);
 
-  // Snap back to "whole board fits" whenever the board or viewport changes
-  // (new level, rotation, first layout).
+  // Snap back to "whole board fits" for a new board or a new cell size. A
+  // re-measure that keeps the same board and cell size (the viewport only
+  // shifting a little) keeps the player's zoom and just re-clamps the pan.
   useEffect(() => {
     if (!fit) return;
+    const keepZoom = lastFit.current?.level === level && lastFit.current.cell === fit.cell;
+    lastFit.current = { level, cell: fit.cell };
     boardW.value = fit.width;
     boardH.value = fit.height;
     viewW.value = fit.viewportWidth;
     viewH.value = fit.viewportHeight;
     maxScale.value = fit.maxScale;
-    scale.value = 1;
-    tx.value = (fit.viewportWidth - fit.width) / 2;
-    ty.value = (fit.viewportHeight - fit.height) / 2;
-  }, [fit, boardW, boardH, viewW, viewH, maxScale, scale, tx, ty]);
+    if (keepZoom) {
+      tx.value = clamp(tx.value, axisBounds(fit.width * scale.value, fit.viewportWidth));
+      ty.value = clamp(ty.value, axisBounds(fit.height * scale.value, fit.viewportHeight));
+    } else {
+      scale.value = 1;
+      tx.value = (fit.viewportWidth - fit.width) / 2;
+      ty.value = (fit.viewportHeight - fit.height) / 2;
+    }
+    placed.value = 1;
+  }, [fit, level, boardW, boardH, viewW, viewH, maxScale, placed, scale, tx, ty]);
 
   function clampTranslation(): void {
     'worklet';
@@ -363,7 +379,7 @@ const ArrowsBoard = forwardRef<ArrowsBoardHandle, Props>(function ArrowsBoard(
   const gesture = Gesture.Race(Gesture.Simultaneous(pinch, pan), tap);
 
   const zoomProps = useAnimatedProps(() => ({ matrix: [scale.value, 0, 0, scale.value, tx.value, ty.value] }));
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: placed.value, transform: [{ scale: pulse.value }] }));
 
   if (!fit || !geometries) {
     return <View style={styles.viewport} onLayout={onLayout} />;
@@ -377,9 +393,7 @@ const ArrowsBoard = forwardRef<ArrowsBoardHandle, Props>(function ArrowsBoard(
       <GestureDetector gesture={gesture}>
         <Animated.View style={[StyleSheet.absoluteFill, pulseStyle]}>
           <Svg width={fit.viewportWidth} height={fit.viewportHeight}>
-            {/* JS-side `x`/`y` only seed the first frame at the fitted
-                position; the animated matrix owns the transform after that. */}
-            <AnimatedG x={(fit.viewportWidth - fit.width) / 2} y={(fit.viewportHeight - fit.height) / 2} animatedProps={zoomProps}>
+            <AnimatedG animatedProps={zoomProps}>
               <Rect
                 x={-plateInset}
                 y={-plateInset}

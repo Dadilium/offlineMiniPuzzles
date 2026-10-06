@@ -3,6 +3,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { fonts, radii } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
+import { usePlayOnShow } from '../sound/usePlayOnShow';
 
 interface Props {
   visible: boolean;
@@ -18,6 +19,7 @@ interface Props {
  * WinOverlay, for the same reason: no native <Modal> under navigation.replace. */
 export default function LevelFailedOverlay({ visible, badge, title, subtitle, retryLabel, onRetry }: Props) {
   const styles = useStyles();
+  usePlayOnShow(visible, 'fail');
   if (!visible) return null;
   return (
     <Animated.View entering={FadeIn.duration(220)} style={styles.backdrop} pointerEvents="box-none">

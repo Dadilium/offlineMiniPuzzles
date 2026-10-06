@@ -4,6 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useReview } from '../review/ReviewProvider';
+import { usePlayOnShow } from '../sound/usePlayOnShow';
 import type { DifficultyTier } from '../state/difficultyTiers';
 import { fonts, radii } from '../theme/tokens';
 import { createThemedStyles } from '../theme/createThemedStyles';
@@ -54,6 +55,7 @@ export default function WinOverlay({
   const styles = useStyles();
   const { t } = useTranslation('common');
   const { presentIfOwed } = useReview();
+  usePlayOnShow(visible, 'win');
   // The win screen is the one place the store-rating ask may appear (see
   // review/reviewRules.ts). Leaving before the delay just keeps it owed for
   // the next win.

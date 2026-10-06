@@ -4,6 +4,7 @@ import { createProgressStore, type DifficultyControls, type ProgressStore, type 
 import { extendPath, findHintCell, rewindTo } from '../engine';
 import { createLevelForIndexRobust, fingerprintBlockFill, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { BlockFillLevel, Cell } from '../types';
+import { playSound } from '../../../sound/soundEngine';
 
 // v2: internal shape changed when progress moved onto the shared
 // createProgressStore -- old entries just get a clean slate (see that
@@ -122,6 +123,7 @@ function useBoundProgress(s: ProgressStore<BlockFillLevel, BlockFillCustom>): Bl
       if (!level || !path) return false;
       const nextPath = extendPath(level, path, cell);
       if (!nextPath) return false;
+      playSound('tap');
       commit({ ...current, custom: { pathsByLevel: { ...current.custom.pathsByLevel, [levelIndex]: nextPath } } });
       return true;
     },

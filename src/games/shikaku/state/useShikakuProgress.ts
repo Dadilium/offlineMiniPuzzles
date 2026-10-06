@@ -11,6 +11,7 @@ import {
   type SkillRating,
 } from '../generation';
 import type { RectBounds, ShikakuLevel, ShikakuPlayerState } from '../types';
+import { playSound } from '../../../sound/soundEngine';
 
 // v2: internal shape changed when progress moved onto the shared
 // createProgressStore -- old entries just get a clean slate (see that
@@ -149,9 +150,13 @@ function useBoundProgress(s: ProgressStore<ShikakuLevel, ShikakuCustom>): Shikak
       if (targetClueIndices.length === 1 && hinted.includes(targetClueIndices[0])) return;
 
       const result = placeRect(level, placed, candidate);
-      if ('error' in result) return;
+      if ('error' in result) {
+        playSound('error');
+        return;
+      }
 
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      playSound('place');
 
       commit({
         ...current,
@@ -174,6 +179,7 @@ function useBoundProgress(s: ProgressStore<ShikakuLevel, ShikakuCustom>): Shikak
       if (hinted.includes(covering.clueIndex)) return;
 
       const nextPlaced = removeRectAt(placed, r, c);
+      playSound('tap');
       commit({ ...current, custom: { ...current.custom, placedByLevel: { ...current.custom.placedByLevel, [levelIndex]: nextPlaced } } });
     },
     [getCurrent, commit]

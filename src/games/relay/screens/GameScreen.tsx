@@ -9,6 +9,8 @@ import { useToast } from '../../../components/Toast';
 import WinOverlay from '../../../components/WinOverlay';
 import { posthog } from '../../../config/posthog';
 import { useHintGate } from '../../../ads/useHintGate';
+import { playSound } from '../../../sound/soundEngine';
+import type { SoundId } from '../../../sound/soundCatalog';
 import { useTheme } from '../../../theme/ThemeProvider';
 import BudgetChip from '../components/BudgetChip';
 import KindChip from '../components/KindChip';
@@ -20,6 +22,13 @@ import { useRelayProgress } from '../state/useRelayProgress';
 import type { ConnectivityResult, RelayKind, SignalColor } from '../types';
 
 const RELAY_KINDS: RelayKind[] = ['circle', 'beam'];
+
+const RELAY_OUTCOME_SOUND: Record<ReturnType<ReturnType<typeof useRelayProgress>['toggleRelay']>, SoundId> = {
+  placed: 'place',
+  removed: 'tap',
+  'budget-full': 'error',
+  locked: 'error',
+};
 
 type Props = NativeStackScreenProps<RelayStackParamList, 'RelayGame'>;
 
@@ -93,6 +102,7 @@ export default function GameScreen({ route, navigation }: Props) {
     const kind = hasMirrors ? selectedKind : 'circle';
     const budget = level.budgets[color] ?? 0;
     const outcome = toggleRelay(levelIndex, x, y, color, budget, kind);
+    playSound(RELAY_OUTCOME_SOUND[outcome]);
     if (outcome === 'budget-full') showToast(t('game.budgetFullToast', { color: t(`game.colorNamesLower.${color}`) }));
     if (outcome === 'locked') showToast(t('game.hintLockedToast'));
   }

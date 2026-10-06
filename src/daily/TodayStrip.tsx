@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInRight, ZoomIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { playSound } from '../sound/soundEngine';
 import { useTranslation } from 'react-i18next';
 import type { GameModule } from '../games/types';
 import { translateDynamic } from '../i18n/dynamicKey';
@@ -54,6 +55,7 @@ export default function TodayStrip({ games, onOpen }: Props) {
               <Pressable
                 onPress={() => {
                   void Haptics.selectionAsync();
+                  playSound('tap');
                   onOpen(game);
                 }}
                 style={({ pressed }) => [

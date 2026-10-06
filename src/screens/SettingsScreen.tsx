@@ -14,6 +14,7 @@ import { darkPalette, lightPalette, type Palette } from '../theme/palettes';
 import { PRIVACY_POLICY_URL } from '../config/links';
 import { useDailyReminders } from '../reminders/DailyRemindersProvider';
 import { useReview } from '../review/ReviewProvider';
+import { useSound } from '../sound/SoundProvider';
 import appConfig from '../../app.json';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -39,6 +40,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const styles = useStyles();
   const reminders = useDailyReminders();
   const { openStoreReviewPage } = useReview();
+  const sound = useSound();
 
   const selectLanguage = (language: string) => {
     if (language === i18n.language) return;
@@ -105,6 +107,23 @@ export default function SettingsScreen({ navigation }: Props) {
               />
             </View>
           </TouchableOpacity>
+        )}
+
+        {sound.available && (
+          <View style={styles.card}>
+            <View style={styles.rowBetween}>
+              <View style={styles.flexShrink}>
+                <Text style={styles.label}>{t('settings.soundLabel')}</Text>
+                <Text style={styles.sub}>{t('settings.soundSub')}</Text>
+              </View>
+              <Switch
+                value={sound.enabled}
+                onValueChange={sound.setEnabled}
+                trackColor={{ true: colors.accent, false: colors.surface3 }}
+                accessibilityLabel={t('settings.soundLabel')}
+              />
+            </View>
+          </View>
         )}
 
         <View style={styles.card}>

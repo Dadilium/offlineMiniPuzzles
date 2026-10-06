@@ -15,6 +15,7 @@ import Animated, {
 import Svg from 'react-native-svg';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { playSound } from '../../../sound/soundEngine';
 import { markStrokeModeFor, strokeCellValue, type MarkStrokeMode } from '../engine';
 import type { CellState, KingsLevel } from '../types';
 import { KingCrownGlyph } from './KingCrown';
@@ -251,7 +252,10 @@ export default function KingsGrid({ level, board, autoUnavailable, conflictSet, 
       stroke.cells.set(key, cell);
       added = true;
       const value = board[cell[0]][cell[1]];
-      if (strokeCellValue(value, stroke.mode) !== value) void Haptics.selectionAsync();
+      if (strokeCellValue(value, stroke.mode) !== value) {
+        void Haptics.selectionAsync();
+        playSound('tap');
+      }
     }
     stroke.last = to;
     return added;
@@ -278,7 +282,10 @@ export default function KingsGrid({ level, board, autoUnavailable, conflictSet, 
       const stroke: ActiveStroke = { mode: markStrokeModeFor(board[startCell[0]][startCell[1]]), cells: new Map(), last: begin };
       stroke.cells.set(`${startCell[0]},${startCell[1]}`, startCell);
       const startValue = board[startCell[0]][startCell[1]];
-      if (strokeCellValue(startValue, stroke.mode) !== startValue) void Haptics.selectionAsync();
+      if (strokeCellValue(startValue, stroke.mode) !== startValue) {
+        void Haptics.selectionAsync();
+        playSound('tap');
+      }
       extendStroke(stroke, { x: e.x, y: e.y });
       strokeRef.current = stroke;
       publish(stroke);

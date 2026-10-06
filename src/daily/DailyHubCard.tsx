@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { playSound } from '../sound/soundEngine';
 import { useTranslation } from 'react-i18next';
 import type { DifficultyTier } from '../state/difficultyTiers';
 import { fonts, radii } from '../theme/tokens';
@@ -36,6 +37,7 @@ export default function DailyHubCard({ dayNumber, tier, streak, status, elapsedM
 
   function handlePress() {
     void Haptics.selectionAsync();
+    playSound('tap');
     if (solved) onShare();
     else onPlay();
   }

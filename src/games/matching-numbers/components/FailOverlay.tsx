@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { fonts, radii } from '../../../theme/tokens';
 import { createThemedStyles } from '../../../theme/createThemedStyles';
+import { usePlayOnShow } from '../../../sound/usePlayOnShow';
 
 interface Props {
   visible: boolean;
@@ -18,6 +19,7 @@ interface Props {
 // legal move left and Add Numbers is exhausted.
 export default function FailOverlay({ visible, title, subtitle, retryLabel, skipLabel, onRetry, onSkip }: Props) {
   const styles = useStyles();
+  usePlayOnShow(visible, 'fail');
   if (!visible) return null;
   return (
     <View style={styles.backdrop} pointerEvents="box-none">

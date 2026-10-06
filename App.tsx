@@ -21,6 +21,7 @@ import { DailyRemindersProvider } from './src/reminders/DailyRemindersProvider';
 import { ReviewProvider } from './src/review/ReviewProvider';
 import { InterstitialProvider } from './src/ads/InterstitialProvider';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
+import { SoundProvider } from './src/sound/SoundProvider';
 import * as Sentry from '@sentry/react-native';
 import { PostHogProvider } from 'posthog-react-native';
 import { posthog } from './src/config/posthog';
@@ -71,19 +72,21 @@ export default Sentry.wrap(function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <ThemeProvider>
-          <ToastProvider>
-            <HintWalletProvider>
-              <DailyResultsProvider>
-                <DailyRemindersProvider>
-                  <ReviewProvider>
-                    <InterstitialProvider>
-                      <AppContent />
-                    </InterstitialProvider>
-                  </ReviewProvider>
-                </DailyRemindersProvider>
-              </DailyResultsProvider>
-            </HintWalletProvider>
-          </ToastProvider>
+          <SoundProvider>
+            <ToastProvider>
+              <HintWalletProvider>
+                <DailyResultsProvider>
+                  <DailyRemindersProvider>
+                    <ReviewProvider>
+                      <InterstitialProvider>
+                        <AppContent />
+                      </InterstitialProvider>
+                    </ReviewProvider>
+                  </DailyRemindersProvider>
+                </DailyResultsProvider>
+              </HintWalletProvider>
+            </ToastProvider>
+          </SoundProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

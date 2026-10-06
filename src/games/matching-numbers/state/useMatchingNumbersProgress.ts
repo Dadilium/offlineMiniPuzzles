@@ -5,6 +5,7 @@ import { createProgressStore, type DifficultyControls, type ProgressStore, type 
 import { applyAddNumbers, applyMatch, findLegalMove, MAX_ADD_NUMBERS, removeRows } from '../engine';
 import { createLevelForIndexRobust, fingerprintGrid, INITIAL_SKILL_RATING, nextSkillRating, type SkillRating } from '../generation';
 import type { Cell, GridValue, MatchingNumbersLevel } from '../types';
+import { playSound } from '../../../sound/soundEngine';
 
 // v2: internal shape changed when progress moved onto the shared
 // createProgressStore -- old entries just get a clean slate (see that
@@ -149,6 +150,7 @@ function useBoundProgress(s: ProgressStore<MatchingNumbersLevel, MatchingNumbers
       if (!board) return;
       const nextBoard = applyMatch(board, a, b);
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      playSound('place');
       commit({ ...current, custom: { ...current.custom, boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } } });
     },
     [getCurrent, commit]
@@ -170,6 +172,7 @@ function useBoundProgress(s: ProgressStore<MatchingNumbersLevel, MatchingNumbers
       const stillEmpty = rowIndices.filter((r) => board[r]?.every((v) => v === null));
       if (stillEmpty.length === 0) return;
       const nextBoard = removeRows(board, stillEmpty);
+      playSound('match');
       commit({ ...current, custom: { ...current.custom, boardsByLevel: { ...current.custom.boardsByLevel, [levelIndex]: nextBoard } } });
     },
     [getCurrent, commit]
@@ -184,6 +187,7 @@ function useBoundProgress(s: ProgressStore<MatchingNumbersLevel, MatchingNumbers
       if (used >= MAX_ADD_NUMBERS) return false;
 
       const nextBoard = applyAddNumbers(board);
+      playSound('tap');
       commit({
         ...current,
         custom: {

@@ -11,6 +11,7 @@ import {
   type SkillRating,
 } from '../generation';
 import type { TentsAndTreesLevel } from '../types';
+import { playSound } from '../../../sound/soundEngine';
 
 // v3: internal shape changed when progress moved onto the shared
 // createProgressStore -- old entries just get a clean slate (see that
@@ -145,6 +146,7 @@ function useBoundProgress(s: ProgressStore<TentsAndTreesLevel, TentsAndTreesCust
       const rowJustMatched = before.rowCounts[r] !== level.rowTargets[r] && after.rowCounts[r] === level.rowTargets[r];
       const colJustMatched = before.colCounts[c] !== level.colTargets[c] && after.colCounts[c] === level.colTargets[c];
       if (rowJustMatched || colJustMatched) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      playSound(rowJustMatched || colJustMatched ? 'match' : 'place');
 
       commit({ ...current, custom: { ...current.custom, tentsByLevel: { ...current.custom.tentsByLevel, [levelIndex]: nextTents } } });
     },

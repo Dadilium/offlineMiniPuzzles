@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { playSound } from '../sound/soundEngine';
 import { useTranslation } from 'react-i18next';
 import { isTierUnlocked, type DifficultyTier } from '../state/difficultyTiers';
 import { fonts, radii } from '../theme/tokens';
@@ -146,11 +147,13 @@ export default function DifficultySelector({
   function handlePress(tier: DifficultyTier) {
     if (!isTierUnlocked(tier, unlockedTier)) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      playSound('error');
       onLockedPress(tier);
       return;
     }
     if (tier === selectedTier) return;
     void Haptics.selectionAsync();
+    playSound('tap');
     onSelect(tier);
   }
 
